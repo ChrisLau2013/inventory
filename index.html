@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Inventory Counting (iPhone Safe)</title>
+<title>Inventory Counting (CSV iPhone)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
 body {
   font-family:-apple-system,BlinkMacSystemFont,sans-serif;
@@ -37,14 +36,6 @@ button.secondary { background:#666; }
 
 #info { font-size:14px; margin-bottom:12px; }
 
-#status {
-  font-size:14px;
-  padding:8px;
-  background:#f0f0f0;
-  border-radius:6px;
-  margin-bottom:12px;
-}
-
 #history {
   max-height:260px;
   overflow:auto;
@@ -66,17 +57,50 @@ thead th {
   top:0;
   background:#eee;
 }
+
+/* ===== Toast ===== */
+#toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  min-width: 220px;
+  max-width: 90%;
+  padding: 14px 18px;
+  border-radius: 14px;
+  font-size: 15px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 10px 25px rgba(0,0,0,.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .35s ease, transform .35s ease;
+  z-index: 9999;
+}
+#toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+#toast.success { background: linear-gradient(135deg,#28a745,#20c997); }
+#toast.error   { background: linear-gradient(135deg,#dc3545,#ff6b6b); }
+#toast.warn    { background: linear-gradient(135deg,#ff9800,#ffc107); }
+#toast .icon { font-size:20px; }
+
+/* 禁用按鈕樣式 */
+button:disabled, input:disabled {
+  background-color: #ccc !important;
+  color: #666 !important;
+  cursor: not-allowed;
+}
 </style>
 </head>
-
 <body>
 
-<header>Inventory Counting (iPhone)</header>
+<header>Inventory Counting (CSV iPhone)</header>
 
 <main>
-
-<div id="status">📂 尚未載入 CSV</div>
-
 <input type="file" id="fileInput" accept=".csv">
 
 <select id="catalogSelect" onchange="buildProductSelect()">
@@ -94,12 +118,24 @@ thead th {
 <input id="qtyInput" type="number" inputmode="numeric" placeholder="Enter quantity">
 <button onclick="saveSelected()">Save Count</button>
 
+<button class="secondary" onclick="toggleManual()">Product not found? Manual entry</button>
+
+<div id="manualPanel" class="hidden">
+  <hr>
+  <h3>Temporary Product</h3>
+  <input id="mProd" placeholder="Product name (required)">
+  <input id="mUnit" placeholder="Packaging unit (required)">
+  <input id="mSup" placeholder="Supplier / Source">
+  <input id="mQty" type="number" inputmode="numeric" placeholder="Quantity">
+  <button onclick="manualSave()">Save Temporary Count</button>
+</div>
+
 <hr>
 <button class="secondary" onclick="exportCSV()">Export CSV</button>
 <button class="secondary" onclick="clearAll()">Clear All Data</button>
 
 <div id="history">
-<h3>Counting History</h3>
+<h3>Counting History (Newest First)</h3>
 <table>
 <thead>
 <tr>
@@ -113,52 +149,66 @@ thead th {
 
 </main>
 
+<div id="toast" class="success">
+  <span class="icon">✅</span>
+  <span class="msg">Loaded</span>
+</div>
+
 <script>
-/* ===== CSV parser (iOS safe) ===== */
+/* ========= CSV parser ========= */
 function parseCSVLine(line){
   const result = [];
   let current = '';
   let inQuotes = false;
-
-  for(let c of line){
-    if(c === '"') inQuotes = !inQuotes;
-    else if(c === ',' && !inQuotes){
-      result.push(current); current='';
-    } else current += c;
+  for(let i=0;i<line.length;i++){
+    const c = line[i];
+    if(c === '"'){ inQuotes = !inQuotes; }
+    else if(c === ',' && !inQuotes){ result.push(current); current=''; }
+    else{ current += c; }
   }
   result.push(current);
   return result.map(v => v.trim().replace(/^"|"$/g,''));
 }
 
-/* ===== Data ===== */
-let data;
-try {
-  data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
-} catch {
-  data = { catalogs: [] };
-}
+/* ========= Data ========= */
+let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
 
-/* ===== Elements ===== */
+/* ========= Elements ========= */
 const fileInput = document.getElementById('fileInput');
 const catalogSelect = document.getElementById('catalogSelect');
 const productSelect = document.getElementById('productSelect');
 const search = document.getElementById('search');
 const qtyInput = document.getElementById('qtyInput');
 const info = document.getElementById('info');
+const manualPanel = document.getElementById('manualPanel');
 const historyBody = document.getElementById('historyBody');
-const statusBox = document.getElementById('status');
 
-let csvLoaded = false;
+/* ========= Toast ========= */
+let toastTimer;
+function showToast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.className=type;
+  t.querySelector('.icon').textContent =
+    type==='success'?'✅':type==='error'?'❌':'⚠️';
+  t.querySelector('.msg').textContent=msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
 
-/* ===== File Input ===== */
-fileInput.addEventListener('change', e => {
+/* ========= File Input ========= */
+fileInput.onchange = e => {
+  if(fileInput.disabled){
+    showToast('CSV 已載入，請重新整理再匯入','warn');
+    return;
+  }
   const file = e.target.files[0];
-  fileInput.value = '';
+  fileInput.value = ''; // iOS Safari 關鍵
   if(!file) return;
   importCSV(file);
-});
+};
 
-/* ===== Import CSV ===== */
+/* ========= CSV Import ========= */
 function importCSV(file){
   const reader = new FileReader();
   reader.onload = e => {
@@ -166,51 +216,49 @@ function importCSV(file){
     if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
 
     const lines = text.split(/\r?\n/).filter(l=>l.trim());
-    if(lines.length < 2){
-      alert('CSV 格式錯誤');
+    if(lines.length<2){
+      showToast('CSV 格式錯誤','error');
       return;
     }
 
     const headers = parseCSVLine(lines[0]).map(h=>h.toLowerCase());
-    const rows = lines.slice(1).map(l=>{
-      const v = parseCSVLine(l);
-      const o = {};
-      headers.forEach((h,i)=>o[h]=v[i]||'');
+    const rows = lines.slice(1).map(line=>{
+      const values = parseCSVLine(line);
+      const o={};
+      headers.forEach((h,i)=>o[h]=values[i]||'');
       return o;
     });
 
     rows.forEach(r=>{
       addProduct(
-        r.category || 'Default',
-        r.product || '',
-        r.unit || '',
-        r.supplier || ''
+        r.category||'Temporary',
+        r.product||'',
+        r.unit||'',
+        r.supplier||''
       );
     });
 
-    save();
-    refresh();
-    csvLoaded = true;
-    statusBox.textContent = `✅ CSV 已載入（${rows.length} 筆）`;
-    alert('CSV 載入成功');
+    save(); refresh();
+
+    // ✅ 成功載入後禁用按鈕
+    fileInput.disabled = true;
+    showToast(`成功載入 ${rows.length} 筆資料`);
   };
   reader.readAsText(file);
 }
 
-/* ===== Core ===== */
+/* ========= Core Functions ========= */
 function addProduct(cat,prod,unit,sup){
-  if(!prod || !unit) return;
-  let c = data.catalogs.find(x=>x.name===cat);
+  if(!prod||!unit) return;
+  let c=data.catalogs.find(x=>x.name===cat);
   if(!c){ c={name:cat,products:[]}; data.catalogs.push(c); }
-  let p = c.products.find(x=>x.name===prod && x.supplier===sup);
+  let p=c.products.find(x=>x.name===prod&&x.supplier===sup);
   if(!p){ p={name:prod,supplier:sup,packages:[]}; c.products.push(p); }
   if(!p.packages.find(x=>x.unit===unit))
     p.packages.push({unit,records:[]});
 }
 
-function save(){
-  localStorage.setItem('inventory', JSON.stringify(data));
-}
+function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
 
 function refresh(){
   catalogSelect.innerHTML='<option value="">All Categories</option>';
@@ -219,8 +267,7 @@ function refresh(){
     o.value=c.name; o.textContent=c.name;
     catalogSelect.appendChild(o);
   });
-  buildProductSelect();
-  updateHistory();
+  buildProductSelect(); updateHistory();
 }
 
 function buildProductSelect(){
@@ -243,18 +290,39 @@ function showInfo(){
   if(!productSelect.value){ info.textContent=''; return; }
   const [ci,pi,ki]=productSelect.value.split('-');
   const r=data.catalogs[ci].products[pi].packages[ki].records.at(-1);
-  info.textContent = r ? `Last: ${r.qty} (${r.time})` : 'No record';
+  info.textContent = r ? `Last count: ${r.qty} (${r.time})` : 'No record';
 }
 
 function saveSelected(){
-  if(!productSelect.value) return alert('請選擇產品');
+  if(!productSelect.value) return showToast('請選擇產品','warn');
   const qty=parseInt(qtyInput.value);
-  if(isNaN(qty)) return alert('請輸入數量');
+  if(isNaN(qty)) return showToast('請輸入數量','warn');
   const [ci,pi,ki]=productSelect.value.split('-');
   data.catalogs[ci].products[pi].packages[ki].records.push({
     qty,time:new Date().toLocaleString()
   });
   save(); refresh(); qtyInput.value='';
+  showToast('已儲存');
+}
+
+function toggleManual(){ manualPanel.classList.toggle('hidden'); }
+
+function manualSave(){
+  const prod=document.getElementById('mProd').value.trim();
+  const unit=document.getElementById('mUnit').value.trim();
+  const sup=document.getElementById('mSup').value.trim();
+  const qty=parseInt(document.getElementById('mQty').value);
+  if(!prod||!unit||isNaN(qty)) return showToast('請填完整資料','warn');
+  addProduct('Temporary',prod,unit,sup);
+  const c=data.catalogs.find(x=>x.name==='Temporary');
+  const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
+  p.packages[0].records.push({qty,time:new Date().toLocaleString()});
+  save(); refresh();
+  document.getElementById('mProd').value='';
+  document.getElementById('mUnit').value='';
+  document.getElementById('mSup').value='';
+  document.getElementById('mQty').value='';
+  showToast('暫存資料已儲存');
 }
 
 function updateHistory(){
@@ -295,6 +363,5 @@ function clearAll(){
 
 refresh();
 </script>
-
 </body>
 </html>
