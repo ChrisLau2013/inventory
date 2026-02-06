@@ -270,17 +270,21 @@ function refresh(){
   buildProductSelect(); updateHistory();
 }
 
-function buildProductSelect(){
-  productSelect.innerHTML='<option value="">Select product</option>';
-  const key=search.value.toLowerCase();
-  data.catalogs.forEach((c,ci)=>{
-    c.products.forEach((p,pi)=>{
+/* ========= 修正 buildProductSelect ========= */
+function buildProductSelect() {
+  productSelect.innerHTML = '<option value="">Select product</option>';
+  const key = search.value.toLowerCase();
+  const selectedCat = catalogSelect.value; // 選擇的分類
+
+  data.catalogs.forEach((c, ci) => {
+    if(selectedCat && c.name !== selectedCat) return; // 過濾分類
+    c.products.forEach((p, pi) => {
       if(key && !p.name.toLowerCase().includes(key)) return;
-      p.packages.forEach((pkg,ki)=>{
-        productSelect.innerHTML+=
-        `<option value="${ci}-${pi}-${ki}">
-          ${p.supplier} | ${p.name} | ${pkg.unit}
-        </option>`;
+      p.packages.forEach((pkg, ki) => {
+        const option = document.createElement('option');
+        option.value = `${ci}-${pi}-${ki}`;
+        option.textContent = `${p.supplier} | ${p.name} | ${pkg.unit}`;
+        productSelect.appendChild(option);
       });
     });
   });
