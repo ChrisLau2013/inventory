@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Inventory Counting</title>
+<title>Inventory Counting (CSV iPhone)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
@@ -94,14 +94,17 @@ button:disabled, input:disabled {
   color: #666 !important;
   cursor: not-allowed;
 }
+
+#fileName { font-size:14px; color:#333; margin-bottom:12px; }
 </style>
 </head>
 <body>
 
-<header>Inventory Counting</header>
+<header>Inventory Counting (CSV iPhone)</header>
 
 <main>
 <input type="file" id="fileInput" accept=".csv">
+<div id="fileName"></div>
 
 <select id="catalogSelect" onchange="buildProductSelect()">
   <option value="">All Categories</option>
@@ -175,6 +178,7 @@ let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
 
 /* ========= Elements ========= */
 const fileInput = document.getElementById('fileInput');
+const fileNameDiv = document.getElementById('fileName');
 const catalogSelect = document.getElementById('catalogSelect');
 const productSelect = document.getElementById('productSelect');
 const search = document.getElementById('search');
@@ -205,6 +209,10 @@ fileInput.onchange = e => {
   const file = e.target.files[0];
   fileInput.value = ''; // iOS Safari 關鍵
   if(!file) return;
+
+  // 顯示檔案名稱
+  fileNameDiv.textContent = `已載入檔案：${file.name}`;
+
   importCSV(file);
 };
 
@@ -240,7 +248,7 @@ function importCSV(file){
 
     save(); refresh();
 
-    // ✅ 成功載入後禁用按鈕
+    // 禁用檔案重新載入
     fileInput.disabled = true;
     showToast(`成功載入 ${rows.length} 筆資料`);
   };
@@ -270,14 +278,14 @@ function refresh(){
   buildProductSelect(); updateHistory();
 }
 
-/* ========= 修正 buildProductSelect ========= */
+/* ========= buildProductSelect (修正版) ========= */
 function buildProductSelect() {
   productSelect.innerHTML = '<option value="">Select product</option>';
   const key = search.value.toLowerCase();
-  const selectedCat = catalogSelect.value; // 選擇的分類
+  const selectedCat = catalogSelect.value;
 
   data.catalogs.forEach((c, ci) => {
-    if(selectedCat && c.name !== selectedCat) return; // 過濾分類
+    if(selectedCat && c.name !== selectedCat) return;
     c.products.forEach((p, pi) => {
       if(key && !p.name.toLowerCase().includes(key)) return;
       p.packages.forEach((pkg, ki) => {
