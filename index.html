@@ -202,18 +202,25 @@ function showToast(msg,type='success'){
 
 /* ========= File Input ========= */
 fileInput.onchange = e => {
+  const file = e.target.files[0];
+  if(!file) return;
+
   if(fileInput.disabled){
     showToast('CSV Already loaded. Please refresh the page before importing again.','warn');
     return;
   }
-  const file = e.target.files[0];
-  if(!file) return;
-  const fileName = file.name;
-  // 顯示檔案名稱
-  fileNameDiv.textContent = `File successfully loaded：${file.name}`;
-  // 然后清空 input，防止 iOS 重复选择同一文件失效
-  fileInput.value = '';
+
+  // 显示文件名
+  fileNameDiv.textContent = `File successfully loaded: ${file.name}`;
+
+  // 导入 CSV
   importCSV(file);
+
+  // 禁用 input 防止重复导入
+  fileInput.disabled = true;
+
+  // 清空 value 防止 iOS/Chrome 选择同一文件失效，不影响文件名显示
+  fileInput.value = '';
 };
 
 /* ========= CSV Import ========= */
@@ -248,8 +255,6 @@ function importCSV(file){
 
     save(); refresh();
 
-    // 禁用檔案重新載入
-    fileInput.disabled = true;
     showToast(`Successfully loaded ${rows.length} records`);
   };
   reader.readAsText(file);
@@ -278,7 +283,7 @@ function refresh(){
   buildProductSelect(); updateHistory();
 }
 
-/* ========= buildProductSelect (修正版) ========= */
+/* ========= buildProductSelect ========= */
 function buildProductSelect() {
   productSelect.innerHTML = '<option value="">Select product</option>';
   const key = search.value.toLowerCase();
