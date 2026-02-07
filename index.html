@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Inventory Counting (CSV iPhone)</title>
+<title>Inventory Counting</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body {
@@ -100,7 +100,7 @@ button:disabled, input:disabled {
 </head>
 <body>
 
-<header>Inventory Counting (CSV iPhone)</header>
+<header>Inventory Counting</header>
 
 <main>
 <input type="file" id="fileInput" accept=".csv">
@@ -203,7 +203,7 @@ function showToast(msg,type='success'){
 /* ========= File Input ========= */
 fileInput.onchange = e => {
   if(fileInput.disabled){
-    showToast('CSV 已載入，請重新整理再匯入','warn');
+    showToast('CSV Already loaded. Please refresh the page before importing again.','warn');
     return;
   }
   const file = e.target.files[0];
@@ -211,7 +211,7 @@ fileInput.onchange = e => {
   if(!file) return;
 
   // 顯示檔案名稱
-  fileNameDiv.textContent = `已載入檔案：${file.name}`;
+  fileNameDiv.textContent = `File successfully loaded：${file.name}`;
 
   importCSV(file);
 };
@@ -225,7 +225,7 @@ function importCSV(file){
 
     const lines = text.split(/\r?\n/).filter(l=>l.trim());
     if(lines.length<2){
-      showToast('CSV 格式錯誤','error');
+      showToast('CSV Invalid format','error');
       return;
     }
 
@@ -250,7 +250,7 @@ function importCSV(file){
 
     // 禁用檔案重新載入
     fileInput.disabled = true;
-    showToast(`成功載入 ${rows.length} 筆資料`);
+    showToast(`Successfully loaded ${rows.length} records`);
   };
   reader.readAsText(file);
 }
@@ -306,15 +306,15 @@ function showInfo(){
 }
 
 function saveSelected(){
-  if(!productSelect.value) return showToast('請選擇產品','warn');
+  if(!productSelect.value) return showToast('Please select a product','warn');
   const qty=parseInt(qtyInput.value);
-  if(isNaN(qty)) return showToast('請輸入數量','warn');
+  if(isNaN(qty)) return showToast('Please enter quantity','warn');
   const [ci,pi,ki]=productSelect.value.split('-');
   data.catalogs[ci].products[pi].packages[ki].records.push({
     qty,time:new Date().toLocaleString()
   });
   save(); refresh(); qtyInput.value='';
-  showToast('已儲存');
+  showToast('Saved');
 }
 
 function toggleManual(){ manualPanel.classList.toggle('hidden'); }
@@ -324,7 +324,7 @@ function manualSave(){
   const unit=document.getElementById('mUnit').value.trim();
   const sup=document.getElementById('mSup').value.trim();
   const qty=parseInt(document.getElementById('mQty').value);
-  if(!prod||!unit||isNaN(qty)) return showToast('請填完整資料','warn');
+  if(!prod||!unit||isNaN(qty)) return showToast('Please complete all required fields','warn');
   addProduct('Temporary',prod,unit,sup);
   const c=data.catalogs.find(x=>x.name==='Temporary');
   const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
@@ -334,7 +334,7 @@ function manualSave(){
   document.getElementById('mUnit').value='';
   document.getElementById('mSup').value='';
   document.getElementById('mQty').value='';
-  showToast('暫存資料已儲存');
+  showToast('Temporary data saved successfully');
 }
 
 function updateHistory(){
@@ -367,7 +367,7 @@ function exportCSV(){
 }
 
 function clearAll(){
-  if(confirm('確定清除所有資料？')){
+  if(confirm('Are you sure you want to clear all data?')){
     localStorage.clear();
     location.reload();
   }
