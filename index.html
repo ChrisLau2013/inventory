@@ -207,12 +207,12 @@ fileInput.onchange = e => {
     return;
   }
   const file = e.target.files[0];
-  fileInput.value = ''; // iOS Safari 關鍵
   if(!file) return;
-
+  const fileName = file.name;
   // 顯示檔案名稱
   fileNameDiv.textContent = `File successfully loaded：${file.name}`;
-
+  // 然后清空 input，防止 iOS 重复选择同一文件失效
+  fileInput.value = '';
   importCSV(file);
 };
 
