@@ -5,96 +5,25 @@
 <title>Inventory Counting</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body {
-  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
-  margin:0; padding:0;
-}
-header {
-  background:#1e90ff;
-  color:#fff;
-  text-align:center;
-  padding:14px;
-  font-size:20px;
-  position:sticky;
-  top:0;
-}
+body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:0; }
+header { background:#1e90ff; color:#fff; text-align:center; padding:14px; font-size:20px; position:sticky; top:0; }
 main { padding:14px; }
-
-input, select, button {
-  width:100%;
-  font-size:18px;
-  padding:10px;
-  margin-bottom:12px;
-  border-radius:6px;
-  box-sizing:border-box;
-}
-
+input, select, button { width:100%; font-size:18px; padding:10px; margin-bottom:12px; border-radius:6px; box-sizing:border-box; }
 button { background:#1e90ff; color:#fff; border:none; }
 button.secondary { background:#666; }
-
 .hidden { display:none; }
-
 #info { font-size:14px; margin-bottom:12px; }
-
-#history {
-  max-height:260px;
-  overflow:auto;
-  border-top:1px solid #ccc;
-}
-
-table {
-  width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-}
-th,td {
-  border:1px solid #ccc;
-  padding:5px;
-  text-align:center;
-}
-thead th {
-  position:sticky;
-  top:0;
-  background:#eee;
-}
-
-/* ===== Toast ===== */
-#toast {
-  position: fixed;
-  bottom: 28px;
-  left: 50%;
-  transform: translateX(-50%) translateY(20px);
-  min-width: 220px;
-  max-width: 90%;
-  padding: 14px 18px;
-  border-radius: 14px;
-  font-size: 15px;
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  box-shadow: 0 10px 25px rgba(0,0,0,.25);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .35s ease, transform .35s ease;
-  z-index: 9999;
-}
-#toast.show {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
+#history { max-height:260px; overflow:auto; border-top:1px solid #ccc; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th,td { border:1px solid #ccc; padding:5px; text-align:center; }
+thead th { position:sticky; top:0; background:#eee; }
+#toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); min-width: 220px; max-width: 90%; padding: 14px 18px; border-radius: 14px; font-size: 15px; color: #fff; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 25px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .35s ease, transform .35s ease; z-index: 9999; }
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 #toast.success { background: linear-gradient(135deg,#28a745,#20c997); }
 #toast.error   { background: linear-gradient(135deg,#dc3545,#ff6b6b); }
 #toast.warn    { background: linear-gradient(135deg,#ff9800,#ffc107); }
 #toast .icon { font-size:20px; }
-
-/* 禁用按鈕樣式 */
-button:disabled, input:disabled {
-  background-color: #ccc !important;
-  color: #666 !important;
-  cursor: not-allowed;
-}
-
+button:disabled, input:disabled { background-color: #ccc !important; color: #666 !important; cursor: not-allowed; }
 #fileName { font-size:14px; color:#333; margin-bottom:12px; }
 </style>
 </head>
@@ -103,8 +32,9 @@ button:disabled, input:disabled {
 <header>Inventory Counting</header>
 
 <main>
-<input type="file" id="fileInput" accept=".csv">
-<div id="fileName"></div>
+<input type="file" id="fileInput" accept=".csv" class="hidden">
+<button id="fileBtn">Choose CSV File</button>
+<div id="fileName">No file chosen</div>
 
 <select id="catalogSelect" onchange="buildProductSelect()">
   <option value="">All Categories</option>
@@ -158,11 +88,9 @@ button:disabled, input:disabled {
 </div>
 
 <script>
-/* ========= CSV parser ========= */
 function parseCSVLine(line){
   const result = [];
-  let current = '';
-  let inQuotes = false;
+  let current = '', inQuotes = false;
   for(let i=0;i<line.length;i++){
     const c = line[i];
     if(c === '"'){ inQuotes = !inQuotes; }
@@ -173,11 +101,10 @@ function parseCSVLine(line){
   return result.map(v => v.trim().replace(/^"|"$/g,''));
 }
 
-/* ========= Data ========= */
 let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
 
-/* ========= Elements ========= */
 const fileInput = document.getElementById('fileInput');
+const fileBtn = document.getElementById('fileBtn');
 const fileNameDiv = document.getElementById('fileName');
 const catalogSelect = document.getElementById('catalogSelect');
 const productSelect = document.getElementById('productSelect');
@@ -187,7 +114,6 @@ const info = document.getElementById('info');
 const manualPanel = document.getElementById('manualPanel');
 const historyBody = document.getElementById('historyBody');
 
-/* ========= Toast ========= */
 let toastTimer;
 function showToast(msg,type='success'){
   const t=document.getElementById('toast');
@@ -200,30 +126,16 @@ function showToast(msg,type='success'){
   toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
 }
 
-/* ========= File Input ========= */
+fileBtn.onclick = () => fileInput.click();
+
 fileInput.onchange = e => {
   const file = e.target.files[0];
   if(!file) return;
-
-  if(fileInput.disabled){
-    showToast('CSV Already loaded. Please refresh the page before importing again.','warn');
-    return;
-  }
-
-  // 显示文件名
-  fileNameDiv.textContent = `File successfully loaded: ${file.name}`;
-
-  // 导入 CSV
-  importCSV(file);
-
-  // 禁用 input 防止重复导入
   fileInput.disabled = true;
-
-  // 清空 value 防止 iOS/Chrome 选择同一文件失效，不影响文件名显示
-  fileInput.value = '';
+  fileNameDiv.textContent = `File loaded: ${file.name}`;  // ✅ 显示文件名
+  importCSV(file);
 };
 
-/* ========= CSV Import ========= */
 function importCSV(file){
   const reader = new FileReader();
   reader.onload = e => {
@@ -231,10 +143,7 @@ function importCSV(file){
     if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
 
     const lines = text.split(/\r?\n/).filter(l=>l.trim());
-    if(lines.length<2){
-      showToast('CSV Invalid format','error');
-      return;
-    }
+    if(lines.length<2){ showToast('CSV Invalid format','error'); return; }
 
     const headers = parseCSVLine(lines[0]).map(h=>h.toLowerCase());
     const rows = lines.slice(1).map(line=>{
@@ -244,31 +153,21 @@ function importCSV(file){
       return o;
     });
 
-    rows.forEach(r=>{
-      addProduct(
-        r.category||'Temporary',
-        r.product||'',
-        r.unit||'',
-        r.supplier||''
-      );
-    });
+    rows.forEach(r=>addProduct(r.category||'Temporary', r.product||'', r.unit||'', r.supplier||''));
 
     save(); refresh();
-
     showToast(`Successfully loaded ${rows.length} records`);
   };
   reader.readAsText(file);
 }
 
-/* ========= Core Functions ========= */
 function addProduct(cat,prod,unit,sup){
   if(!prod||!unit) return;
   let c=data.catalogs.find(x=>x.name===cat);
   if(!c){ c={name:cat,products:[]}; data.catalogs.push(c); }
   let p=c.products.find(x=>x.name===prod&&x.supplier===sup);
   if(!p){ p={name:prod,supplier:sup,packages:[]}; c.products.push(p); }
-  if(!p.packages.find(x=>x.unit===unit))
-    p.packages.push({unit,records:[]});
+  if(!p.packages.find(x=>x.unit===unit)) p.packages.push({unit,records:[]});
 }
 
 function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
@@ -283,7 +182,6 @@ function refresh(){
   buildProductSelect(); updateHistory();
 }
 
-/* ========= buildProductSelect ========= */
 function buildProductSelect() {
   productSelect.innerHTML = '<option value="">Select product</option>';
   const key = search.value.toLowerCase();
@@ -296,7 +194,7 @@ function buildProductSelect() {
       p.packages.forEach((pkg, ki) => {
         const option = document.createElement('option');
         option.value = `${ci}-${pi}-${ki}`;
-        option.textContent = `${p.supplier} | ${p.name} | ${pkg.unit}`;
+        option.textContent = `${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
         productSelect.appendChild(option);
       });
     });
@@ -330,11 +228,14 @@ function manualSave(){
   const sup=document.getElementById('mSup').value.trim();
   const qty=parseInt(document.getElementById('mQty').value);
   if(!prod||!unit||isNaN(qty)) return showToast('Please complete all required fields','warn');
+
   addProduct('Temporary',prod,unit,sup);
   const c=data.catalogs.find(x=>x.name==='Temporary');
   const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
   p.packages[0].records.push({qty,time:new Date().toLocaleString()});
   save(); refresh();
+  fileNameDiv.textContent = `Temporary product "${prod}" saved`; // ✅显示已输入商品源
+
   document.getElementById('mProd').value='';
   document.getElementById('mUnit').value='';
   document.getElementById('mSup').value='';
