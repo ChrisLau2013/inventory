@@ -241,7 +241,7 @@ function manualSave(){
   const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
   p.packages[0].records.push({qty,time:new Date().toLocaleString()});
   save(); refresh();
-  fileNameDiv.textContent = `临时商品已输入：${prod}`;
+  fileNameDiv.textContent = `Temporary product entered：${prod}`;
   document.getElementById('mProd').value='';
   document.getElementById('mUnit').value='';
   document.getElementById('mSup').value='';
