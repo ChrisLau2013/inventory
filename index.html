@@ -266,7 +266,7 @@ function updateHistory(){
 }
 
 function exportCSV(){
-  let csv='time,category,supplier,product,unit,qty\n';
+  let csv='date,time,category,supplier,product,unit,qty\n';
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
     pkg.records.forEach(r=>{
       csv+=`${r.time},${c.name},${p.supplier},${p.name},${pkg.unit},${r.qty}\n`;
