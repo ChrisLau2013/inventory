@@ -1,197 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Inventory Counting</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:0; }
-header { background:#1e90ff; color:#fff; text-align:center; padding:14px; font-size:20px; position:sticky; top:0; }
-main { padding:14px; }
-input, select, button { width:100%; font-size:18px; padding:10px; margin-bottom:12px; border-radius:6px; box-sizing:border-box; }
-button { background:#1e90ff; color:#fff; border:none; }
-button.secondary { background:#666; }
-.hidden { display:none; }
-#info { font-size:14px; margin-bottom:12px; }
-#history { max-height:260px; overflow:auto; border-top:1px solid #ccc; }
-table { width:100%; border-collapse:collapse; font-size:13px; }
-th,td { border:1px solid #ccc; padding:5px; text-align:center; }
-thead th { position:sticky; top:0; background:#eee; }
-#toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); min-width: 220px; max-width: 90%; padding: 14px 18px; border-radius: 14px; font-size: 15px; color: #fff; opacity:0; pointer-events:none; transition:.3s; }
-#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-#toast.success { background:#28a745; }
-#toast.warn { background:#ff9800; }
-</style>
-</head>
-<body>
-
-<header>Inventory Counting</header>
-
-<main>
-<input type="file" id="fileInput" accept=".csv" hidden>
-<button id="fileBtn">Choose CSV File</button>
-<div id="fileName">No file chosen</div>
-
-<select id="catalogSelect" onchange="buildProductSelect()">
-  <option value="">All Categories</option>
-</select>
-
-<input id="search" placeholder="Search product" oninput="buildProductSelect()">
-
-<select id="productSelect" onchange="showInfo()">
-  <option value="">Select product</option>
-</select>
-
-<div id="info"></div>
-
-<select id="locationSelect">
-  <option value="">Select location</option>
-  <option value="Loading Bay 1">Loading Bay 1</option>
-  <option value="Loading Bay 2">Loading Bay 2</option>
-</select>
-
-<button id="lockLocationBtn" class="secondary" onclick="toggleLocationLock()">
-🔓 Location Unlocked
-</button>
-
-<input id="qtyInput" type="number" placeholder="Enter quantity">
-<button onclick="saveSelected()">Save Count</button>
-
-<hr>
-<button class="secondary" onclick="exportCSV()">Export CSV</button>
-</main>
-
-<div id="toast"></div>
-
-<script>
-// ===== DOM =====
-const fileInput = document.getElementById('fileInput');
-const fileBtn   = document.getElementById('fileBtn');
-const fileNameDiv = document.getElementById('fileName');
-const catalogSelect = document.getElementById('catalogSelect');
-const productSelect = document.getElementById('productSelect');
-const search = document.getElementById('search');
-const qtyInput = document.getElementById('qtyInput');
-const locationSelect = document.getElementById('locationSelect');
-const lockBtn = document.getElementById('lockLocationBtn');
-const info = document.getElementById('info');
-const toast = document.getElementById('toast');
-
-// ===== DATA =====
-let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
-let locationLocked = false;
-
-// ===== TOAST =====
-function showToast(msg,type='success'){
-  toast.textContent = msg;
-  toast.className = type + ' show';
-  setTimeout(()=>toast.className='',2000);
-}
-
-// ===== CSV =====
-function parseCSVLine(line){
-  let r=[],c='',q=false;
-  for(let ch of line){
-    if(ch==='"') q=!q;
-    else if(ch===','&&!q){ r.push(c); c=''; }
-    else c+=ch;
-  }
-  r.push(c);
-  return r.map(v=>v.trim());
-}
-
-// ===== FILE LOAD =====
-fileBtn.onclick = () => fileInput.click();
-
-fileInput.onchange = e => {
-  const file = e.target.files[0];
-  if(!file) return;
-  fileNameDiv.textContent = `File loaded: ${file.name}`;
-
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const lines = ev.target.result.split(/\r?\n/).filter(l=>l);
-    const headers = parseCSVLine(lines[0]).map(h=>h.toLowerCase());
-
-    lines.slice(1).forEach(l=>{
-      const v=parseCSVLine(l),o={};
-      headers.forEach((h,i)=>o[h]=v[i]||'');
-      addProduct(o.category||'Default',o.product,o.unit,o.supplier);
-    });
-
-    save(); refresh();
-    showToast('CSV loaded');
-  };
-  reader.readAsText(file);
-};
-
-// ===== CORE =====
-function addProduct(cat,p,u,s){
-  if(!p||!u) return;
-  let c=data.catalogs.find(x=>x.name===cat);
-  if(!c){c={name:cat,products:[]};data.catalogs.push(c);}
-  let pr=c.products.find(x=>x.name===p&&x.supplier===s);
-  if(!pr){pr={name:p,supplier:s,packages:[]};c.products.push(pr);}
-  if(!pr.packages.find(x=>x.unit===u))
-    pr.packages.push({unit:u,records:[]});
-}
-
-function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
-
-function refresh(){
-  catalogSelect.innerHTML='<option value="">All Categories</option>';
-  data.catalogs.forEach(c=>{
-    const o=document.createElement('option');
-    o.value=c.name;o.textContent=c.name;
-    catalogSelect.appendChild(o);
-  });
-  buildProductSelect();
-}
-
-function buildProductSelect(){
-  productSelect.innerHTML='<option value="">Select product</option>';
-  data.catalogs.forEach((c,ci)=>c.products.forEach((p,pi)=>p.packages.forEach((pkg,ki)=>{
-    const o=document.createElement('option');
-    o.value=`${ci}-${pi}-${ki}`;
-    o.textContent=`${p.name} | ${pkg.unit}`;
-    productSelect.appendChild(o);
-  })));
-}
-
-function showInfo(){}
-
-function toggleLocationLock(){
+function manualSave(){
   if(!locationSelect.value) return showToast('Select location','warn');
-  locationLocked=!locationLocked;
-  locationSelect.disabled=locationLocked;
-  lockBtn.textContent=locationLocked?'🔒 Location Locked':'🔓 Location Unlocked';
-}
 
-function saveSelected(){
-  if(!productSelect.value||!locationSelect.value) return;
-  const qty=parseInt(qtyInput.value);
-  if(isNaN(qty)) return;
-  const [ci,pi,ki]=productSelect.value.split('-');
-  data.catalogs[ci].products[pi].packages[ki].records.push({
-    qty,location:locationSelect.value,time:new Date().toLocaleString()
+  const prod=mProd.value.trim();
+  const unit=mUnit.value.trim();
+  const sup=mSup.value.trim();
+  const qty=parseInt(mQty.value);
+
+  if(!prod||!unit||isNaN(qty))
+    return showToast('Complete fields','warn');
+
+  addProduct('Temporary',prod,unit,sup);
+
+  const c=data.catalogs.find(x=>x.name==='Temporary');
+  const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
+
+  p.packages[0].records.push({
+    qty,
+    location: locationSelect.value,
+    time: new Date().toLocaleString()
   });
-  save(); qtyInput.value='';
-}
 
-function exportCSV(){
-  let csv='time,product,unit,location,qty\n';
-  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
-    pkg.records.forEach(r=>{
-      csv+=`${r.time},${p.name},${pkg.unit},${r.location},${r.qty}\n`;
-    });
-  })));
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv]));
-  a.download='inventory.csv';
-  a.click();
-}
+  save(); 
+  refresh(); 
+  showToast('Temporary saved');
 
-refresh();
-</script>
-</body>
-</html>
+  // ✅ 只清手动输入内容
+  mProd.value='';
+  mUnit.value='';
+  mSup.value='';
+  mQty.value='';
+}
