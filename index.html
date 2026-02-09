@@ -26,9 +26,7 @@ thead th { position:sticky; top:0; background:#eee; }
 #toast .icon { font-size:20px; }
 button:disabled, input:disabled { background-color: #ccc !important; color: #666 !important; cursor: not-allowed; }
 #fileName { font-size:14px; color:#333; margin-bottom:12px; }
-.row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
-.row > * { flex:1 1 200px; }
-.lock-row { display:flex; align-items:center; gap:8px; font-size:14px; flex:1 1 200px; }
+.lock-row { display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:12px; }
 .lock-row input { margin-right:6px; }
 </style>
 </head>
@@ -37,43 +35,38 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 <header>Inventory Counting</header>
 
 <main>
-<!-- 顶部控件 -->
-<div class="row">
-  <div>
-    <button id="fileBtn">Choose CSV File</button>
-    <div id="fileName">No file chosen</div>
-    <input type="file" id="fileInput" accept=".csv" style="display:none;">
-  </div>
+<!-- CSV File -->
+<button id="fileBtn">Choose CSV File</button>
+<div id="fileName">No file chosen</div>
+<input type="file" id="fileInput" accept=".csv" style="display:none;">
 
-  <div>
-    <select id="locationSelect">
-      <option value="">Select location</option>
-      <option value="Warehouse Shifts near loading bay">Warehouse Shifts near loading bay</option>
-      <option value="Warehouse Shifts near Boiler">Warehouse Shifts near Boiler</option>
-      <option value="Warehouse Shifts close cooler wall">Warehouse Shifts close cooler wall</option>
-      <option value="Warehouse Middle Shifts">Warehouse Middle Shifts</option>
-      <option value="Warehouse Shifts at flour mixer room hallway">Warehouse Shifts at flour mixer room hallway</option>
-      <option value="Loading Bay 1">Loading Bay 1</option>
-      <option value="Loading Bay 2">Loading Bay 2</option>
-      <option value="Loading Bay 3">Loading Bay 3</option>
-      <option value="Loading Bay 4">Loading Bay 4</option>
-      <option value="Loading Bay 5">Loading Bay 5</option>
-      <option value="Loading Bay 6">Loading Bay 6</option>
-    </select>
-  </div>
+<!-- Location & Lock -->
+<select id="locationSelect">
+  <option value="">Select location</option>
+  <option value="Warehouse Shifts near loading bay">Warehouse Shifts near loading bay</option>
+  <option value="Warehouse Shifts near Boiler">Warehouse Shifts near Boiler</option>
+  <option value="Warehouse Shifts close cooler wall">Warehouse Shifts close cooler wall</option>
+  <option value="Warehouse Middle Shifts">Warehouse Middle Shifts</option>
+  <option value="Warehouse Shifts at flour mixer room hallway">Warehouse Shifts at flour mixer room hallway</option>
+  <option value="Loading Bay 1">Loading Bay 1</option>
+  <option value="Loading Bay 2">Loading Bay 2</option>
+  <option value="Loading Bay 3">Loading Bay 3</option>
+  <option value="Loading Bay 4">Loading Bay 4</option>
+  <option value="Loading Bay 5">Loading Bay 5</option>
+  <option value="Loading Bay 6">Loading Bay 6</option>
+</select>
 
-  <div class="lock-row">
-    <input type="checkbox" id="lockLocation">
-    <label for="lockLocation">Lock Location</label>
-  </div>
-
-  <div>
-    <select id="catalogSelect" onchange="buildProductSelect()">
-      <option value="">All Categories</option>
-    </select>
-  </div>
+<div class="lock-row">
+  <input type="checkbox" id="lockLocation">
+  <label for="lockLocation">Lock Location</label>
 </div>
 
+<!-- All Categories -->
+<select id="catalogSelect" onchange="buildProductSelect()">
+  <option value="">All Categories</option>
+</select>
+
+<!-- Product Search -->
 <input id="search" placeholder="Search product" oninput="buildProductSelect()">
 <select id="productSelect" onchange="showInfo()">
   <option value="">Select product</option>
@@ -231,7 +224,7 @@ function showInfo(){
   info.textContent=r?`Last count: ${r.qty} @ ${r.location} (${r.time})`:'No record';
 }
 
-// Lock Location 初始化
+// Lock Location 控制
 lockLocation.disabled = true;
 locationSelect.addEventListener('change', () => {
   if(locationSelect.value) lockLocation.disabled = false;
