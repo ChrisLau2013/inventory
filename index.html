@@ -26,10 +26,9 @@ thead th { position:sticky; top:0; background:#eee; }
 #toast .icon { font-size:20px; }
 button:disabled, input:disabled { background-color: #ccc !important; color: #666 !important; cursor: not-allowed; }
 #fileName { font-size:14px; color:#333; margin-bottom:12px; }
-
-.top-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
-.top-row > * { flex:1 1 200px; }
-.lock-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:14px; }
+.row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.row > * { flex:1 1 200px; }
+.lock-row { display:flex; align-items:center; gap:8px; font-size:14px; flex:1 1 200px; }
 .lock-row input { margin-right:6px; }
 </style>
 </head>
@@ -38,11 +37,12 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 <header>Inventory Counting</header>
 
 <main>
-<div class="top-row">
+<!-- 顶部控件 -->
+<div class="row">
   <div>
-    <input type="file" id="fileInput" accept=".csv" style="display:none;">
     <button id="fileBtn">Choose CSV File</button>
     <div id="fileName">No file chosen</div>
+    <input type="file" id="fileInput" accept=".csv" style="display:none;">
   </div>
 
   <div>
