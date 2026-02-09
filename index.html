@@ -5,15 +5,27 @@
 <title>Inventory Counting</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- ✅ iPhone Home Screen Icon（关键） -->
+<!-- ✅ iPhone Home Screen Icon -->
 <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Inventory">
 
 <style>
-body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:0; }
-header { background:#1e90ff; color:#fff; text-align:center; padding:14px; font-size:20px; position:sticky; top:0; }
+body {
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  margin:0;
+  padding:0;
+}
+header {
+  background:#1e90ff;
+  color:#fff;
+  text-align:center;
+  padding:14px;
+  font-size:20px;
+  position:sticky;
+  top:0;
+}
 main { padding:14px; }
 
 input, select, button {
@@ -25,35 +37,51 @@ input, select, button {
   box-sizing:border-box;
 }
 
-button { background:#1e90ff; color:#fff; border:none; }
+button {
+  background:#1e90ff;
+  color:#fff;
+  border:none;
+}
 button.secondary { background:#666; }
 
 .hidden { display:none; }
 
 #info { font-size:14px; margin-bottom:12px; }
 
-#history { max-height:260px; overflow:auto; border-top:1px solid #ccc; }
-table { width:100%; border-collapse:collapse; font-size:13px; }
-th,td { border:1px solid #ccc; padding:5px; text-align:center; }
-thead th { position:sticky; top:0; background:#eee; }
+#history {
+  max-height:260px;
+  overflow:auto;
+  border-top:1px solid #ccc;
+}
+table {
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+th,td {
+  border:1px solid #ccc;
+  padding:5px;
+  text-align:center;
+}
+thead th {
+  position:sticky;
+  top:0;
+  background:#eee;
+}
 
-/* Location + Lock */
-.location-lock-row {
-  display:flex;
-  align-items:center;
-  gap:10px;
+/* ---------- Location ---------- */
+.location-row {
   margin-bottom:12px;
 }
-.location-lock-row select { flex:1; }
 
-/* Lock Button */
+/* ---------- Lock Button ---------- */
 .lock-btn {
-  font-size:14px;
-  padding:10px 14px;
+  width:100%;
+  font-size:16px;
+  padding:12px;
   border-radius:8px;
   background:#ccc;
   color:#333;
-  white-space:nowrap;
 }
 .lock-btn.locked {
   background:#28a745;
@@ -64,7 +92,7 @@ thead th { position:sticky; top:0; background:#eee; }
   color:#777;
 }
 
-/* Toast */
+/* ---------- Toast ---------- */
 #toast {
   position:fixed;
   bottom:28px;
@@ -78,7 +106,10 @@ thead th { position:sticky; top:0; background:#eee; }
   pointer-events:none;
   transition:.35s;
 }
-#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+#toast.show {
+  opacity:1;
+  transform:translateX(-50%) translateY(0);
+}
 #toast.success { background:#28a745; }
 #toast.warn { background:#ff9800; }
 </style>
@@ -94,7 +125,8 @@ thead th { position:sticky; top:0; background:#eee; }
 <div id="fileName">No file chosen</div>
 <input type="file" id="fileInput" accept=".csv" hidden>
 
-<div class="location-lock-row">
+<!-- ✅ Location 单独一行 -->
+<div class="location-row">
   <select id="locationSelect">
     <option value="">Select location</option>
     <option>Warehouse Shifts near loading bay</option>
@@ -109,17 +141,19 @@ thead th { position:sticky; top:0; background:#eee; }
     <option>Loading Bay 5</option>
     <option>Loading Bay 6</option>
   </select>
-
-  <button type="button" id="lockLocationBtn" class="lock-btn disabled">
-    🔓 Location Unlocked
-  </button>
 </div>
+
+<!-- ✅ Lock 按钮单独一行 -->
+<button type="button" id="lockLocationBtn" class="lock-btn disabled">
+  🔓 Location Unlocked
+</button>
 
 <select id="catalogSelect">
   <option value="">All Categories</option>
 </select>
 
 <input id="search" placeholder="Search product">
+
 <select id="productSelect">
   <option value="">Select product</option>
 </select>
@@ -133,16 +167,21 @@ thead th { position:sticky; top:0; background:#eee; }
 <button class="secondary" onclick="exportCSV()">Export CSV</button>
 
 <div id="history">
-<h3>Counting History</h3>
-<table>
-<thead>
-<tr>
-<th>Time</th><th>Category</th><th>Supplier</th>
-<th>Product</th><th>Unit</th><th>Location</th><th>Qty</th>
-</tr>
-</thead>
-<tbody id="historyBody"></tbody>
-</table>
+  <h3>Counting History</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>Category</th>
+        <th>Supplier</th>
+        <th>Product</th>
+        <th>Unit</th>
+        <th>Location</th>
+        <th>Qty</th>
+      </tr>
+    </thead>
+    <tbody id="historyBody"></tbody>
+  </table>
 </div>
 
 </main>
@@ -167,7 +206,6 @@ const historyBody = document.getElementById('historyBody');
 const productSelect = document.getElementById('productSelect');
 const catalogSelect = document.getElementById('catalogSelect');
 const search = document.getElementById('search');
-const info = document.getElementById('info');
 
 /* ---------- TOAST ---------- */
 function showToast(msg,type='success'){
@@ -192,7 +230,9 @@ lockBtn.onclick=()=>{
   if(!locationSelect.value) return;
   locationLocked=!locationLocked;
   lockBtn.className='lock-btn'+(locationLocked?' locked':'');
-  lockBtn.textContent=locationLocked?'🔒 Location Locked':'🔓 Location Unlocked';
+  lockBtn.textContent=locationLocked
+    ? '🔒 Location Locked'
+    : '🔓 Location Unlocked';
   haptic(locationLocked?'medium':'light');
 };
 
@@ -205,7 +245,9 @@ document.getElementById('saveBtn').onclick=()=>{
 
   const [ci,pi,ki]=productSelect.value.split('-');
   data.catalogs[ci].products[pi].packages[ki].records.push({
-    qty,location:locationSelect.value,time:new Date().toLocaleString()
+    qty,
+    location:locationSelect.value,
+    time:new Date().toLocaleString()
   });
 
   localStorage.setItem('inventory',JSON.stringify(data));
@@ -216,15 +258,17 @@ document.getElementById('saveBtn').onclick=()=>{
   showToast('Saved');
 };
 
-/* ---------- PRODUCT LOGIC（原样） ---------- */
+/* ---------- PRODUCT LOGIC ---------- */
 function refresh(){
   catalogSelect.innerHTML='<option value="">All Categories</option>';
-  data.catalogs.forEach((c,i)=>{
+  data.catalogs.forEach((c)=>{
     const o=document.createElement('option');
-    o.value=c.name;o.textContent=c.name;
+    o.value=c.name;
+    o.textContent=c.name;
     catalogSelect.appendChild(o);
   });
-  buildProductSelect(); updateHistory();
+  buildProductSelect();
+  updateHistory();
 }
 
 function buildProductSelect(){
@@ -232,9 +276,9 @@ function buildProductSelect(){
   const key=search.value.toLowerCase();
   const selectedCat=catalogSelect.value;
   data.catalogs.forEach((c,ci)=>{
-    if(selectedCat&&c.name!==selectedCat) return;
+    if(selectedCat && c.name!==selectedCat) return;
     c.products.forEach((p,pi)=>{
-      if(key&&!p.name.toLowerCase().includes(key)) return;
+      if(key && !p.name.toLowerCase().includes(key)) return;
       p.packages.forEach((pkg,ki)=>{
         const o=document.createElement('option');
         o.value=`${ci}-${pi}-${ki}`;
@@ -250,14 +294,28 @@ function updateHistory(){
   let rows=[];
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
     pkg.records.forEach(r=>{
-      rows.push({t:new Date(r.time),...r,c:c.name,p:p.name,u:pkg.unit,s:p.supplier});
+      rows.push({
+        t:new Date(r.time),
+        ...r,
+        c:c.name,
+        p:p.name,
+        u:pkg.unit,
+        s:p.supplier
+      });
     });
-  })));
+  }))));
   rows.sort((a,b)=>b.t-a.t);
   rows.forEach(r=>{
-    historyBody.innerHTML+=
-    `<tr><td>${r.time}</td><td>${r.c}</td><td>${r.s}</td>
-     <td>${r.p}</td><td>${r.u}</td><td>${r.location}</td><td>${r.qty}</td></tr>`;
+    historyBody.innerHTML+=`
+      <tr>
+        <td>${r.time}</td>
+        <td>${r.c}</td>
+        <td>${r.s}</td>
+        <td>${r.p}</td>
+        <td>${r.u}</td>
+        <td>${r.location}</td>
+        <td>${r.qty}</td>
+      </tr>`;
   });
 }
 
