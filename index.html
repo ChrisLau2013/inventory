@@ -48,6 +48,15 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 
 <div id="info"></div>
 
+<!-- Location -->
+<select id="locationSelect">
+  <option value="">Select location</option>
+  <option value="Loading Bay 1">Loading Bay 1</option>
+  <option value="Loading Bay 2">Loading Bay 2</option>
+  <option value="Bonding Bay 1">Bonding Bay 1</option>
+  <option value="Bonding Bay 2">Bonding Bay 2</option>
+</select>
+
 <input id="qtyInput" type="number" inputmode="numeric" placeholder="Enter quantity">
 <button onclick="saveSelected()">Save Count</button>
 
@@ -73,13 +82,12 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 <thead>
 <tr>
 <th>Time</th><th>Category</th><th>Supplier</th>
-<th>Product</th><th>Unit</th><th>Qty</th>
+<th>Product</th><th>Unit</th><th>Location</th><th>Qty</th>
 </tr>
 </thead>
 <tbody id="historyBody"></tbody>
 </table>
 </div>
-
 </main>
 
 <div id="toast" class="success">
@@ -90,22 +98,20 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 <script>
 // CSV parser
 function parseCSVLine(line){
-  const result = [];
-  let current = '', inQuotes = false;
-  for(let i=0;i<line.length;i++){
-    const c = line[i];
-    if(c === '"'){ inQuotes = !inQuotes; }
-    else if(c === ',' && !inQuotes){ result.push(current); current=''; }
-    else{ current += c; }
+  const result=[],len=line.length;
+  let current='',inQuotes=false;
+  for(let i=0;i<len;i++){
+    const c=line[i];
+    if(c==='"') inQuotes=!inQuotes;
+    else if(c===','&&!inQuotes){ result.push(current); current=''; }
+    else current+=c;
   }
   result.push(current);
-  return result.map(v => v.trim().replace(/^"|"$/g,''));
+  return result.map(v=>v.trim().replace(/^"|"$/g,''));
 }
 
-// Data
 let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
 
-// Elements
 const fileInput = document.getElementById('fileInput');
 const fileBtn = document.getElementById('fileBtn');
 const fileNameDiv = document.getElementById('fileName');
@@ -113,6 +119,7 @@ const catalogSelect = document.getElementById('catalogSelect');
 const productSelect = document.getElementById('productSelect');
 const search = document.getElementById('search');
 const qtyInput = document.getElementById('qtyInput');
+const locationSelect = document.getElementById('locationSelect');
 const info = document.getElementById('info');
 const manualPanel = document.getElementById('manualPanel');
 const historyBody = document.getElementById('historyBody');
@@ -121,49 +128,35 @@ let toastTimer;
 function showToast(msg,type='success'){
   const t=document.getElementById('toast');
   t.className=type;
-  t.querySelector('.icon').textContent =
-    type==='success'?'✅':type==='error'?'❌':'⚠️';
+  t.querySelector('.icon').textContent=type==='success'?'✅':type==='error'?'❌':'⚠️';
   t.querySelector('.msg').textContent=msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
 }
 
-// 打开文件选择
-fileBtn.onclick = () => fileInput.click();
+fileBtn.onclick=()=>fileInput.click();
 
-// 文件选择事件
-fileInput.onchange = e => {
-  const file = e.target.files[0];
+fileInput.onchange=e=>{
+  const file=e.target.files[0];
   if(!file) return;
-  fileInput.disabled = true;
-  // ✅ 在 "No file chosen" 位置显示文件已载入
-  fileNameDiv.textContent = `File loaded:${file.name}`;
+  fileNameDiv.textContent=`File loaded: ${file.name}`;
   importCSV(file);
 };
 
-// CSV 导入
 function importCSV(file){
-  const reader = new FileReader();
-  reader.onload = e => {
-    let text = e.target.result;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    let text=e.target.result;
     if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
-
-    const lines = text.split(/\r?\n/).filter(l=>l.trim());
-    if(lines.length<2){ showToast('CSV Invalid format','error'); return; }
-
-    const headers = parseCSVLine(lines[0]).map(h=>h.toLowerCase());
-    const rows = lines.slice(1).map(line=>{
-      const values = parseCSVLine(line);
-      const o={};
-      headers.forEach((h,i)=>o[h]=values[i]||'');
-      return o;
+    const lines=text.split(/\r?\n/).filter(l=>l.trim());
+    const headers=parseCSVLine(lines[0]).map(h=>h.toLowerCase());
+    lines.slice(1).forEach(l=>{
+      const v=parseCSVLine(l),o={};
+      headers.forEach((h,i)=>o[h]=v[i]||'');
+      addProduct(o.category||'Temporary',o.product||'',o.unit||'',o.supplier||'');
     });
-
-    rows.forEach(r=>addProduct(r.category||'Temporary', r.product||'', r.unit||'', r.supplier||''));
-
-    save(); refresh();
-    showToast(`Successfully loaded ${rows.length} records`);
+    save(); refresh(); showToast('CSV loaded');
   };
   reader.readAsText(file);
 }
@@ -189,20 +182,19 @@ function refresh(){
   buildProductSelect(); updateHistory();
 }
 
-function buildProductSelect() {
-  productSelect.innerHTML = '<option value="">Select product</option>';
-  const key = search.value.toLowerCase();
-  const selectedCat = catalogSelect.value;
-
-  data.catalogs.forEach((c, ci) => {
-    if(selectedCat && c.name !== selectedCat) return;
-    c.products.forEach((p, pi) => {
-      if(key && !p.name.toLowerCase().includes(key)) return;
-      p.packages.forEach((pkg, ki) => {
-        const option = document.createElement('option');
-        option.value = `${ci}-${pi}-${ki}`;
-        option.textContent = `${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
-        productSelect.appendChild(option);
+function buildProductSelect(){
+  productSelect.innerHTML='<option value="">Select product</option>';
+  const key=search.value.toLowerCase();
+  const selectedCat=catalogSelect.value;
+  data.catalogs.forEach((c,ci)=>{
+    if(selectedCat&&c.name!==selectedCat) return;
+    c.products.forEach((p,pi)=>{
+      if(key&&!p.name.toLowerCase().includes(key)) return;
+      p.packages.forEach((pkg,ki)=>{
+        const o=document.createElement('option');
+        o.value=`${ci}-${pi}-${ki}`;
+        o.textContent=`${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
+        productSelect.appendChild(o);
       });
     });
   });
@@ -212,41 +204,38 @@ function showInfo(){
   if(!productSelect.value){ info.textContent=''; return; }
   const [ci,pi,ki]=productSelect.value.split('-');
   const r=data.catalogs[ci].products[pi].packages[ki].records.at(-1);
-  info.textContent = r ? `Last count: ${r.qty} (${r.time})` : 'No record';
+  info.textContent=r?`Last count: ${r.qty} @ ${r.location} (${r.time})`:'No record';
 }
 
 function saveSelected(){
-  if(!productSelect.value) return showToast('Please select a product','warn');
+  if(!productSelect.value) return showToast('Select product','warn');
+  if(!locationSelect.value) return showToast('Select location','warn');
   const qty=parseInt(qtyInput.value);
-  if(isNaN(qty)) return showToast('Please enter quantity','warn');
+  if(isNaN(qty)) return showToast('Enter quantity','warn');
   const [ci,pi,ki]=productSelect.value.split('-');
   data.catalogs[ci].products[pi].packages[ki].records.push({
-    qty,time:new Date().toLocaleString()
+    qty,location:locationSelect.value,time:new Date().toLocaleString()
   });
-  save(); refresh(); qtyInput.value='';
+  save(); refresh();
+  qtyInput.value=''; locationSelect.value='';
   showToast('Saved');
 }
 
 function toggleManual(){ manualPanel.classList.toggle('hidden'); }
 
 function manualSave(){
-  const prod=document.getElementById('mProd').value.trim();
-  const unit=document.getElementById('mUnit').value.trim();
-  const sup=document.getElementById('mSup').value.trim();
-  const qty=parseInt(document.getElementById('mQty').value);
-  if(!prod||!unit||isNaN(qty)) return showToast('Please complete all required fields','warn');
-
+  if(!locationSelect.value) return showToast('Select location','warn');
+  const prod=mProd.value.trim(),unit=mUnit.value.trim();
+  const sup=mSup.value.trim(),qty=parseInt(mQty.value);
+  if(!prod||!unit||isNaN(qty)) return showToast('Complete fields','warn');
   addProduct('Temporary',prod,unit,sup);
   const c=data.catalogs.find(x=>x.name==='Temporary');
   const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
-  p.packages[0].records.push({qty,time:new Date().toLocaleString()});
-  save(); refresh();
-  fileNameDiv.textContent = `Temporary product entered：${prod}`;
-  document.getElementById('mProd').value='';
-  document.getElementById('mUnit').value='';
-  document.getElementById('mSup').value='';
-  document.getElementById('mQty').value='';
-  showToast('Temporary data saved successfully');
+  p.packages[0].records.push({
+    qty,location:locationSelect.value,time:new Date().toLocaleString()
+  });
+  save(); refresh(); showToast('Temporary saved');
+  mProd.value=mUnit.value=mSup.value=mQty.value=''; locationSelect.value='';
 }
 
 function updateHistory(){
@@ -260,28 +249,28 @@ function updateHistory(){
   rows.sort((a,b)=>b.t-a.t);
   rows.forEach(r=>{
     historyBody.innerHTML+=
-      `<tr><td>${r.time}</td><td>${r.c}</td><td>${r.s}</td>
-       <td>${r.p}</td><td>${r.u}</td><td>${r.qty}</td></tr>`;
+    `<tr><td>${r.time}</td><td>${r.c}</td><td>${r.s}</td>
+     <td>${r.p}</td><td>${r.u}</td><td>${r.location}</td><td>${r.qty}</td></tr>`;
   });
 }
 
 function exportCSV(){
-  let csv='date,time,category,supplier,product,unit,qty\n';
+  let csv='time,category,supplier,product,unit,location,qty\n';
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
     pkg.records.forEach(r=>{
-      csv+=`${r.date},${r.time},${c.name},${p.supplier},${p.name},${pkg.unit},${r.qty}\n`;
+      csv+=`${r.time},${c.name},${p.supplier},${p.name},${pkg.unit},${r.location},${r.qty}\n`;
     });
   })));
+  const ts=new Date().toISOString().replace(/[:]/g,'-').replace('T','_').slice(0,19);
   const a=document.createElement('a');
   a.href=URL.createObjectURL(new Blob([csv]));
-  a.download='inventory.csv';
+  a.download=`inventory_${ts}.csv`;
   a.click();
 }
 
 function clearAll(){
-  if(confirm('Are you sure you want to clear all data?')){
-    localStorage.clear();
-    location.reload();
+  if(confirm('Clear all data?')){
+    localStorage.clear(); location.reload();
   }
 }
 
