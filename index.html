@@ -20,10 +20,10 @@ thead th { position:sticky; top:0; background:#eee; }
 #toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); min-width: 220px; max-width: 90%; padding: 14px 18px; border-radius: 14px; font-size: 15px; color: #fff; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 25px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .35s ease, transform .35s ease; z-index: 9999; }
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 #toast.success { background: linear-gradient(135deg,#28a745,#20c997); }
-#toast.error   { background: linear-gradient(135deg,#dc3545,#ff6b6b); }
-#toast.warn    { background: linear-gradient(135deg,#ff9800,#ffc107); }
+#toast.error { background: linear-gradient(135deg,#dc3545,#ff6b6b); }
+#toast.warn { background: linear-gradient(135deg,#ff9800,#ffc107); }
 #toast .icon { font-size:20px; }
-button:disabled, input:disabled { background-color: #ccc !important; color: #666 !important; cursor: not-allowed; }
+button:disabled, select:disabled { background:#ccc !important; color:#666 !important; }
 #fileName { font-size:14px; color:#333; margin-bottom:12px; }
 </style>
 </head>
@@ -48,7 +48,6 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 
 <div id="info"></div>
 
-<!-- Location -->
 <select id="locationSelect">
   <option value="">Select location</option>
   <option value="Warehouse Shifts near loading bay">Warehouse Shifts near loading bay</option>
@@ -64,7 +63,11 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
   <option value="Loading Bay 6">Loading Bay 6</option>
 </select>
 
-<input id="qtyInput" type="number" inputmode="numeric" placeholder="Enter quantity">
+<button id="lockLocationBtn" class="secondary" onclick="toggleLocationLock()">
+  🔓 Location Unlocked
+</button>
+
+<input id="qtyInput" type="number" placeholder="Enter quantity">
 <button onclick="saveSelected()">Save Count</button>
 
 <button class="secondary" onclick="toggleManual()">Product not found? Manual entry</button>
@@ -75,7 +78,7 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
   <input id="mProd" placeholder="Product name (required)">
   <input id="mUnit" placeholder="Packaging unit (required)">
   <input id="mSup" placeholder="Supplier / Source">
-  <input id="mQty" type="number" inputmode="numeric" placeholder="Quantity">
+  <input id="mQty" type="number" placeholder="Quantity">
   <button onclick="manualSave()">Save Temporary Count</button>
 </div>
 
@@ -97,167 +100,150 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 </div>
 </main>
 
-<div id="toast" class="success">
-  <span class="icon">✅</span>
-  <span class="msg">Loaded</span>
-</div>
+<div id="toast"><span class="icon">✅</span><span class="msg"></span></div>
 
 <script>
-// CSV parser
 function parseCSVLine(line){
-  const result=[],len=line.length;
-  let current='',inQuotes=false;
-  for(let i=0;i<len;i++){
-    const c=line[i];
-    if(c==='"') inQuotes=!inQuotes;
-    else if(c===','&&!inQuotes){ result.push(current); current=''; }
-    else current+=c;
+  let r=[],c='',q=false;
+  for(let ch of line){
+    if(ch==='"') q=!q;
+    else if(ch===','&&!q){ r.push(c); c=''; }
+    else c+=ch;
   }
-  result.push(current);
-  return result.map(v=>v.trim().replace(/^"|"$/g,''));
+  r.push(c);
+  return r.map(v=>v.trim().replace(/^"|"$/g,''));
 }
 
-let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
+let data=JSON.parse(localStorage.getItem('inventory'))||{catalogs:[]};
+let locationLocked=false;
 
-const fileInput = document.getElementById('fileInput');
-const fileBtn = document.getElementById('fileBtn');
-const fileNameDiv = document.getElementById('fileName');
-const catalogSelect = document.getElementById('catalogSelect');
-const productSelect = document.getElementById('productSelect');
-const search = document.getElementById('search');
-const qtyInput = document.getElementById('qtyInput');
-const locationSelect = document.getElementById('locationSelect');
-const info = document.getElementById('info');
-const manualPanel = document.getElementById('manualPanel');
-const historyBody = document.getElementById('historyBody');
+const fileInput=fileBtn.previousElementSibling;
+const fileBtn=document.getElementById('fileBtn');
+const fileNameDiv=document.getElementById('fileName');
+const catalogSelect=document.getElementById('catalogSelect');
+const productSelect=document.getElementById('productSelect');
+const search=document.getElementById('search');
+const qtyInput=document.getElementById('qtyInput');
+const locationSelect=document.getElementById('locationSelect');
+const info=document.getElementById('info');
+const manualPanel=document.getElementById('manualPanel');
+const historyBody=document.getElementById('historyBody');
+const lockBtn=document.getElementById('lockLocationBtn');
 
 let toastTimer;
 function showToast(msg,type='success'){
   const t=document.getElementById('toast');
   t.className=type;
-  t.querySelector('.icon').textContent=type==='success'?'✅':type==='error'?'❌':'⚠️';
   t.querySelector('.msg').textContent=msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2000);
 }
 
 fileBtn.onclick=()=>fileInput.click();
-
 fileInput.onchange=e=>{
-  const file=e.target.files[0];
-  if(!file) return;
-  fileNameDiv.textContent=`File loaded: ${file.name}`;
-  importCSV(file);
-};
-
-function importCSV(file){
-  const reader=new FileReader();
-  reader.onload=e=>{
-    let text=e.target.result;
-    if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
-    const lines=text.split(/\r?\n/).filter(l=>l.trim());
-    const headers=parseCSVLine(lines[0]).map(h=>h.toLowerCase());
-    lines.slice(1).forEach(l=>{
-      const v=parseCSVLine(l),o={};
-      headers.forEach((h,i)=>o[h]=v[i]||'');
-      addProduct(o.category||'Temporary',o.product||'',o.unit||'',o.supplier||'');
+  const f=e.target.files[0];
+  if(!f) return;
+  fileNameDiv.textContent=`File loaded: ${f.name}`;
+  const r=new FileReader();
+  r.onload=x=>{
+    const l=x.target.result.split(/\r?\n/).filter(v=>v);
+    const h=parseCSVLine(l[0]).map(v=>v.toLowerCase());
+    l.slice(1).forEach(line=>{
+      const v=parseCSVLine(line),o={};
+      h.forEach((k,i)=>o[k]=v[i]||'');
+      addProduct(o.category||'Temporary',o.product,o.unit,o.supplier);
     });
     save(); refresh(); showToast('CSV loaded');
   };
-  reader.readAsText(file);
-}
+  r.readAsText(f);
+};
 
-function addProduct(cat,prod,unit,sup){
-  if(!prod||!unit) return;
+function addProduct(cat,p,u,s){
+  if(!p||!u) return;
   let c=data.catalogs.find(x=>x.name===cat);
-  if(!c){ c={name:cat,products:[]}; data.catalogs.push(c); }
-  let p=c.products.find(x=>x.name===prod&&x.supplier===sup);
-  if(!p){ p={name:prod,supplier:sup,packages:[]}; c.products.push(p); }
-  if(!p.packages.find(x=>x.unit===unit)) p.packages.push({unit,records:[]});
+  if(!c){c={name:cat,products:[]};data.catalogs.push(c);}
+  let pr=c.products.find(x=>x.name===p&&x.supplier===s);
+  if(!pr){pr={name:p,supplier:s,packages:[]};c.products.push(pr);}
+  if(!pr.packages.find(x=>x.unit===u)) pr.packages.push({unit:u,records:[]});
 }
 
-function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
+function save(){localStorage.setItem('inventory',JSON.stringify(data));}
 
 function refresh(){
   catalogSelect.innerHTML='<option value="">All Categories</option>';
   data.catalogs.forEach(c=>{
     const o=document.createElement('option');
-    o.value=c.name; o.textContent=c.name;
+    o.value=c.name;o.textContent=c.name;
     catalogSelect.appendChild(o);
   });
   buildProductSelect(); updateHistory();
+  locationLocked=false;
+  locationSelect.disabled=false;
+  lockBtn.textContent='🔓 Location Unlocked';
 }
 
 function buildProductSelect(){
   productSelect.innerHTML='<option value="">Select product</option>';
-  const key=search.value.toLowerCase();
-  const selectedCat=catalogSelect.value;
-  data.catalogs.forEach((c,ci)=>{
-    if(selectedCat&&c.name!==selectedCat) return;
-    c.products.forEach((p,pi)=>{
-      if(key&&!p.name.toLowerCase().includes(key)) return;
-      p.packages.forEach((pkg,ki)=>{
-        const o=document.createElement('option');
-        o.value=`${ci}-${pi}-${ki}`;
-        o.textContent=`${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
-        productSelect.appendChild(o);
-      });
+  const k=search.value.toLowerCase();
+  data.catalogs.forEach((c,ci)=>c.products.forEach((p,pi)=>{
+    if(k&&!p.name.toLowerCase().includes(k)) return;
+    p.packages.forEach((pkg,ki)=>{
+      const o=document.createElement('option');
+      o.value=`${ci}-${pi}-${ki}`;
+      o.textContent=`${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
+      productSelect.appendChild(o);
     });
-  });
+  }));
 }
 
 function showInfo(){
-  if(!productSelect.value){ info.textContent=''; return; }
+  if(!productSelect.value){info.textContent='';return;}
   const [ci,pi,ki]=productSelect.value.split('-');
   const r=data.catalogs[ci].products[pi].packages[ki].records.at(-1);
-  info.textContent=r?`Last count: ${r.qty} @ ${r.location} (${r.time})`:'No record';
+  info.textContent=r?`Last count: ${r.qty} @ ${r.location}`:'No record';
+}
+
+function toggleLocationLock(){
+  if(!locationSelect.value) return showToast('Select location first','warn');
+  locationLocked=!locationLocked;
+  locationSelect.disabled=locationLocked;
+  lockBtn.textContent=locationLocked?'🔒 Location Locked':'🔓 Location Unlocked';
 }
 
 function saveSelected(){
-  if(!productSelect.value) return showToast('Select product','warn');
-  if(!locationSelect.value) return showToast('Select location','warn');
+  if(!productSelect.value||!locationSelect.value) return showToast('Missing fields','warn');
   const qty=parseInt(qtyInput.value);
   if(isNaN(qty)) return showToast('Enter quantity','warn');
   const [ci,pi,ki]=productSelect.value.split('-');
   data.catalogs[ci].products[pi].packages[ki].records.push({
     qty,location:locationSelect.value,time:new Date().toLocaleString()
   });
-  save(); refresh();
-  qtyInput.value=''; locationSelect.value='';
-  showToast('Saved');
+  save(); refresh(); qtyInput.value='';
 }
 
-function toggleManual(){ manualPanel.classList.toggle('hidden'); }
+function toggleManual(){manualPanel.classList.toggle('hidden');}
 
 function manualSave(){
   if(!locationSelect.value) return showToast('Select location','warn');
-  const prod=mProd.value.trim(),unit=mUnit.value.trim();
-  const sup=mSup.value.trim(),qty=parseInt(mQty.value);
-  if(!prod||!unit||isNaN(qty)) return showToast('Complete fields','warn');
-  addProduct('Temporary',prod,unit,sup);
+  const p=mProd.value.trim(),u=mUnit.value.trim(),s=mSup.value.trim(),q=parseInt(mQty.value);
+  if(!p||!u||isNaN(q)) return showToast('Complete fields','warn');
+  addProduct('Temporary',p,u,s);
   const c=data.catalogs.find(x=>x.name==='Temporary');
-  const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
-  p.packages[0].records.push({
-    qty,location:locationSelect.value,time:new Date().toLocaleString()
-  });
-  save(); refresh(); showToast('Temporary saved');
-  mProd.value=mUnit.value=mSup.value=mQty.value=''; locationSelect.value='';
+  const pr=c.products.find(x=>x.name===p&&x.supplier===s);
+  pr.packages[0].records.push({qty:q,location:locationSelect.value,time:new Date().toLocaleString()});
+  save(); refresh(); mProd.value=mUnit.value=mSup.value=mQty.value='';
 }
 
 function updateHistory(){
   historyBody.innerHTML='';
   let rows=[];
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
-    pkg.records.forEach(r=>{
-      rows.push({t:new Date(r.time),...r,c:c.name,p:p.name,u:pkg.unit,s:p.supplier});
-    });
+    pkg.records.forEach(r=>rows.push({...r,c:c.name,p:p.name,u:pkg.unit,s:p.supplier}));
   })));
-  rows.sort((a,b)=>b.t-a.t);
+  rows.sort((a,b)=>new Date(b.time)-new Date(a.time));
   rows.forEach(r=>{
-    historyBody.innerHTML+=
-    `<tr><td>${r.time}</td><td>${r.c}</td><td>${r.s}</td>
-     <td>${r.p}</td><td>${r.u}</td><td>${r.location}</td><td>${r.qty}</td></tr>`;
+    historyBody.innerHTML+=`<tr><td>${r.time}</td><td>${r.c}</td><td>${r.s}</td><td>${r.p}</td><td>${r.u}</td><td>${r.location}</td><td>${r.qty}</td></tr>`;
   });
 }
 
@@ -276,9 +262,7 @@ function exportCSV(){
 }
 
 function clearAll(){
-  if(confirm('Clear all data?')){
-    localStorage.clear(); location.reload();
-  }
+  if(confirm('Clear all data?')){localStorage.clear();location.reload();}
 }
 
 refresh();
