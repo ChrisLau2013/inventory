@@ -27,10 +27,10 @@ thead th { position:sticky; top:0; background:#eee; }
 button:disabled, input:disabled { background-color: #ccc !important; color: #666 !important; cursor: not-allowed; }
 #fileName { font-size:14px; color:#333; margin-bottom:12px; }
 
-/* 将Location和Lock Location放在同一行 */
+/* Location + Lock Location row */
 .location-lock-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
 .location-lock-row select { flex:1; }
-.location-lock-row label { font-size:14px; }
+.location-lock-row label { font-size:14px; display:flex; align-items:center; gap:4px; cursor:pointer; }
 .location-lock-row input[type="checkbox"] { transform:scale(1.2); margin:0; }
 </style>
 </head>
@@ -60,8 +60,9 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
     <option value="Loading Bay 5">Loading Bay 5</option>
     <option value="Loading Bay 6">Loading Bay 6</option>
   </select>
-  <input type="checkbox" id="lockLocation">
-  <label for="lockLocation">Lock Location</label>
+  <label>
+    <input type="checkbox" id="lockLocation"> Lock Location
+  </label>
 </div>
 
 <!-- All Categories -->
@@ -116,6 +117,7 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 </div>
 
 <script>
+// CSV parser
 function parseCSVLine(line){
   const result=[],len=line.length;
   let current='',inQuotes=false;
