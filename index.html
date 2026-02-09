@@ -26,8 +26,12 @@ thead th { position:sticky; top:0; background:#eee; }
 #toast .icon { font-size:20px; }
 button:disabled, input:disabled { background-color: #ccc !important; color: #666 !important; cursor: not-allowed; }
 #fileName { font-size:14px; color:#333; margin-bottom:12px; }
-.lock-row { display:flex; align-items:center; gap:8px; font-size:14px; margin-bottom:12px; }
-.lock-row input { margin-right:6px; }
+
+/* 将Location和Lock Location放在同一行 */
+.location-lock-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+.location-lock-row select { flex:1; }
+.location-lock-row label { font-size:14px; }
+.location-lock-row input[type="checkbox"] { transform:scale(1.2); margin:0; }
 </style>
 </head>
 <body>
@@ -40,23 +44,22 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 <div id="fileName">No file chosen</div>
 <input type="file" id="fileInput" accept=".csv" style="display:none;">
 
-<!-- Location & Lock -->
-<select id="locationSelect">
-  <option value="">Select location</option>
-  <option value="Warehouse Shifts near loading bay">Warehouse Shifts near loading bay</option>
-  <option value="Warehouse Shifts near Boiler">Warehouse Shifts near Boiler</option>
-  <option value="Warehouse Shifts close cooler wall">Warehouse Shifts close cooler wall</option>
-  <option value="Warehouse Middle Shifts">Warehouse Middle Shifts</option>
-  <option value="Warehouse Shifts at flour mixer room hallway">Warehouse Shifts at flour mixer room hallway</option>
-  <option value="Loading Bay 1">Loading Bay 1</option>
-  <option value="Loading Bay 2">Loading Bay 2</option>
-  <option value="Loading Bay 3">Loading Bay 3</option>
-  <option value="Loading Bay 4">Loading Bay 4</option>
-  <option value="Loading Bay 5">Loading Bay 5</option>
-  <option value="Loading Bay 6">Loading Bay 6</option>
-</select>
-
-<div class="lock-row">
+<!-- Location & Lock on same row -->
+<div class="location-lock-row">
+  <select id="locationSelect">
+    <option value="">Select location</option>
+    <option value="Warehouse Shifts near loading bay">Warehouse Shifts near loading bay</option>
+    <option value="Warehouse Shifts near Boiler">Warehouse Shifts near Boiler</option>
+    <option value="Warehouse Shifts close cooler wall">Warehouse Shifts close cooler wall</option>
+    <option value="Warehouse Middle Shifts">Warehouse Middle Shifts</option>
+    <option value="Warehouse Shifts at flour mixer room hallway">Warehouse Shifts at flour mixer room hallway</option>
+    <option value="Loading Bay 1">Loading Bay 1</option>
+    <option value="Loading Bay 2">Loading Bay 2</option>
+    <option value="Loading Bay 3">Loading Bay 3</option>
+    <option value="Loading Bay 4">Loading Bay 4</option>
+    <option value="Loading Bay 5">Loading Bay 5</option>
+    <option value="Loading Bay 6">Loading Bay 6</option>
+  </select>
   <input type="checkbox" id="lockLocation">
   <label for="lockLocation">Lock Location</label>
 </div>
@@ -75,7 +78,7 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 <div id="info"></div>
 
 <input id="qtyInput" type="number" inputmode="numeric" placeholder="Enter quantity">
-<button onclick="saveSelected()">Save Count</button>
+<button id="saveBtn" onclick="saveSelected()">Save Count</button>
 
 <button class="secondary" onclick="toggleManual()">Product not found? Manual entry</button>
 
@@ -113,7 +116,6 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 </div>
 
 <script>
-// CSV parser
 function parseCSVLine(line){
   const result=[],len=line.length;
   let current='',inQuotes=false;
@@ -141,6 +143,7 @@ const lockLocation = document.getElementById('lockLocation');
 const info = document.getElementById('info');
 const manualPanel = document.getElementById('manualPanel');
 const historyBody = document.getElementById('historyBody');
+const saveBtn = document.getElementById('saveBtn');
 
 let toastTimer;
 function showToast(msg,type='success'){
@@ -153,14 +156,17 @@ function showToast(msg,type='success'){
   toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
 }
 
+// 文件选择
 fileBtn.onclick=()=>fileInput.click();
 fileInput.onchange=e=>{
   const file=e.target.files[0];
   if(!file) return;
   fileNameDiv.textContent=`File loaded: ${file.name}`;
   importCSV(file);
+  fileBtn.disabled = true; // 文件载入后按钮屏蔽
 };
 
+// CSV导入
 function importCSV(file){
   const reader=new FileReader();
   reader.onload=e=>{
@@ -178,6 +184,7 @@ function importCSV(file){
   reader.readAsText(file);
 }
 
+// 产品数据处理
 function addProduct(cat,prod,unit,sup){
   if(!prod||!unit) return;
   let c=data.catalogs.find(x=>x.name===cat);
@@ -199,6 +206,7 @@ function refresh(){
   buildProductSelect(); updateHistory();
 }
 
+// 产品选择
 function buildProductSelect(){
   productSelect.innerHTML='<option value="">Select product</option>';
   const key=search.value.toLowerCase();
