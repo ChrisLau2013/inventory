@@ -4,320 +4,194 @@
 <meta charset="UTF-8">
 <title>Inventory Counting</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- iOS Home Screen Icon -->
+<link rel="apple-touch-icon" sizes="180x180" href="icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Inventory">
+
 <style>
-body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; }
 header { background:#1e90ff; color:#fff; text-align:center; padding:14px; font-size:20px; position:sticky; top:0; }
 main { padding:14px; }
-input, select, button { width:100%; font-size:18px; padding:10px; margin-bottom:12px; border-radius:6px; box-sizing:border-box; }
+
+input, select, button {
+  width:100%;
+  font-size:18px;
+  padding:10px;
+  margin-bottom:12px;
+  border-radius:6px;
+  box-sizing:border-box;
+}
+
 button { background:#1e90ff; color:#fff; border:none; }
 button.secondary { background:#666; }
+
 .hidden { display:none; }
-#info { font-size:14px; margin-bottom:12px; }
+
 #history { max-height:260px; overflow:auto; border-top:1px solid #ccc; }
 table { width:100%; border-collapse:collapse; font-size:13px; }
 th,td { border:1px solid #ccc; padding:5px; text-align:center; }
 thead th { position:sticky; top:0; background:#eee; }
-#toast { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(20px); min-width: 220px; max-width: 90%; padding: 14px 18px; border-radius: 14px; font-size: 15px; color: #fff; display: flex; align-items: center; gap: 10px; box-shadow: 0 10px 25px rgba(0,0,0,.25); opacity: 0; pointer-events: none; transition: opacity .35s ease, transform .35s ease; z-index: 9999; }
-#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-#toast.success { background: linear-gradient(135deg,#28a745,#20c997); }
-#toast.error   { background: linear-gradient(135deg,#dc3545,#ff6b6b); }
-#toast.warn    { background: linear-gradient(135deg,#ff9800,#ffc107); }
-#toast .icon { font-size:20px; }
-button:disabled, input:disabled { background-color: #ccc !important; color: #666 !important; cursor: not-allowed; }
-#fileName { font-size:14px; color:#333; margin-bottom:12px; }
 
-/* Location + Lock Location row */
-.location-lock-row { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+/* Location row */
+.location-lock-row {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:12px;
+}
 .location-lock-row select { flex:1; }
-.location-lock-row label { font-size:14px; display:flex; align-items:center; gap:4px; cursor:pointer; }
-.location-lock-row input[type="checkbox"] { transform:scale(1.2); margin:0; }
+
+/* Lock button */
+.lock-btn {
+  font-size:14px;
+  padding:10px 14px;
+  border-radius:8px;
+  background:#ccc;
+  color:#333;
+  white-space:nowrap;
+}
+.lock-btn.locked {
+  background:#28a745;
+  color:#fff;
+}
+.lock-btn.disabled {
+  background:#ddd;
+  color:#777;
+}
+
+/* Toast */
+#toast {
+  position:fixed;
+  bottom:28px;
+  left:50%;
+  transform:translateX(-50%) translateY(20px);
+  padding:14px 18px;
+  border-radius:14px;
+  font-size:15px;
+  color:#fff;
+  opacity:0;
+  transition:.3s;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+#toast.success { background:#28a745; }
+#toast.warn { background:#ff9800; }
 </style>
 </head>
-<body>
 
+<body>
 <header>Inventory Counting</header>
 
 <main>
-<!-- CSV File -->
 <button id="fileBtn">Choose CSV File</button>
 <div id="fileName">No file chosen</div>
-<input type="file" id="fileInput" accept=".csv" style="display:none;">
+<input type="file" id="fileInput" accept=".csv" hidden>
 
-<!-- Location & Lock on same row -->
 <div class="location-lock-row">
   <select id="locationSelect">
     <option value="">Select location</option>
-    <option value="Warehouse Shifts near loading bay">Warehouse Shifts near loading bay</option>
-    <option value="Warehouse Shifts near Boiler">Warehouse Shifts near Boiler</option>
-    <option value="Warehouse Shifts close cooler wall">Warehouse Shifts close cooler wall</option>
-    <option value="Warehouse Middle Shifts">Warehouse Middle Shifts</option>
-    <option value="Warehouse Shifts at flour mixer room hallway">Warehouse Shifts at flour mixer room hallway</option>
-    <option value="Loading Bay 1">Loading Bay 1</option>
-    <option value="Loading Bay 2">Loading Bay 2</option>
-    <option value="Loading Bay 3">Loading Bay 3</option>
-    <option value="Loading Bay 4">Loading Bay 4</option>
-    <option value="Loading Bay 5">Loading Bay 5</option>
-    <option value="Loading Bay 6">Loading Bay 6</option>
+    <option>Warehouse A</option>
+    <option>Warehouse B</option>
+    <option>Loading Bay</option>
   </select>
-  <label>
-    <input type="checkbox" id="lockLocation"> Lock Location
-  </label>
+
+  <button type="button" id="lockLocationBtn" class="lock-btn disabled">
+    🔓 Location Unlocked
+  </button>
 </div>
 
-<!-- All Categories -->
-<select id="catalogSelect" onchange="buildProductSelect()">
-  <option value="">All Categories</option>
-</select>
+<select id="catalogSelect"></select>
+<input id="search" placeholder="Search product">
+<select id="productSelect"></select>
 
-<!-- Product Search -->
-<input id="search" placeholder="Search product" oninput="buildProductSelect()">
-<select id="productSelect" onchange="showInfo()">
-  <option value="">Select product</option>
-</select>
-
-<div id="info"></div>
-
-<input id="qtyInput" type="number" inputmode="numeric" placeholder="Enter quantity">
-<button id="saveBtn" onclick="saveSelected()">Save Count</button>
-
-<button class="secondary" onclick="toggleManual()">Product not found? Manual entry</button>
-
-<div id="manualPanel" class="hidden">
-  <hr>
-  <h3>Temporary Product</h3>
-  <input id="mProd" placeholder="Product name (required)">
-  <input id="mUnit" placeholder="Packaging unit (required)">
-  <input id="mSup" placeholder="Supplier / Source">
-  <input id="mQty" type="number" inputmode="numeric" placeholder="Quantity">
-  <button onclick="manualSave()">Save Temporary Count</button>
-</div>
-
-<hr>
-<button class="secondary" onclick="exportCSV()">Export CSV</button>
-<button class="secondary" onclick="clearAll()">Clear All Data</button>
+<input id="qtyInput" type="number" placeholder="Enter quantity">
+<button id="saveBtn">Save Count</button>
 
 <div id="history">
-<h3>Counting History (Newest First)</h3>
 <table>
 <thead>
-<tr>
-<th>Time</th><th>Category</th><th>Supplier</th>
-<th>Product</th><th>Unit</th><th>Location</th><th>Qty</th>
-</tr>
+<tr><th>Time</th><th>Product</th><th>Location</th><th>Qty</th></tr>
 </thead>
 <tbody id="historyBody"></tbody>
 </table>
 </div>
 </main>
 
-<div id="toast" class="success">
-  <span class="icon">✅</span>
-  <span class="msg">Loaded</span>
-</div>
+<div id="toast" class="success">Saved</div>
 
 <script>
-// CSV parser
-function parseCSVLine(line){
-  const result=[],len=line.length;
-  let current='',inQuotes=false;
-  for(let i=0;i<len;i++){
-    const c=line[i];
-    if(c==='"') inQuotes=!inQuotes;
-    else if(c===','&&!inQuotes){ result.push(current); current=''; }
-    else current+=c;
-  }
-  result.push(current);
-  return result.map(v=>v.trim().replace(/^"|"$/g,''));
+/* ---------- HAPTIC ---------- */
+function haptic(type='light'){
+  if(!navigator.vibrate) return;
+  navigator.vibrate(type==='medium'?20:10);
 }
 
-let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
+/* ---------- DATA ---------- */
+let data = JSON.parse(localStorage.getItem('inventory')) || [];
+let locationLocked = false;
 
-const fileInput = document.getElementById('fileInput');
-const fileBtn = document.getElementById('fileBtn');
-const fileNameDiv = document.getElementById('fileName');
-const catalogSelect = document.getElementById('catalogSelect');
-const productSelect = document.getElementById('productSelect');
-const search = document.getElementById('search');
-const qtyInput = document.getElementById('qtyInput');
 const locationSelect = document.getElementById('locationSelect');
-const lockLocation = document.getElementById('lockLocation');
-const info = document.getElementById('info');
-const manualPanel = document.getElementById('manualPanel');
+const lockBtn = document.getElementById('lockLocationBtn');
+const qtyInput = document.getElementById('qtyInput');
 const historyBody = document.getElementById('historyBody');
-const saveBtn = document.getElementById('saveBtn');
 
-let toastTimer;
+/* ---------- TOAST ---------- */
 function showToast(msg,type='success'){
   const t=document.getElementById('toast');
-  t.className=type;
-  t.querySelector('.icon').textContent=type==='success'?'✅':type==='error'?'❌':'⚠️';
-  t.querySelector('.msg').textContent=msg;
-  t.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+  t.textContent=msg;
+  t.className=type+' show';
+  setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-// 文件选择
-fileBtn.onclick=()=>fileInput.click();
-fileInput.onchange=e=>{
-  const file=e.target.files[0];
-  if(!file) return;
-  fileNameDiv.textContent=`File loaded: ${file.name}`;
-  importCSV(file);
-  fileBtn.disabled = true; // 文件载入后按钮屏蔽
-};
-
-// CSV导入
-function importCSV(file){
-  const reader=new FileReader();
-  reader.onload=e=>{
-    let text=e.target.result;
-    if(text.charCodeAt(0)===0xFEFF) text=text.slice(1);
-    const lines=text.split(/\r?\n/).filter(l=>l.trim());
-    const headers=parseCSVLine(lines[0]).map(h=>h.toLowerCase());
-    lines.slice(1).forEach(l=>{
-      const v=parseCSVLine(l),o={};
-      headers.forEach((h,i)=>o[h]=v[i]||'');
-      addProduct(o.category||'Temporary',o.product||'',o.unit||'',o.supplier||'');
-    });
-    save(); refresh(); showToast('CSV loaded');
-  };
-  reader.readAsText(file);
-}
-
-// 产品数据处理
-function addProduct(cat,prod,unit,sup){
-  if(!prod||!unit) return;
-  let c=data.catalogs.find(x=>x.name===cat);
-  if(!c){ c={name:cat,products:[]}; data.catalogs.push(c); }
-  let p=c.products.find(x=>x.name===prod&&x.supplier===sup);
-  if(!p){ p={name:prod,supplier:sup,packages:[]}; c.products.push(p); }
-  if(!p.packages.find(x=>x.unit===unit)) p.packages.push({unit,records:[]});
-}
-
-function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
-
-function refresh(){
-  catalogSelect.innerHTML='<option value="">All Categories</option>';
-  data.catalogs.forEach(c=>{
-    const o=document.createElement('option');
-    o.value=c.name; o.textContent=c.name;
-    catalogSelect.appendChild(o);
-  });
-  buildProductSelect(); updateHistory();
-}
-
-// 产品选择
-function buildProductSelect(){
-  productSelect.innerHTML='<option value="">Select product</option>';
-  const key=search.value.toLowerCase();
-  const selectedCat=catalogSelect.value;
-  data.catalogs.forEach((c,ci)=>{
-    if(selectedCat&&c.name!==selectedCat) return;
-    c.products.forEach((p,pi)=>{
-      if(key&&!p.name.toLowerCase().includes(key)) return;
-      p.packages.forEach((pkg,ki)=>{
-        const o=document.createElement('option');
-        o.value=`${ci}-${pi}-${ki}`;
-        o.textContent=`${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
-        productSelect.appendChild(o);
-      });
-    });
-  });
-}
-
-function showInfo(){
-  if(!productSelect.value){ info.textContent=''; return; }
-  const [ci,pi,ki]=productSelect.value.split('-');
-  const r=data.catalogs[ci].products[pi].packages[ki].records.at(-1);
-  info.textContent=r?`Last count: ${r.qty} @ ${r.location} (${r.time})`:'No record';
-}
-
-// Lock Location 控制
-lockLocation.disabled = true;
-locationSelect.addEventListener('change', () => {
-  if(locationSelect.value) lockLocation.disabled = false;
-  else { lockLocation.checked = false; lockLocation.disabled = true; }
+/* ---------- LOCATION LOCK ---------- */
+locationSelect.addEventListener('change',()=>{
+  if(locationSelect.value){
+    lockBtn.classList.remove('disabled');
+  }else{
+    locationLocked=false;
+    lockBtn.className='lock-btn disabled';
+    lockBtn.textContent='🔓 Location Unlocked';
+  }
 });
 
-function saveSelected(){
-  if(!productSelect.value) return showToast('Select product','warn');
-  if(!locationSelect.value) return showToast('Select location','warn');
-  const qty=parseInt(qtyInput.value);
-  if(isNaN(qty)) return showToast('Enter quantity','warn');
+lockBtn.onclick=()=>{
+  if(!locationSelect.value) return;
+  locationLocked=!locationLocked;
+  lockBtn.className='lock-btn'+(locationLocked?' locked':'');
+  lockBtn.textContent=locationLocked?'🔒 Location Locked':'🔓 Location Unlocked';
+  haptic(locationLocked?'medium':'light');
+};
 
-  const [ci,pi,ki]=productSelect.value.split('-');
-  data.catalogs[ci].products[pi].packages[ki].records.push({
-    qty,location:locationSelect.value,time:new Date().toLocaleString()
+/* ---------- SAVE ---------- */
+document.getElementById('saveBtn').onclick=()=>{
+  if(!locationSelect.value || !qtyInput.value){
+    showToast('Missing data','warn'); return;
+  }
+
+  data.push({
+    time:new Date().toLocaleString(),
+    location:locationSelect.value,
+    qty:qtyInput.value
   });
 
-  save(); refresh();
+  localStorage.setItem('inventory',JSON.stringify(data));
+  updateHistory();
   qtyInput.value='';
-  if(!lockLocation.checked) locationSelect.value='';
+  if(!locationLocked) locationSelect.value='';
+  haptic('light');
   showToast('Saved');
-}
-
-function toggleManual(){ manualPanel.classList.toggle('hidden'); }
-
-function manualSave(){
-  if(!locationSelect.value) return showToast('Select location','warn');
-  const prod=mProd.value.trim(),unit=mUnit.value.trim();
-  const sup=mSup.value.trim(),qty=parseInt(mQty.value);
-  if(!prod||!unit||isNaN(qty)) return showToast('Complete fields','warn');
-
-  addProduct('Temporary',prod,unit,sup);
-  const c=data.catalogs.find(x=>x.name==='Temporary');
-  const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
-  p.packages[0].records.push({
-    qty,location:locationSelect.value,time:new Date().toLocaleString()
-  });
-
-  save(); refresh();
-  mProd.value=mUnit.value=mSup.value=mQty.value='';
-  if(!lockLocation.checked) locationSelect.value='';
-  showToast('Temporary saved');
-}
+};
 
 function updateHistory(){
   historyBody.innerHTML='';
-  let rows=[];
-  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
-    pkg.records.forEach(r=>{
-      rows.push({t:new Date(r.time),...r,c:c.name,p:p.name,u:pkg.unit,s:p.supplier});
-    });
-  })));
-  rows.sort((a,b)=>b.t-a.t);
-  rows.forEach(r=>{
+  data.slice().reverse().forEach(r=>{
     historyBody.innerHTML+=
-    `<tr><td>${r.time}</td><td>${r.c}</td><td>${r.s}</td>
-     <td>${r.p}</td><td>${r.u}</td><td>${r.location}</td><td>${r.qty}</td></tr>`;
+      `<tr><td>${r.time}</td><td>-</td><td>${r.location}</td><td>${r.qty}</td></tr>`;
   });
 }
-
-function exportCSV(){
-  let csv='time,category,supplier,product,unit,location,qty\n';
-  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
-    pkg.records.forEach(r=>{
-      csv+=`${r.time},${c.name},${p.supplier},${p.name},${pkg.unit},${r.location},${r.qty}\n`;
-    });
-  })));
-  const ts=new Date().toISOString().replace(/[:]/g,'-').replace('T','_').slice(0,19);
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(new Blob([csv]));
-  a.download=`inventory_${ts}.csv`;
-  a.click();
-}
-
-function clearAll(){
-  if(confirm('Clear all data?')){
-    localStorage.clear(); location.reload();
-  }
-}
-
-refresh();
+updateHistory();
 </script>
 </body>
 </html>
