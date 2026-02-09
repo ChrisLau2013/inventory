@@ -5,14 +5,14 @@
 <title>Inventory Counting</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- iOS Home Screen Icon -->
+<!-- ✅ iPhone Home Screen Icon（关键） -->
 <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
-<link rel="icon" type="image/png" sizes="32x32" href="icon.png">
+<link rel="icon" type="image/png" href="icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Inventory">
 
 <style>
-body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; }
+body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:0; }
 header { background:#1e90ff; color:#fff; text-align:center; padding:14px; font-size:20px; position:sticky; top:0; }
 main { padding:14px; }
 
@@ -30,12 +30,14 @@ button.secondary { background:#666; }
 
 .hidden { display:none; }
 
+#info { font-size:14px; margin-bottom:12px; }
+
 #history { max-height:260px; overflow:auto; border-top:1px solid #ccc; }
 table { width:100%; border-collapse:collapse; font-size:13px; }
 th,td { border:1px solid #ccc; padding:5px; text-align:center; }
 thead th { position:sticky; top:0; background:#eee; }
 
-/* Location row */
+/* Location + Lock */
 .location-lock-row {
   display:flex;
   align-items:center;
@@ -44,7 +46,7 @@ thead th { position:sticky; top:0; background:#eee; }
 }
 .location-lock-row select { flex:1; }
 
-/* Lock button */
+/* Lock Button */
 .lock-btn {
   font-size:14px;
   padding:10px 14px;
@@ -73,7 +75,8 @@ thead th { position:sticky; top:0; background:#eee; }
   font-size:15px;
   color:#fff;
   opacity:0;
-  transition:.3s;
+  pointer-events:none;
+  transition:.35s;
 }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 #toast.success { background:#28a745; }
@@ -82,9 +85,11 @@ thead th { position:sticky; top:0; background:#eee; }
 </head>
 
 <body>
+
 <header>Inventory Counting</header>
 
 <main>
+
 <button id="fileBtn">Choose CSV File</button>
 <div id="fileName">No file chosen</div>
 <input type="file" id="fileInput" accept=".csv" hidden>
@@ -92,9 +97,17 @@ thead th { position:sticky; top:0; background:#eee; }
 <div class="location-lock-row">
   <select id="locationSelect">
     <option value="">Select location</option>
-    <option>Warehouse A</option>
-    <option>Warehouse B</option>
-    <option>Loading Bay</option>
+    <option>Warehouse Shifts near loading bay</option>
+    <option>Warehouse Shifts near Boiler</option>
+    <option>Warehouse Shifts close cooler wall</option>
+    <option>Warehouse Middle Shifts</option>
+    <option>Warehouse Shifts at flour mixer room hallway</option>
+    <option>Loading Bay 1</option>
+    <option>Loading Bay 2</option>
+    <option>Loading Bay 3</option>
+    <option>Loading Bay 4</option>
+    <option>Loading Bay 5</option>
+    <option>Loading Bay 6</option>
   </select>
 
   <button type="button" id="lockLocationBtn" class="lock-btn disabled">
@@ -102,21 +115,36 @@ thead th { position:sticky; top:0; background:#eee; }
   </button>
 </div>
 
-<select id="catalogSelect"></select>
-<input id="search" placeholder="Search product">
-<select id="productSelect"></select>
+<select id="catalogSelect">
+  <option value="">All Categories</option>
+</select>
 
-<input id="qtyInput" type="number" placeholder="Enter quantity">
+<input id="search" placeholder="Search product">
+<select id="productSelect">
+  <option value="">Select product</option>
+</select>
+
+<div id="info"></div>
+
+<input id="qtyInput" type="number" inputmode="numeric" placeholder="Enter quantity">
 <button id="saveBtn">Save Count</button>
 
+<hr>
+<button class="secondary" onclick="exportCSV()">Export CSV</button>
+
 <div id="history">
+<h3>Counting History</h3>
 <table>
 <thead>
-<tr><th>Time</th><th>Product</th><th>Location</th><th>Qty</th></tr>
+<tr>
+<th>Time</th><th>Category</th><th>Supplier</th>
+<th>Product</th><th>Unit</th><th>Location</th><th>Qty</th>
+</tr>
 </thead>
 <tbody id="historyBody"></tbody>
 </table>
 </div>
+
 </main>
 
 <div id="toast" class="success">Saved</div>
@@ -129,13 +157,17 @@ function haptic(type='light'){
 }
 
 /* ---------- DATA ---------- */
-let data = JSON.parse(localStorage.getItem('inventory')) || [];
+let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
 let locationLocked = false;
 
 const locationSelect = document.getElementById('locationSelect');
 const lockBtn = document.getElementById('lockLocationBtn');
 const qtyInput = document.getElementById('qtyInput');
 const historyBody = document.getElementById('historyBody');
+const productSelect = document.getElementById('productSelect');
+const catalogSelect = document.getElementById('catalogSelect');
+const search = document.getElementById('search');
+const info = document.getElementById('info');
 
 /* ---------- TOAST ---------- */
 function showToast(msg,type='success'){
@@ -166,32 +198,71 @@ lockBtn.onclick=()=>{
 
 /* ---------- SAVE ---------- */
 document.getElementById('saveBtn').onclick=()=>{
-  if(!locationSelect.value || !qtyInput.value){
-    showToast('Missing data','warn'); return;
-  }
+  if(!productSelect.value) return showToast('Select product','warn');
+  if(!locationSelect.value) return showToast('Select location','warn');
+  const qty=parseInt(qtyInput.value);
+  if(isNaN(qty)) return showToast('Enter quantity','warn');
 
-  data.push({
-    time:new Date().toLocaleString(),
-    location:locationSelect.value,
-    qty:qtyInput.value
+  const [ci,pi,ki]=productSelect.value.split('-');
+  data.catalogs[ci].products[pi].packages[ki].records.push({
+    qty,location:locationSelect.value,time:new Date().toLocaleString()
   });
 
   localStorage.setItem('inventory',JSON.stringify(data));
-  updateHistory();
+  refresh();
   qtyInput.value='';
   if(!locationLocked) locationSelect.value='';
   haptic('light');
   showToast('Saved');
 };
 
-function updateHistory(){
-  historyBody.innerHTML='';
-  data.slice().reverse().forEach(r=>{
-    historyBody.innerHTML+=
-      `<tr><td>${r.time}</td><td>-</td><td>${r.location}</td><td>${r.qty}</td></tr>`;
+/* ---------- PRODUCT LOGIC（原样） ---------- */
+function refresh(){
+  catalogSelect.innerHTML='<option value="">All Categories</option>';
+  data.catalogs.forEach((c,i)=>{
+    const o=document.createElement('option');
+    o.value=c.name;o.textContent=c.name;
+    catalogSelect.appendChild(o);
+  });
+  buildProductSelect(); updateHistory();
+}
+
+function buildProductSelect(){
+  productSelect.innerHTML='<option value="">Select product</option>';
+  const key=search.value.toLowerCase();
+  const selectedCat=catalogSelect.value;
+  data.catalogs.forEach((c,ci)=>{
+    if(selectedCat&&c.name!==selectedCat) return;
+    c.products.forEach((p,pi)=>{
+      if(key&&!p.name.toLowerCase().includes(key)) return;
+      p.packages.forEach((pkg,ki)=>{
+        const o=document.createElement('option');
+        o.value=`${ci}-${pi}-${ki}`;
+        o.textContent=`${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
+        productSelect.appendChild(o);
+      });
+    });
   });
 }
-updateHistory();
+
+function updateHistory(){
+  historyBody.innerHTML='';
+  let rows=[];
+  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
+    pkg.records.forEach(r=>{
+      rows.push({t:new Date(r.time),...r,c:c.name,p:p.name,u:pkg.unit,s:p.supplier});
+    });
+  })));
+  rows.sort((a,b)=>b.t-a.t);
+  rows.forEach(r=>{
+    historyBody.innerHTML+=
+    `<tr><td>${r.time}</td><td>${r.c}</td><td>${r.s}</td>
+     <td>${r.p}</td><td>${r.u}</td><td>${r.location}</td><td>${r.qty}</td></tr>`;
+  });
+}
+
+refresh();
 </script>
+
 </body>
 </html>
