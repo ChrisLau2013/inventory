@@ -38,18 +38,6 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 <button id="fileBtn">Choose CSV File</button>
 <div id="fileName">No file chosen</div>
 
-<select id="catalogSelect" onchange="buildProductSelect()">
-  <option value="">All Categories</option>
-</select>
-
-<input id="search" placeholder="Search product" oninput="buildProductSelect()">
-
-<select id="productSelect" onchange="showInfo()">
-  <option value="">Select product</option>
-</select>
-
-<div id="info"></div>
-
 <!-- Location -->
 <select id="locationSelect">
   <option value="">Select location</option>
@@ -71,6 +59,18 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
   <input type="checkbox" id="lockLocation">
   <label for="lockLocation">🔒 Lock Location (保存后不清空)</label>
 </div>
+
+<select id="catalogSelect" onchange="buildProductSelect()">
+  <option value="">All Categories</option>
+</select>
+
+<input id="search" placeholder="Search product" oninput="buildProductSelect()">
+
+<select id="productSelect" onchange="showInfo()">
+  <option value="">Select product</option>
+</select>
+
+<div id="info"></div>
 
 <input id="qtyInput" type="number" inputmode="numeric" placeholder="Enter quantity">
 <button onclick="saveSelected()">Save Count</button>
