@@ -4,10 +4,7 @@
 <meta charset="UTF-8">
 <title>Inventory Counting</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<!-- 网页图标 -->
 <link rel="icon" type="image/png" href="icon.png">
-
 <style>
 body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:0; }
 header { background:#1e90ff; color:#fff; text-align:center; padding:14px; font-size:20px; position:sticky; top:0; }
@@ -29,8 +26,11 @@ thead th { position:sticky; top:0; background:#eee; }
 #toast .icon { font-size:20px; }
 button:disabled, input:disabled { background-color: #ccc !important; color: #666 !important; cursor: not-allowed; }
 #fileName { font-size:14px; color:#333; margin-bottom:12px; }
-.lock-row, .location-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:14px; }
-.location-row select, .lock-row input { font-size:16px; flex:1; }
+
+.top-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.top-row > * { flex:1 1 200px; }
+.lock-row { display:flex; align-items:center; gap:8px; margin-bottom:12px; font-size:14px; }
+.lock-row input { margin-right:6px; }
 </style>
 </head>
 <body>
@@ -38,41 +38,43 @@ button:disabled, input:disabled { background-color: #ccc !important; color: #666
 <header>Inventory Counting</header>
 
 <main>
-<input type="file" id="fileInput" accept=".csv" style="display:none;">
-<button id="fileBtn">Choose CSV File</button>
-<div id="fileName">No file chosen</div>
+<div class="top-row">
+  <div>
+    <input type="file" id="fileInput" accept=".csv" style="display:none;">
+    <button id="fileBtn">Choose CSV File</button>
+    <div id="fileName">No file chosen</div>
+  </div>
 
-<!-- Location -->
-<div class="location-row">
-  <span style="font-size:18px;">📍</span>
-  <select id="locationSelect">
-    <option value="">Select location</option>
-    <option value="Warehouse Shifts near loading bay">Warehouse Shifts near loading bay</option>
-    <option value="Warehouse Shifts near Boiler">Warehouse Shifts near Boiler</option>
-    <option value="Warehouse Shifts close cooler wall">Warehouse Shifts close cooler wall</option>
-    <option value="Warehouse Middle Shifts">Warehouse Middle Shifts</option>
-    <option value="Warehouse Shifts at flour mixer room hallway">Warehouse Shifts at flour mixer room hallway</option>
-    <option value="Loading Bay 1">Loading Bay 1</option>
-    <option value="Loading Bay 2">Loading Bay 2</option>
-    <option value="Loading Bay 3">Loading Bay 3</option>
-    <option value="Loading Bay 4">Loading Bay 4</option>
-    <option value="Loading Bay 5">Loading Bay 5</option>
-    <option value="Loading Bay 6">Loading Bay 6</option>
-  </select>
+  <div>
+    <select id="locationSelect">
+      <option value="">Select location</option>
+      <option value="Warehouse Shifts near loading bay">Warehouse Shifts near loading bay</option>
+      <option value="Warehouse Shifts near Boiler">Warehouse Shifts near Boiler</option>
+      <option value="Warehouse Shifts close cooler wall">Warehouse Shifts close cooler wall</option>
+      <option value="Warehouse Middle Shifts">Warehouse Middle Shifts</option>
+      <option value="Warehouse Shifts at flour mixer room hallway">Warehouse Shifts at flour mixer room hallway</option>
+      <option value="Loading Bay 1">Loading Bay 1</option>
+      <option value="Loading Bay 2">Loading Bay 2</option>
+      <option value="Loading Bay 3">Loading Bay 3</option>
+      <option value="Loading Bay 4">Loading Bay 4</option>
+      <option value="Loading Bay 5">Loading Bay 5</option>
+      <option value="Loading Bay 6">Loading Bay 6</option>
+    </select>
+  </div>
+
+  <div class="lock-row">
+    <input type="checkbox" id="lockLocation">
+    <label for="lockLocation">Lock Location (保存后不清空)</label>
+  </div>
+
+  <div>
+    <select id="catalogSelect" onchange="buildProductSelect()">
+      <option value="">All Categories</option>
+    </select>
+  </div>
 </div>
-
-<!-- Lock switch -->
-<div class="lock-row">
-  <input type="checkbox" id="lockLocation">
-  <label for="lockLocation">Lock Location (保存后不清空)</label>
-</div>
-
-<select id="catalogSelect" onchange="buildProductSelect()">
-  <option value="">All Categories</option>
-</select>
 
 <input id="search" placeholder="Search product" oninput="buildProductSelect()">
-
 <select id="productSelect" onchange="showInfo()">
   <option value="">Select product</option>
 </select>
@@ -159,7 +161,6 @@ function showToast(msg,type='success'){
 }
 
 fileBtn.onclick=()=>fileInput.click();
-
 fileInput.onchange=e=>{
   const file=e.target.files[0];
   if(!file) return;
@@ -230,14 +231,11 @@ function showInfo(){
   info.textContent=r?`Last count: ${r.qty} @ ${r.location} (${r.time})`:'No record';
 }
 
-// 初始化 Lock Location
+// Lock Location 初始化
 lockLocation.disabled = true;
 locationSelect.addEventListener('change', () => {
   if(locationSelect.value) lockLocation.disabled = false;
-  else {
-    lockLocation.checked = false;
-    lockLocation.disabled = true;
-  }
+  else { lockLocation.checked = false; lockLocation.disabled = true; }
 });
 
 function saveSelected(){
