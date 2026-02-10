@@ -218,14 +218,15 @@ function refresh(){
   updateHistory();
 }
 
-  function buildProductSelect(){
+function buildProductSelect(){
   productSelect.innerHTML='<option value="">Select product</option>';
   const key=search.value.toLowerCase();
   const cat=catalogSelect.value;
+
   data.catalogs.forEach((c,ci)=>{
-    if(cat&&c.name!==cat) return;
+    if(cat && c.name!==cat) return;
     c.products.forEach((p,pi)=>{
-      if(key&&!p.name.toLowerCase().includes(key)) return;
+      if(key && !p.name.toLowerCase().includes(key)) return;
       p.packages.forEach((pkg,ki)=>{
         const o=document.createElement('option');
         o.value=`${ci}-${pi}-${ki}`;
@@ -234,24 +235,6 @@ function refresh(){
       });
     });
   });
-}
-
-  // 产品下拉
-  productSelect.innerHTML='<option value="">Select product</option>';
-  data.catalogs.forEach((c,ci)=>{
-    if(catalogSelect.value && catalogSelect.value!==c.name) return;
-    c.products.forEach((p,pi)=>{
-      p.packages.forEach((pkg,ki)=>{
-        if(search.value && !p.name.toLowerCase().includes(search.value.toLowerCase())) return;
-        const o=document.createElement('option');
-        o.value=`${ci}-${pi}-${ki}`;
-        o.textContent=`${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
-        productSelect.appendChild(o);
-      });
-    });
-  });
-
-  updateHistory();
 }
 
 /* UPDATE HISTORY */
