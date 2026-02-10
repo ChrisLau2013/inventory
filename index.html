@@ -5,7 +5,6 @@
 <title>Inventory Counting</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- ✅ iPhone Home Screen Icon -->
 <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -69,12 +68,12 @@ thead th {
   background:#eee;
 }
 
-/* ---------- Location ---------- */
+/* Location */
 .location-row {
   margin-bottom:12px;
 }
 
-/* ---------- Lock Button ---------- */
+/* Lock Button */
 .lock-btn {
   width:100%;
   font-size:16px;
@@ -92,7 +91,7 @@ thead th {
   color:#777;
 }
 
-/* ---------- Toast ---------- */
+/* Toast */
 #toast {
   position:fixed;
   bottom:28px;
@@ -337,6 +336,10 @@ fileInput.addEventListener('change',()=>{
   reader.onload = e=>{
     const text = e.target.result;
     parseCSV(text);
+
+    // 禁用按钮
+    fileBtn.disabled = true;
+    fileBtn.style.background = '#ccc';
   };
   reader.readAsText(file);
 });
@@ -405,7 +408,6 @@ exportBtn.addEventListener('click', ()=>{
   const blob = new Blob([csv], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
 
-  // 文件名加时间戳
   const now = new Date();
   const pad = n => n.toString().padStart(2,'0');
   const filename = `inventory_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.csv`;
