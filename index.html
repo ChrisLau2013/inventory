@@ -202,31 +202,22 @@ manualSaveBtn.onclick=()=>{
 
 function refresh(){
   catalogSelect.innerHTML='<option value="">All Categories</option>';
-  const usedCats = new Set();
-
   data.catalogs.forEach(c=>{
-    if(usedCats.has(c.name)) return;
-    usedCats.add(c.name);
-
     const o=document.createElement('option');
-    o.value=c.name;
-    o.textContent=c.name;
+    o.value=c.name; o.textContent=c.name;
     catalogSelect.appendChild(o);
   });
-
-  buildProductSelect();
-  updateHistory();
+  buildProductSelect(); updateHistory();
 }
 
 function buildProductSelect(){
   productSelect.innerHTML='<option value="">Select product</option>';
   const key=search.value.toLowerCase();
   const cat=catalogSelect.value;
-
   data.catalogs.forEach((c,ci)=>{
-    if(cat && c.name!==cat) return;
+    if(cat&&c.name!==cat) return;
     c.products.forEach((p,pi)=>{
-      if(key && !p.name.toLowerCase().includes(key)) return;
+      if(key&&!p.name.toLowerCase().includes(key)) return;
       p.packages.forEach((pkg,ki)=>{
         const o=document.createElement('option');
         o.value=`${ci}-${pi}-${ki}`;
@@ -236,6 +227,7 @@ function buildProductSelect(){
     });
   });
 }
+
 
 /* UPDATE HISTORY */
 function updateHistory(){
