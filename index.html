@@ -112,38 +112,34 @@ thead th { position:sticky; top:0; background:#eee; }
 <div id="toast" class="success">Saved</div>
 
 <script>
-/* Haptic feedback */
 function haptic(t='light'){ if(navigator.vibrate) navigator.vibrate(t==='medium'?20:10); }
 
-/* DATA */
 let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
-let locationLocked = false;
+let locationLocked=false;
 
-/* ELEMENTS */
-const locationSelect = document.getElementById('locationSelect');
-const lockBtn = document.getElementById('lockLocationBtn');
-const qtyInput = document.getElementById('qtyInput');
-const productSelect = document.getElementById('productSelect');
-const catalogSelect = document.getElementById('catalogSelect');
-const search = document.getElementById('search');
-const historyBody = document.getElementById('historyBody');
+const locationSelect=document.getElementById('locationSelect');
+const lockBtn=document.getElementById('lockLocationBtn');
+const qtyInput=document.getElementById('qtyInput');
+const productSelect=document.getElementById('productSelect');
+const catalogSelect=document.getElementById('catalogSelect');
+const search=document.getElementById('search');
+const historyBody=document.getElementById('historyBody');
 
-const fileBtn = document.getElementById('fileBtn');
-const fileInput = document.getElementById('fileInput');
-const fileName = document.getElementById('fileName');
-const exportBtn = document.getElementById('exportBtn');
-const clearBtn = document.getElementById('clearBtn');
+const fileBtn=document.getElementById('fileBtn');
+const fileInput=document.getElementById('fileInput');
+const fileName=document.getElementById('fileName');
+const exportBtn=document.getElementById('exportBtn');
+const clearBtn=document.getElementById('clearBtn');
 
-const manualBtn = document.getElementById('manualBtn');
-const manualPanel = document.getElementById('manualPanel');
-const manualCategory = document.getElementById('manualCategory');
-const manualSupplier = document.getElementById('manualSupplier');
-const manualProduct = document.getElementById('manualProduct');
-const manualUnit = document.getElementById('manualUnit');
-const manualQty = document.getElementById('manualQty');
-const manualSaveBtn = document.getElementById('manualSaveBtn');
+const manualBtn=document.getElementById('manualBtn');
+const manualPanel=document.getElementById('manualPanel');
+const manualCategory=document.getElementById('manualCategory');
+const manualSupplier=document.getElementById('manualSupplier');
+const manualProduct=document.getElementById('manualProduct');
+const manualUnit=document.getElementById('manualUnit');
+const manualQty=document.getElementById('manualQty');
+const manualSaveBtn=document.getElementById('manualSaveBtn');
 
-/* TOAST */
 function showToast(msg,type='success'){
   const t=document.getElementById('toast');
   t.textContent=msg; t.className=type+' show';
@@ -153,20 +149,19 @@ function showToast(msg,type='success'){
 /* LOCATION LOCK */
 lockBtn.onclick=()=>{
   if(!locationSelect.value) return;
-  locationLocked = !locationLocked;
-  lockBtn.className = 'lock-btn' + (locationLocked?' locked':'');
-  lockBtn.textContent = locationLocked?'🔒 Location Locked':'🔓 Location Unlocked';
+  locationLocked=!locationLocked;
+  lockBtn.className='lock-btn'+(locationLocked?' locked':'');
+  lockBtn.textContent=locationLocked?'🔒 Location Locked':'🔓 Location Unlocked';
 };
 
 /* SAVE COUNT */
-document.getElementById('saveBtn').onclick = ()=>{
+document.getElementById('saveBtn').onclick=()=>{
   if(!productSelect.value || !locationSelect.value) return showToast('Missing selection','warn');
-  const qty = parseInt(qtyInput.value);
-  if(isNaN(qty)) return;
+  const qty=parseInt(qtyInput.value); if(isNaN(qty)) return;
 
-  const [ci,pi,ki] = productSelect.value.split('-');
+  const [ci,pi,ki]=productSelect.value.split('-');
   data.catalogs[ci].products[pi].packages[ki].records.push({
-    qty, location: locationSelect.value, time: new Date().toISOString()
+    qty, location:locationSelect.value, time:new Date().toISOString()
   });
 
   localStorage.setItem('inventory',JSON.stringify(data));
@@ -178,12 +173,9 @@ document.getElementById('saveBtn').onclick = ()=>{
 manualBtn.onclick=()=>{
   manualPanel.classList.toggle('hidden');
   manualCategory.innerHTML='';
-  const usedCats = new Set();
   data.catalogs.forEach(c=>{
-    if(!usedCats.has(c.name)){
-      const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
-      manualCategory.appendChild(o); usedCats.add(c.name);
-    }
+    const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
+    manualCategory.appendChild(o);
   });
 };
 
@@ -196,14 +188,14 @@ manualSaveBtn.onclick=()=>{
   const qty=parseInt(manualQty.value);
   if(!prod||!unit||isNaN(qty)) return;
 
-  let c = data.catalogs.find(x=>x.name===cat);
+  let c=data.catalogs.find(x=>x.name===cat);
   if(!c){ c={name:cat,products:[]}; data.catalogs.push(c); }
-  let p = c.products.find(x=>x.name===prod && x.supplier===sup);
+  let p=c.products.find(x=>x.name===prod && x.supplier===sup);
   if(!p){ p={name:prod,supplier:sup,packages:[]}; c.products.push(p); }
-  let pkg = p.packages.find(x=>x.unit===unit);
+  let pkg=p.packages.find(x=>x.unit===unit);
   if(!pkg){ pkg={unit,records:[]}; p.packages.push(pkg); }
 
-  pkg.records.push({ qty, location: locationSelect.value, time:new Date().toISOString(), temp:true });
+  pkg.records.push({ qty, location:locationSelect.value, time:new Date().toISOString(), temp:true });
   localStorage.setItem('inventory',JSON.stringify(data));
   refresh(); showToast('Manual saved');
 };
@@ -269,21 +261,20 @@ fileInput.onchange=()=>{
   const file=fileInput.files[0]; fileName.textContent=file.name;
   const reader=new FileReader();
   reader.onload=e=>{
-    const text=e.target.result;
-    parseCSV(text);
+    parseCSV(e.target.result);
     fileBtn.disabled=true; fileBtn.style.background='#ccc';
   };
   reader.readAsText(file);
 };
 
 function parseCSV(text){
-  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  const lines=text.split(/\r?\n/).filter(l=>l.trim());
   if(lines.length<2) return showToast('CSV empty','warn');
   const headers = lines[0].split(',').map(h=>h.trim());
   const idx = { category: headers.indexOf('Category'), supplier: headers.indexOf('Supplier'), product: headers.indexOf('Product'), unit: headers.indexOf('Unit')};
   if(Object.values(idx).some(i=>i<0)) return showToast('CSV headers missing','warn');
 
-  data.catalogs = []; const catMap={};
+  data.catalogs=[]; const catMap={};
   for(let i=1;i<lines.length;i++){
     const cells=lines[i].split(',').map(c=>c.trim());
     const cat=cells[idx.category]||'Uncategorized';
@@ -307,21 +298,19 @@ exportBtn.onclick=()=>{
       rows.push([r.time,c.name,p.supplier,p.name,pkg.unit,r.location,r.qty,r.temp?'Temporary':'Formal']);
     });
   })));
-  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
-  const blob = new Blob([csv],{type:'text/csv'});
-  const url = URL.createObjectURL(blob);
+  const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const url=URL.createObjectURL(blob);
   const a=document.createElement('a'); a.href=url;
-  const now=new Date();
-  const pad=n=>n.toString().padStart(2,'0');
-  const filename=`inventory_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.csv`;
-  a.download=filename; a.click(); URL.revokeObjectURL(url);
+  const now=new Date(); const pad=n=>n.toString().padStart(2,'0');
+  a.download=`inventory_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.csv`;
+  a.click(); URL.revokeObjectURL(url);
 };
 
 /* CLEAR DATA */
 clearBtn.onclick=()=>{
   if(confirm('Are you sure to clear all inventory data?')){
-    localStorage.removeItem('inventory');
-    data={catalogs:[]};
+    localStorage.removeItem('inventory'); data={catalogs:[]};
     fileBtn.disabled=false; fileBtn.style.background='';
     refresh();
   }
