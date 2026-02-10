@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -325,16 +326,16 @@ function updateHistory(){
   })));
   rows.reverse().forEach(r=>{
     historyBody.innerHTML+=
-      `<tr><td>${r.time}</td><td>${r.c}</td><td>${r.s||''}</td>
-       <td>${r.p}</td><td>${r.u}</td><td>${r.location}</td><td>${r.qty}</td></tr>`;
+      `<tr><td>${r.time}</td><td>${r.location}</td><td>${r.c}</td><td>${r.s||''}</td>
+       <td>${r.p}</td><td>${r.u}</td><td>${r.qty}</td></tr>`;
   });
 }
 
 function exportCSV(){
-  let csv='time,category,supplier,product,unit,location,qty\n';
+  let csv='date,time,location,category,supplier,product,unit,qty\n';
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
     pkg.records.forEach(r=>{
-      csv+=`${r.time},${c.name},${p.supplier||''},${p.name},${pkg.unit},${r.location},${r.qty}\n`;
+      csv+=`${r.date},${r.time},${r.location},${c.name},${p.supplier||''},${p.name},${pkg.unit},${r.qty}\n`;
     });
   })));
   const a=document.createElement('a');
