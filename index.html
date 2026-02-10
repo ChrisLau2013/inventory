@@ -121,11 +121,12 @@ thead th {
 
 <main>
 
+<!-- CSV 文件选择 -->
 <button id="fileBtn">Choose CSV File</button>
 <div id="fileName">No file chosen</div>
 <input type="file" id="fileInput" accept=".csv" hidden>
 
-<!-- ✅ Location 单独一行 -->
+<!-- Location -->
 <div class="location-row">
   <select id="locationSelect">
     <option value="">Select location</option>
@@ -143,11 +144,11 @@ thead th {
   </select>
 </div>
 
-<!-- ✅ Lock 按钮单独一行 -->
 <button type="button" id="lockLocationBtn" class="lock-btn disabled">
   🔓 Location Unlocked
 </button>
 
+<!-- 分类筛选、搜索、产品选择 -->
 <select id="catalogSelect">
   <option value="">All Categories</option>
 </select>
@@ -164,7 +165,7 @@ thead th {
 <button id="saveBtn">Save Count</button>
 
 <hr>
-<button class="secondary" onclick="exportCSV()">Export CSV</button>
+<button class="secondary" id="exportBtn">Export CSV</button>
 
 <div id="history">
   <h3>Counting History</h3>
@@ -199,6 +200,7 @@ function haptic(type='light'){
 let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
 let locationLocked = false;
 
+/* ---------- ELEMENTS ---------- */
 const locationSelect = document.getElementById('locationSelect');
 const lockBtn = document.getElementById('lockLocationBtn');
 const qtyInput = document.getElementById('qtyInput');
@@ -206,6 +208,11 @@ const historyBody = document.getElementById('historyBody');
 const productSelect = document.getElementById('productSelect');
 const catalogSelect = document.getElementById('catalogSelect');
 const search = document.getElementById('search');
+
+const fileBtn = document.getElementById('fileBtn');
+const fileInput = document.getElementById('fileInput');
+const fileName = document.getElementById('fileName');
+const exportBtn = document.getElementById('exportBtn');
 
 /* ---------- TOAST ---------- */
 function showToast(msg,type='success'){
@@ -247,7 +254,7 @@ document.getElementById('saveBtn').onclick=()=>{
   data.catalogs[ci].products[pi].packages[ki].records.push({
     qty,
     location:locationSelect.value,
-    time:new Date().toLocaleString()
+    time:new Date().toISOString()
   });
 
   localStorage.setItem('inventory',JSON.stringify(data));
@@ -261,7 +268,7 @@ document.getElementById('saveBtn').onclick=()=>{
 /* ---------- PRODUCT LOGIC ---------- */
 function refresh(){
   catalogSelect.innerHTML='<option value="">All Categories</option>';
-  data.catalogs.forEach((c)=>{
+  data.catalogs.forEach((c,ci)=>{
     const o=document.createElement('option');
     o.value=c.name;
     o.textContent=c.name;
@@ -303,21 +310,109 @@ function updateHistory(){
         s:p.supplier
       });
     });
-  }))));
+  })));
   rows.sort((a,b)=>b.t-a.t);
-  rows.forEach(r=>{
-    historyBody.innerHTML+=`
+  let html = rows.map(r=>`
       <tr>
-        <td>${r.time}</td>
+        <td>${new Date(r.time).toLocaleString()}</td>
         <td>${r.c}</td>
         <td>${r.s}</td>
         <td>${r.p}</td>
         <td>${r.u}</td>
         <td>${r.location}</td>
         <td>${r.qty}</td>
-      </tr>`;
-  });
+      </tr>`).join('');
+  historyBody.innerHTML = html;
 }
+
+/* ---------- CSV IMPORT ---------- */
+fileBtn.addEventListener('click',()=>fileInput.click());
+
+fileInput.addEventListener('change',()=>{
+  if(fileInput.files.length===0) return;
+  const file = fileInput.files[0];
+  fileName.textContent = file.name;
+
+  const reader = new FileReader();
+  reader.onload = e=>{
+    const text = e.target.result;
+    parseCSV(text);
+  };
+  reader.readAsText(file);
+});
+
+function parseCSV(text){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2) return showToast('CSV is empty','warn');
+
+  const headers = lines[0].split(',').map(h=>h.trim());
+  const idx = {
+    category: headers.indexOf('Category'),
+    supplier: headers.indexOf('Supplier'),
+    product: headers.indexOf('Product'),
+    unit: headers.indexOf('Unit')
+  };
+  if(Object.values(idx).some(i=>i<0)) return showToast('CSV headers must include Category,Supplier,Product,Unit','warn');
+
+  data.catalogs = [];
+  const catMap = {};
+
+  for(let i=1;i<lines.length;i++){
+    const cells = lines[i].split(',').map(c=>c.trim());
+    const cat = cells[idx.category] || 'Uncategorized';
+    const sup = cells[idx.supplier] || '';
+    const prod = cells[idx.product] || '';
+    const unit = cells[idx.unit] || '';
+
+    if(!catMap[cat]){
+      catMap[cat] = { name: cat, products: [] };
+      data.catalogs.push(catMap[cat]);
+    }
+    let productObj = catMap[cat].products.find(p=>p.name===prod && p.supplier===sup);
+    if(!productObj){
+      productObj = { name: prod, supplier: sup, packages: [{ unit, records: [] }] };
+      catMap[cat].products.push(productObj);
+    } else {
+      // 如果同一产品存在不同单位，添加新包裹
+      if(!productObj.packages.find(pkg=>pkg.unit===unit)){
+        productObj.packages.push({ unit, records: [] });
+      }
+    }
+  }
+
+  localStorage.setItem('inventory',JSON.stringify(data));
+  refresh();
+  showToast('CSV Loaded');
+}
+
+/* ---------- CSV EXPORT ---------- */
+exportBtn.addEventListener('click',()=>{
+  let rows = [['Time','Category','Supplier','Product','Unit','Location','Qty']];
+  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
+    pkg.records.forEach(r=>{
+      rows.push([
+        r.time,
+        c.name,
+        p.supplier,
+        p.name,
+        pkg.unit,
+        r.location,
+        r.qty
+      ]);
+    });
+  })));
+  const csv = rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'inventory_export.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+search.addEventListener('input',buildProductSelect);
+catalogSelect.addEventListener('change',buildProductSelect);
 
 refresh();
 </script>
