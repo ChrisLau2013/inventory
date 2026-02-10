@@ -200,17 +200,41 @@ manualSaveBtn.onclick=()=>{
   refresh(); showToast('Manual saved');
 };
 
-/* REFRESH UI */
 function refresh(){
-  // 分类唯一
   catalogSelect.innerHTML='<option value="">All Categories</option>';
   const usedCats = new Set();
+
   data.catalogs.forEach(c=>{
-    if(!usedCats.has(c.name)){
-      const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
-      catalogSelect.appendChild(o); usedCats.add(c.name);
-    }
+    if(usedCats.has(c.name)) return;
+    usedCats.add(c.name);
+
+    const o=document.createElement('option');
+    o.value=c.name;
+    o.textContent=c.name;
+    catalogSelect.appendChild(o);
   });
+
+  buildProductSelect();
+  updateHistory();
+}
+
+  function buildProductSelect(){
+  productSelect.innerHTML='<option value="">Select product</option>';
+  const key=search.value.toLowerCase();
+  const cat=catalogSelect.value;
+  data.catalogs.forEach((c,ci)=>{
+    if(cat&&c.name!==cat) return;
+    c.products.forEach((p,pi)=>{
+      if(key&&!p.name.toLowerCase().includes(key)) return;
+      p.packages.forEach((pkg,ki)=>{
+        const o=document.createElement('option');
+        o.value=`${ci}-${pi}-${ki}`;
+        o.textContent=`${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
+        productSelect.appendChild(o);
+      });
+    });
+  });
+}
 
   // 产品下拉
   productSelect.innerHTML='<option value="">Select product</option>';
