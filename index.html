@@ -8,7 +8,6 @@
 <link rel="icon" type="image/png" href="icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Inventory">
-
 <style>
 body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:0; }
 header { background:#1e90ff; color:#fff; text-align:center; padding:14px; font-size:20px; position:sticky; top:0; }
@@ -44,12 +43,10 @@ thead th { position:sticky; top:0; background:#eee; }
 
 <main>
 
-<!-- CSV 文件选择 -->
 <button id="fileBtn">Choose CSV File</button>
 <div id="fileName">No file chosen</div>
 <input type="file" id="fileInput" accept=".csv" hidden>
 
-<!-- Location -->
 <select id="locationSelect">
   <option value="">Select location</option>
   <option>Warehouse Shifts near loading bay</option>
@@ -67,7 +64,6 @@ thead th { position:sticky; top:0; background:#eee; }
 
 <button type="button" id="lockLocationBtn" class="lock-btn disabled">🔓 Location Unlocked</button>
 
-<!-- 分类筛选、搜索、产品选择 -->
 <select id="catalogSelect"><option value="">All Categories</option></select>
 <input id="search" placeholder="Search product">
 <select id="productSelect"><option value="">Select product</option></select>
@@ -75,7 +71,6 @@ thead th { position:sticky; top:0; background:#eee; }
 <input id="qtyInput" type="number" inputmode="numeric" placeholder="Enter quantity">
 <button id="saveBtn">Save Count</button>
 
-<!-- 手动新增 -->
 <button class="secondary" id="manualBtn">➕ Manual Count</button>
 <div id="manualPanel" class="hidden">
   <hr>
@@ -154,7 +149,7 @@ lockBtn.onclick=()=>{
   lockBtn.textContent=locationLocked?'🔒 Location Locked':'🔓 Location Unlocked';
 };
 
-// --- Save normal count ---
+// Save normal count
 document.getElementById('saveBtn').onclick=()=>{
   if(!productSelect.value||!locationSelect.value) return showToast('Missing product or location','warn');
   const qty=parseInt(qtyInput.value); if(isNaN(qty)) return;
@@ -171,14 +166,10 @@ document.getElementById('saveBtn').onclick=()=>{
   showToast('Saved');
 };
 
-// --- Manual add ---
+// Manual add
 manualBtn.onclick=()=>{
   manualPanel.classList.toggle('hidden');
-  manualCategory.innerHTML='';
-  data.catalogs.forEach(c=>{
-    const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
-    manualCategory.appendChild(o);
-  });
+  rebuildManualCategories();
 };
 
 manualSaveBtn.onclick=()=>{
@@ -205,24 +196,31 @@ manualSaveBtn.onclick=()=>{
   showToast('Manual saved');
 };
 
-// --- Refresh UI ---
+// Refresh categories and product select
 function refresh(){
-  // catalogSelect
-  const catSet = new Set();
-  data.catalogs.forEach(c=>catSet.add(c.name));
+  rebuildCategories();
+  rebuildProducts();
+  updateHistory();
+}
+
+function rebuildCategories(){
   catalogSelect.innerHTML='<option value="">All Categories</option>';
-  [...catSet].forEach(cat=>{
-    const o=document.createElement('option'); o.value=cat; o.textContent=cat;
+  data.catalogs.forEach(c=>{
+    const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
     catalogSelect.appendChild(o);
   });
-  // manualCategory
+  rebuildManualCategories();
+}
+
+function rebuildManualCategories(){
   manualCategory.innerHTML='';
-  [...catSet].forEach(cat=>{
-    const o=document.createElement('option'); o.value=cat; o.textContent=cat;
+  data.catalogs.forEach(c=>{
+    const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
     manualCategory.appendChild(o);
   });
+}
 
-  // productSelect
+function rebuildProducts(){
   productSelect.innerHTML='<option value="">Select product</option>';
   const key = search.value.toLowerCase();
   const selectedCat = catalogSelect.value;
@@ -238,11 +236,9 @@ function refresh(){
       });
     });
   });
-
-  updateHistory();
 }
 
-// --- Update history table ---
+// Update history
 function updateHistory(){
   let rows=[];
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
@@ -266,7 +262,7 @@ function updateHistory(){
   `).join('');
 }
 
-// --- CSV Import ---
+// CSV import
 fileBtn.onclick=()=>fileInput.click();
 fileInput.onchange=()=>{
   if(fileInput.files.length===0) return;
@@ -304,7 +300,7 @@ function parseCSV(text){
   showToast('CSV Loaded');
 }
 
-// --- CSV Export ---
+// CSV export
 exportBtn.onclick=()=>{
   let rows=[['Time','Location','Category','Supplier','Product','Unit','Qty','Type']];
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
@@ -318,19 +314,17 @@ exportBtn.onclick=()=>{
   a.download=`inventory_${new Date().toISOString().replace(/[:.]/g,'')}.csv`; a.click();
 };
 
-// --- Clear Data ---
+// Clear data
 clearBtn.onclick=()=>{
   if(confirm('Are you sure you want to clear all inventory data?')){
-    localStorage.removeItem('inventory');
-    data={catalogs:[]};
-    refresh();
-    fileBtn.disabled=false; fileBtn.style.background='';
+    localStorage.removeItem('inventory'); data={catalogs:[]};
+    refresh(); fileBtn.disabled=false; fileBtn.style.background='';
     showToast('Data cleared');
   }
 };
 
-search.oninput=refresh;
-catalogSelect.onchange=refresh;
+search.oninput=rebuildProducts;
+catalogSelect.onchange=rebuildProducts;
 
 refresh();
 </script>
