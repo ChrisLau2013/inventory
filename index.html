@@ -17,6 +17,7 @@ main { padding:14px; }
 input, select, button { width:100%; font-size:18px; padding:10px; margin-bottom:12px; border-radius:6px; box-sizing:border-box; }
 button { background:#1e90ff; color:#fff; border:none; }
 button.secondary { background:#666; }
+
 .hidden { display:none; }
 
 #history { max-height:260px; overflow:auto; border-top:1px solid #ccc; }
@@ -43,7 +44,7 @@ thead th { position:sticky; top:0; background:#eee; }
 
 <main>
 
-<!-- CSV -->
+<!-- CSV 文件选择 -->
 <button id="fileBtn">Choose CSV File</button>
 <div id="fileName">No file chosen</div>
 <input type="file" id="fileInput" accept=".csv" hidden>
@@ -66,16 +67,15 @@ thead th { position:sticky; top:0; background:#eee; }
 
 <button type="button" id="lockLocationBtn" class="lock-btn disabled">🔓 Location Unlocked</button>
 
-<!-- Category / Search / Product -->
+<!-- 分类筛选、搜索、产品选择 -->
 <select id="catalogSelect"><option value="">All Categories</option></select>
 <input id="search" placeholder="Search product">
 <select id="productSelect"><option value="">Select product</option></select>
 
-<!-- Quantity -->
 <input id="qtyInput" type="number" inputmode="numeric" placeholder="Enter quantity">
 <button id="saveBtn">Save Count</button>
 
-<!-- Manual Temporary -->
+<!-- 手动新增 -->
 <button class="secondary" id="manualBtn">➕ Manual Count</button>
 <div id="manualPanel" class="hidden">
   <hr>
@@ -90,8 +90,8 @@ thead th { position:sticky; top:0; background:#eee; }
 
 <hr>
 <button class="secondary" id="exportBtn">Export CSV</button>
+<button class="secondary" id="clearBtn">🗑️ Clear Data</button>
 
-<!-- History -->
 <div id="history">
   <table>
     <thead>
@@ -115,14 +115,9 @@ thead th { position:sticky; top:0; background:#eee; }
 <div id="toast" class="success">Saved</div>
 
 <script>
-/* Haptic */
-function haptic(t='light'){ if(navigator.vibrate) navigator.vibrate(t==='medium'?20:10); }
-
-/* Data */
 let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
-let locationLocked = false;
+let locationLocked=false;
 
-/* Elements */
 const locationSelect=document.getElementById('locationSelect');
 const lockBtn=document.getElementById('lockLocationBtn');
 const qtyInput=document.getElementById('qtyInput');
@@ -144,16 +139,14 @@ const fileBtn=document.getElementById('fileBtn');
 const fileInput=document.getElementById('fileInput');
 const fileName=document.getElementById('fileName');
 const exportBtn=document.getElementById('exportBtn');
+const clearBtn=document.getElementById('clearBtn');
 
-/* Toast */
 function showToast(msg,type='success'){
   const t=document.getElementById('toast');
-  t.textContent=msg;
-  t.className=type+' show';
+  t.textContent=msg; t.className=type+' show';
   setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-/* Location Lock */
 lockBtn.onclick=()=>{
   if(!locationSelect.value) return;
   locationLocked=!locationLocked;
@@ -161,25 +154,24 @@ lockBtn.onclick=()=>{
   lockBtn.textContent=locationLocked?'🔒 Location Locked':'🔓 Location Unlocked';
 };
 
-/* Save regular */
+// --- Save normal count ---
 document.getElementById('saveBtn').onclick=()=>{
-  if(!productSelect.value || !locationSelect.value) return showToast('Missing','warn');
-  const qty=parseInt(qtyInput.value);
-  if(isNaN(qty)) return;
+  if(!productSelect.value||!locationSelect.value) return showToast('Missing product or location','warn');
+  const qty=parseInt(qtyInput.value); if(isNaN(qty)) return;
 
   const [ci,pi,ki]=productSelect.value.split('-');
   data.catalogs[ci].products[pi].packages[ki].records.push({
-    qty, location: locationSelect.value, time: new Date().toISOString()
+    qty, location:locationSelect.value, time:new Date().toISOString()
   });
 
-  localStorage.setItem('inventory', JSON.stringify(data));
+  localStorage.setItem('inventory',JSON.stringify(data));
   qtyInput.value='';
   if(!locationLocked) locationSelect.value='';
   refresh();
   showToast('Saved');
 };
 
-/* Manual Temporary */
+// --- Manual add ---
 manualBtn.onclick=()=>{
   manualPanel.classList.toggle('hidden');
   manualCategory.innerHTML='';
@@ -196,35 +188,33 @@ manualSaveBtn.onclick=()=>{
   const prod=manualProduct.value;
   const unit=manualUnit.value;
   const qty=parseInt(manualQty.value);
-  if(!prod||!unit||isNaN(qty)) return;
+  if(!prod||!unit||isNaN(qty)) return showToast('Incomplete manual entry','warn');
 
   let c=data.catalogs.find(x=>x.name===cat);
-  if(!c){c={name:cat, products:[]}; data.catalogs.push(c);}
+  if(!c){c={name:cat,products:[]}; data.catalogs.push(c);}
   let p=c.products.find(x=>x.name===prod && x.supplier===sup);
-  if(!p){p={name:prod, supplier:sup, packages:[]}; c.products.push(p);}
+  if(!p){p={name:prod,supplier:sup,packages:[]}; c.products.push(p);}
   let pkg=p.packages.find(x=>x.unit===unit);
-  if(!pkg){pkg={unit, records:[]}; p.packages.push(pkg);}
+  if(!pkg){pkg={unit,records:[]}; p.packages.push(pkg);}
 
-  pkg.records.push({ qty, location: locationSelect.value, time:new Date().toISOString(), temp:true });
+  pkg.records.push({qty, location:locationSelect.value, time:new Date().toISOString(), temp:true});
 
-  localStorage.setItem('inventory', JSON.stringify(data));
+  localStorage.setItem('inventory',JSON.stringify(data));
+  manualProduct.value=''; manualUnit.value=''; manualQty.value=''; manualSupplier.value='';
   refresh();
   showToast('Manual saved');
 };
 
-/* Refresh product select & history */
+// --- Refresh UI ---
 function refresh(){
-  // --- 分类 select ---
+  // catalogSelect
   const catSet = new Set();
   data.catalogs.forEach(c=>catSet.add(c.name));
-
-  // catalogSelect
   catalogSelect.innerHTML='<option value="">All Categories</option>';
   [...catSet].forEach(cat=>{
     const o=document.createElement('option'); o.value=cat; o.textContent=cat;
     catalogSelect.appendChild(o);
   });
-
   // manualCategory
   manualCategory.innerHTML='';
   [...catSet].forEach(cat=>{
@@ -232,14 +222,14 @@ function refresh(){
     manualCategory.appendChild(o);
   });
 
-  // --- 产品 select ---
+  // productSelect
   productSelect.innerHTML='<option value="">Select product</option>';
   const key = search.value.toLowerCase();
   const selectedCat = catalogSelect.value;
   data.catalogs.forEach((c,ci)=>{
-    if(selectedCat && c.name !== selectedCat) return; // 过滤类别
+    if(selectedCat && c.name!==selectedCat) return;
     c.products.forEach((p,pi)=>{
-      if(key && !p.name.toLowerCase().includes(key)) return; // 过滤搜索
+      if(key && !p.name.toLowerCase().includes(key)) return;
       p.packages.forEach((pkg,ki)=>{
         const o=document.createElement('option');
         o.value=`${ci}-${pi}-${ki}`;
@@ -250,25 +240,9 @@ function refresh(){
   });
 
   updateHistory();
-}{
-  catalogSelect.innerHTML='<option value="">All Categories</option>';
-  data.catalogs.forEach((c,ci)=>{
-    const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
-    catalogSelect.appendChild(o);
-  });
-
-  productSelect.innerHTML='<option value="">Select product</option>';
-  data.catalogs.forEach((c,ci)=>c.products.forEach((p,pi)=>p.packages.forEach((pkg,ki)=>{
-    const o=document.createElement('option');
-    o.value=`${ci}-${pi}-${ki}`;
-    o.textContent=`${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
-    productSelect.appendChild(o);
-  })));
-
-  updateHistory();
 }
 
-/* Update history table */
+// --- Update history table ---
 function updateHistory(){
   let rows=[];
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
@@ -287,79 +261,79 @@ function updateHistory(){
       <td>${r.p}</td>
       <td>${r.u}</td>
       <td>${r.qty}</td>
-      <td class="${r.temp?'temp-tag':''}">${r.temp?'Temporary':'Regular'}</td>
+      <td class="${r.temp?'temp-tag':''}">${r.temp?'Temporary':'Formal'}</td>
     </tr>
   `).join('');
 }
 
-/* CSV Import */
-fileBtn.onclick = ()=>fileInput.click();
-fileInput.onchange = ()=>{
+// --- CSV Import ---
+fileBtn.onclick=()=>fileInput.click();
+fileInput.onchange=()=>{
   if(fileInput.files.length===0) return;
-  const file=fileInput.files[0];
-  fileName.textContent=file.name;
-  const reader = new FileReader();
-  reader.onload = e=>parseCSV(e.target.result);
+  const file=fileInput.files[0]; fileName.textContent=file.name;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result; parseCSV(text);
+    fileBtn.disabled=true; fileBtn.style.background='#ccc';
+  };
   reader.readAsText(file);
 };
+
 function parseCSV(text){
-  const lines=text.split(/\r?\n/).filter(l=>l.trim());
-  if(lines.length<2) return showToast('CSV empty','warn');
+  const lines = text.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2) return showToast('CSV is empty','warn');
   const headers=lines[0].split(',').map(h=>h.trim());
-  const idx = {
-    category: headers.indexOf('Category'),
-    supplier: headers.indexOf('Supplier'),
-    product: headers.indexOf('Product'),
-    unit: headers.indexOf('Unit')
-  };
-  if(Object.values(idx).some(i=>i<0)) return showToast('CSV header error','warn');
+  const idx = { category: headers.indexOf('Category'), supplier: headers.indexOf('Supplier'), product: headers.indexOf('Product'), unit: headers.indexOf('Unit') };
+  if(Object.values(idx).some(i=>i<0)) return showToast('CSV headers must include Category,Supplier,Product,Unit','warn');
 
   data.catalogs=[];
   const catMap={};
   for(let i=1;i<lines.length;i++){
-    const cells=lines[i].split(',').map(c=>c.trim());
+    const cells = lines[i].split(',').map(c=>c.trim());
     const cat=cells[idx.category]||'Uncategorized';
     const sup=cells[idx.supplier]||'';
     const prod=cells[idx.product]||'';
     const unit=cells[idx.unit]||'';
-
     if(!catMap[cat]){ catMap[cat]={name:cat,products:[]}; data.catalogs.push(catMap[cat]); }
-
-    let p=catMap[cat].products.find(x=>x.name===prod && x.supplier===sup);
-    if(!p){ p={name:prod,supplier:sup,packages:[]}; catMap[cat].products.push(p); }
-
-    if(!p.packages.find(x=>x.unit===unit)) p.packages.push({unit,records:[]});
+    let productObj=catMap[cat].products.find(p=>p.name===prod && p.supplier===sup);
+    if(!productObj){ productObj={name:prod,supplier:sup,packages:[{unit,records:[]}]}; catMap[cat].products.push(productObj); }
+    else{ if(!productObj.packages.find(pkg=>pkg.unit===unit)) productObj.packages.push({unit,records:[]}); }
   }
-
-  localStorage.setItem('inventory', JSON.stringify(data));
+  localStorage.setItem('inventory',JSON.stringify(data));
   refresh();
   showToast('CSV Loaded');
 }
 
-/* CSV Export */
-exportBtn.onclick = ()=>{
+// --- CSV Export ---
+exportBtn.onclick=()=>{
   let rows=[['Time','Location','Category','Supplier','Product','Unit','Qty','Type']];
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
     pkg.records.forEach(r=>{
-      rows.push([r.time,r.location,c.name,p.supplier,p.name,pkg.unit,r.qty,r.temp?'Temporary':'Regular']);
+      rows.push([r.time,r.location,c.name,p.supplier,p.name,pkg.unit,r.qty,r.temp?'Temporary':'Formal']);
     });
   })));
-  const csv=rows.map(r=>r.map(v=>`"${v??''}"`).join(',')).join('\n');
+  const csv=rows.map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
   const blob=new Blob([csv],{type:'text/csv'});
-  const url=URL.createObjectURL(blob);
-  const now=new Date();
-  const pad=n=>n.toString().padStart(2,'0');
-  const filename=`inventory_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.csv`;
-  const a=document.createElement('a');
-  a.href=url; a.download=filename; a.click();
-  URL.revokeObjectURL(url);
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`inventory_${new Date().toISOString().replace(/[:.]/g,'')}.csv`; a.click();
 };
 
-/* Search / filter */
+// --- Clear Data ---
+clearBtn.onclick=()=>{
+  if(confirm('Are you sure you want to clear all inventory data?')){
+    localStorage.removeItem('inventory');
+    data={catalogs:[]};
+    refresh();
+    fileBtn.disabled=false; fileBtn.style.background='';
+    showToast('Data cleared');
+  }
+};
+
 search.oninput=refresh;
 catalogSelect.onchange=refresh;
 
 refresh();
 </script>
+
 </body>
 </html>
