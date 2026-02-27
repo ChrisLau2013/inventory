@@ -299,7 +299,7 @@ function saveSelected(){
     time:new Date().toLocaleString()
   });
 
-  save(); refresh(); qtyInput.value='';
+  save(); refresh(); qtyInput.value=''; search.value='';productselect.value='';
   if(!locationLocked) locationSelect.value='';
   showToast('Saved');
 }
