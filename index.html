@@ -345,7 +345,7 @@ function exportCSV(){
   let csv='date,time,location,category,supplier,product,unit,qty\n';
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
     pkg.records.forEach(r=>{
-      csv+=`${r.time},${r.location},${c.name},${p.supplier||''},${p.name},${pkg.unit},${r.qty.tofixed(2)}\n`;
+      csv+=`${r.time},${r.location},${c.name},${p.supplier||''},${p.name},${pkg.unit},${r.qty.toFixed(2)}\n`;
     });
   })));
   const a=document.createElement('a');
