@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Inventory Counting</title>
+<title>Inventory Counting with OCR</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
 <link rel="icon" type="image/png" href="icon.png">
@@ -35,16 +35,19 @@ thead th { position:sticky; top:0; background:#eee; }
 
 .hidden { display:none; }
 
-#video { width:100%; max-height:200px; border:1px solid #ccc; margin-bottom:10px; }
+video { width:100%; border-radius:8px; margin-bottom:12px; }
 </style>
 </head>
 
 <body>
-<header>Inventory Counting</header>
+<header>Inventory Counting with OCR</header>
 
 <main>
 
 <h2>Inventory Counting</h2>
+
+<!-- Camera preview -->
+<video id="video" autoplay playsinline></video>
 
 <!-- File upload -->
 <input type="file" id="fileInput" accept=".csv" hidden>
@@ -82,10 +85,6 @@ thead th { position:sticky; top:0; background:#eee; }
 <select id="catalogSelect" onchange="buildProductSelect()">
   <option value="">All Categories</option>
 </select>
-
-<!-- OCR摄像头 -->
-<video id="video" autoplay muted></video>
-<button type="button" onclick="startOCR()">Start OCR</button>
 
 <input id="search" placeholder="Search product" oninput="buildProductSelect()">
 
@@ -131,10 +130,11 @@ thead th { position:sticky; top:0; background:#eee; }
 
 <div id="toast"><span class="icon"></span><span class="msg"></span></div>
 
+<!-- Tesseract.js OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-<script>
-// ---------- 基础 ----------
 
+<script>
+// ---------- 工具 ----------
 function parseCSVLine(line){
   const result=[],len=line.length;
   let current='',inQuotes=false;
@@ -154,12 +154,11 @@ let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
 const fileInput = document.getElementById('fileInput');
 const fileBtn = document.getElementById('fileBtn');
 const fileNameDiv = document.getElementById('fileName');
-
 const locationSelect = document.getElementById('locationSelect');
 const lockBtn = document.getElementById('lockLocationBtn');
 const catalogSelect = document.getElementById('catalogSelect');
 const productSelect = document.getElementById('productSelect');
-const searchInput = document.getElementById('search');
+const search = document.getElementById('search');
 const qtyInput = document.getElementById('qtyInput');
 const info = document.getElementById('info');
 const manualPanel = document.getElementById('manualPanel');
@@ -168,7 +167,12 @@ const video = document.getElementById('video');
 
 // ---------- 状态 ----------
 let locationLocked = false;
-let ocrWorker;
+lockBtn.onclick = () => {
+  if(!locationSelect.value) return showToast('Please select location first','warn');
+  locationLocked = !locationLocked;
+  lockBtn.textContent = locationLocked ? '🔒 Location Locked' : '🔓 Location Unlocked';
+  lockBtn.classList.toggle('locked',locationLocked);
+};
 
 // ---------- Toast ----------
 function showToast(msg,type='success'){
@@ -179,31 +183,21 @@ function showToast(msg,type='success'){
   setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-// ---------- Location Lock ----------
-locationSelect.onchange = () => { lockBtn.disabled = !locationSelect.value; };
-lockBtn.onclick = () => {
-  if(!locationSelect.value){ showToast('Please select location first','warn'); return; }
-  locationLocked = !locationLocked;
-  lockBtn.textContent = locationLocked ? '🔒 Location Locked' : '🔓 Location Unlocked';
-  lockBtn.classList.toggle('locked',locationLocked);
-};
-
 // ---------- File ----------
-fileBtn.onclick = ()=>fileInput.click();
-fileInput.onchange = e => {
-  const file = e.target.files[0];
+fileBtn.onclick=()=>fileInput.click();
+fileInput.onchange=e=>{
+  const file=e.target.files[0];
   if(!file) return;
   fileNameDiv.textContent=`Loaded: ${file.name}`;
   importCSV(file);
 };
-
 function importCSV(file){
-  const reader = new FileReader();
-  reader.onload = e => {
-    const lines = e.target.result.split(/\r?\n/).filter(l=>l.trim());
-    const headers = parseCSVLine(lines[0]).map(h=>h.toLowerCase());
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());
+    const headers=parseCSVLine(lines[0]).map(h=>h.toLowerCase());
     lines.slice(1).forEach(l=>{
-      const v = parseCSVLine(l), o={};
+      const v=parseCSVLine(l),o={};
       headers.forEach((h,i)=>o[h]=v[i]||'');
       addProduct(o.category||'Temporary',o.product,o.unit,o.supplier);
     });
@@ -215,11 +209,12 @@ function importCSV(file){
 // ---------- Data ----------
 function addProduct(cat,prod,unit,sup){
   if(!prod||!unit) return;
-  let c = data.catalogs.find(x=>x.name===cat);
+  let c=data.catalogs.find(x=>x.name===cat);
   if(!c){ c={name:cat,products:[]}; data.catalogs.push(c); }
-  let p = c.products.find(x=>x.name===prod&&x.supplier===sup);
+  let p=c.products.find(x=>x.name===prod&&x.supplier===sup);
   if(!p){ p={name:prod,supplier:sup,packages:[]}; c.products.push(p); }
-  if(!p.packages.find(x=>x.unit===unit)) p.packages.push({unit,records:[]});
+  if(!p.packages.find(x=>x.unit===unit))
+    p.packages.push({unit,records:[]});
 }
 function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
 
@@ -227,21 +222,19 @@ function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
 function refresh(){
   catalogSelect.innerHTML='<option value="">All Categories</option>';
   data.catalogs.forEach(c=>{
-    const o=document.createElement('option');
-    o.value=c.name; o.textContent=c.name;
+    const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
     catalogSelect.appendChild(o);
   });
   buildProductSelect(); updateHistory();
 }
-
 function buildProductSelect(){
   productSelect.innerHTML='<option value="">Select product</option>';
-  const key=searchInput.value.toLowerCase();
+  const key=search.value.toLowerCase();
   const cat=catalogSelect.value;
   data.catalogs.forEach((c,ci)=>{
-    if(cat && c.name!==cat) return;
+    if(cat&&c.name!==cat) return;
     c.products.forEach((p,pi)=>{
-      if(key && !p.name.toLowerCase().includes(key)) return;
+      if(key&&!p.name.toLowerCase().includes(key)) return;
       p.packages.forEach((pkg,ki)=>{
         const o=document.createElement('option');
         o.value=`${ci}-${pi}-${ki}`;
@@ -251,12 +244,11 @@ function buildProductSelect(){
     });
   });
 }
-
 function showInfo(){
   if(!productSelect.value){ info.textContent=''; return; }
   const [ci,pi,ki]=productSelect.value.split('-');
   const r=data.catalogs[ci].products[pi].packages[ki].records.at(-1);
-  info.textContent = r ? `Last: ${r.qty} @ ${r.location}` : 'No record';
+  info.textContent=r?`Last: ${r.qty} @ ${r.location}`:'No record';
 }
 
 // ---------- Save ----------
@@ -267,9 +259,9 @@ function saveSelected(){
   if(isNaN(qty)) return showToast('Enter quantity','warn');
   const [ci,pi,ki]=productSelect.value.split('-');
   data.catalogs[ci].products[pi].packages[ki].records.push({
-    qty, location: locationSelect.value, time: new Date().toLocaleString()
+    qty,location:locationSelect.value,time:new Date().toLocaleString()
   });
-  save(); refresh(); qtyInput.value=''; searchInput.value=''; productSelect.value='';
+  save(); refresh(); qtyInput.value=''; search.value=''; productSelect.value='';
   if(!locationLocked) locationSelect.value='';
   showToast('Saved');
 }
@@ -278,12 +270,13 @@ function saveSelected(){
 function toggleManual(){ manualPanel.classList.toggle('hidden'); }
 function manualSave(){
   if(!locationSelect.value) return showToast('Select location','warn');
-  const prod=mProd.value.trim(),unit=mUnit.value.trim(),sup=mSup.value.trim(),qty=parseFloat(mQty.value);
+  const prod=mProd.value.trim(),unit=mUnit.value.trim();
+  const sup=mSup.value.trim(),qty=parseFloat(mQty.value);
   if(!prod||!unit||isNaN(qty)) return showToast('Complete fields','warn');
   addProduct('Temporary',prod,unit,sup);
   const c=data.catalogs.find(x=>x.name==='Temporary');
   const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
-  p.packages[0].records.push({qty, location: locationSelect.value, time: new Date().toLocaleString()});
+  p.packages[0].records.push({ qty,location:locationSelect.value,time:new Date().toLocaleString() });
   save(); refresh(); mProd.value=mUnit.value=mSup.value=mQty.value=''; showToast('Temporary saved');
 }
 
@@ -292,7 +285,7 @@ function updateHistory(){
   historyBody.innerHTML='';
   let rows=[];
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
-    pkg.records.forEach(r=>{ rows.push({...r,c:c.name,p:p.name,u:pkg.unit,s:p.supplier}); });
+    pkg.records.forEach(r=>rows.push({...r,c:c.name,p:p.name,u:pkg.unit,s:p.supplier}));
   })));
   rows.reverse().forEach(r=>{
     historyBody.innerHTML+=
@@ -301,59 +294,54 @@ function updateHistory(){
   });
 }
 
-// ---------- Export CSV ----------
+// ---------- Export ----------
 function exportCSV(){
   let csv='date,time,location,category,supplier,product,unit,qty\n';
   data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
     pkg.records.forEach(r=>{
-      csv+=`${r.time},${r.location},${c.name},${p.supplier||''},${p.name},${pkg.unit},${Number(r.qty).toFixed(2)}\n`;
+      const qty = Number(r.qty || 0).toFixed(2);
+      csv+=`${r.time},${r.location},${c.name},${p.supplier||''},${p.name},${pkg.unit},${qty}\n`;
     });
   })));
-  if(csv.split('\n').length<=1){ showToast('No data to export','warn'); return; }
-  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(blob);
-  const now = new Date();
-  const pad = n => n.toString().padStart(2,'0');
-  link.download = `inventory_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}.csv`;
-  document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(link.href);
-  showToast('CSV Exported');
+  if(csv.split('\n').length <= 1){ showToast('No data to export','warn'); return; }
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
+  const now = new Date(); const pad=n=>n.toString().padStart(2,'0');
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+  link.download = `inventory_${dateStr}.csv`; document.body.appendChild(link);
+  link.click(); document.body.removeChild(link); showToast('CSV Exported');
 }
 
-// ---------- Clear ----------
 function clearAll(){ if(confirm('Clear all data?')){ localStorage.clear(); location.reload(); } }
 
-// ---------- OCR 实时识别 ----------
-async function startOCR(){
-  if(!ocrWorker){
-    ocrWorker = Tesseract.createWorker({ logger: m => console.log(m) });
-    await ocrWorker.load();
-    await ocrWorker.loadLanguage('eng'); // 中文可改 'eng+chi_sim'
-    await ocrWorker.initialize('eng');
+refresh();
+
+// ---------- Camera & OCR ----------
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+async function startCamera(){
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact:"environment" } }, audio:false });
+    video.srcObject = stream;
+  } catch(e){
+    console.warn('后置摄像头失败，尝试默认摄像头', e);
+    const stream = await navigator.mediaDevices.getUserMedia({ video:true,audio:false });
+    video.srcObject = stream;
   }
-  recognizeFrame();
 }
+startCamera();
 
 async function recognizeFrame(){
-  if(video.videoWidth===0 || video.videoHeight===0){ requestAnimationFrame(recognizeFrame); return; }
-  const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  const ctx = canvas.getContext('2d');
+  if(video.readyState !== 4){ requestAnimationFrame(recognizeFrame); return; }
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
   ctx.drawImage(video,0,0,canvas.width,canvas.height);
-
-  const { data:{ text } } = await ocrWorker.recognize(canvas);
-  if(text.trim()){ searchInput.value = text.trim(); buildProductSelect(); }
-
-  requestAnimationFrame(recognizeFrame);
+  const { data: { text } } = await Tesseract.recognize(canvas,{lang:'eng'});
+  const cleaned = text.replace(/\n/g,' ').trim();
+  if(cleaned) search.value = cleaned.toLowerCase(); buildProductSelect();
+  setTimeout(recognizeFrame, 2000); // 每2秒识别一次
 }
+recognizeFrame();
 
-// ---------- 初始化摄像头 ----------
-navigator.mediaDevices.getUserMedia({ video:true })
-  .then(stream => { video.srcObject = stream; })
-  .catch(err => console.error('Camera error:', err));
-
-refresh();
 </script>
 </body>
 </html>
