@@ -10,6 +10,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Inventory">
 <style>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:0; }
 header { background:#1e90ff; color:#fff; text-align:center; padding:14px; font-size:20px; position:sticky; top:0; }
 main { padding:14px; }
@@ -92,7 +93,13 @@ thead th { position:sticky; top:0; background:#eee; }
 
 <input id="qtyInput" type="number" inputmode="decimal" step="0.01" placeholder="Enter quantity">
 <button onclick="saveSelected()">Save Count</button>
+<button onclick="startLiveOCR()">📷 Live OCR Scan</button>
+<button onclick="stopLiveOCR()" class="secondary">Stop Scan</button>
 
+<div id="liveBox" class="hidden">
+  <video id="liveVideo" autoplay playsinline style="width:100%;border-radius:8px;margin-bottom:10px;"></video>
+  <canvas id="liveCanvas" style="display:none;"></canvas>
+</div>
 <button class="secondary" onclick="toggleManual()">Product not found? Manual entry</button>
 
 <div id="manualPanel" class="hidden">
@@ -383,6 +390,184 @@ function clearAll(){
 }
 
 refresh();
+// ===============================
+// 🔥 实时 OCR + 多关键词权重匹配
+// ===============================
+
+let liveStream = null;
+let scanning = false;
+let ocrWorker = null;
+
+// ---------- 文本清洗 ----------
+function normalize(text){
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+
+// ---------- 编辑距离相似度 ----------
+function similarity(a,b){
+  a=normalize(a);
+  b=normalize(b);
+
+  const matrix=[];
+  for(let i=0;i<=b.length;i++){ matrix[i]=[i]; }
+  for(let j=0;j<=a.length;j++){ matrix[0][j]=j; }
+
+  for(let i=1;i<=b.length;i++){
+    for(let j=1;j<=a.length;j++){
+      if(b[i-1]===a[j-1]){
+        matrix[i][j]=matrix[i-1][j-1];
+      }else{
+        matrix[i][j]=Math.min(
+          matrix[i-1][j-1]+1,
+          matrix[i][j-1]+1,
+          matrix[i-1][j]+1
+        );
+      }
+    }
+  }
+
+  const dist=matrix[b.length][a.length];
+  return 1 - dist/Math.max(a.length,b.length);
+}
+
+// ---------- 启动 OCR ----------
+async function startLiveOCR(){
+
+  if(!locationSelect.value){
+    showToast('Select location first','warn');
+    return;
+  }
+
+  document.getElementById("liveBox").classList.remove("hidden");
+
+  liveStream = await navigator.mediaDevices.getUserMedia({
+    video:{ facingMode:"environment" }
+  });
+
+  const video=document.getElementById("liveVideo");
+  video.srcObject=liveStream;
+
+  ocrWorker = await Tesseract.createWorker("eng");
+
+  scanning=true;
+  scanLoop();
+}
+
+// ---------- 循环识别 ----------
+async function scanLoop(){
+  if(!scanning) return;
+
+  const video=document.getElementById("liveVideo");
+  const canvas=document.getElementById("liveCanvas");
+  const ctx=canvas.getContext("2d");
+
+  canvas.width=video.videoWidth;
+  canvas.height=video.videoHeight;
+
+  ctx.drawImage(video,0,0);
+
+  const { data:{ text } } = await ocrWorker.recognize(canvas);
+
+  matchProductByText(text);
+
+  setTimeout(scanLoop,1500);
+}
+
+// ---------- 多关键词权重算法 ----------
+function matchProductByText(rawText){
+
+  const text = normalize(rawText);
+  if(text.length<3) return;
+
+  let bestMatch=null;
+  let bestScore=0;
+
+  data.catalogs.forEach((c,ci)=>{
+    c.products.forEach((p,pi)=>{
+      p.packages.forEach((pkg,ki)=>{
+
+        let productScore=0;
+        let supplierScore=0;
+        let unitScore=0;
+
+        // 产品名分词
+        normalize(p.name).split(" ").forEach(word=>{
+          if(word.length>2){
+            productScore=Math.max(productScore, similarity(text,word));
+          }
+        });
+
+        // 供应商
+        if(p.supplier){
+          if(text.includes(normalize(p.supplier))){
+            supplierScore=1;
+          }else{
+            supplierScore=similarity(text,p.supplier);
+          }
+        }
+
+        // 单位
+        if(text.includes(normalize(pkg.unit))){
+          unitScore=1;
+        }else{
+          unitScore=similarity(text,pkg.unit);
+        }
+
+        const totalScore=
+          productScore*0.6+
+          supplierScore*0.25+
+          unitScore*0.15;
+
+        if(totalScore>bestScore){
+          bestScore=totalScore;
+          bestMatch={
+            catalog:c.name,
+            index:`${ci}-${pi}-${ki}`,
+            name:p.name,
+            score:totalScore
+          };
+        }
+
+      });
+    });
+  });
+
+  if(bestScore>0.65){
+
+    catalogSelect.value=bestMatch.catalog;
+    buildProductSelect();
+    productSelect.value=bestMatch.index;
+    showInfo();
+
+    showToast(
+      `Matched: ${bestMatch.name} (${Math.round(bestScore*100)}%)`
+    );
+
+    stopLiveOCR();
+  }
+}
+
+// ---------- 停止 ----------
+function stopLiveOCR(){
+
+  scanning=false;
+
+  if(liveStream){
+    liveStream.getTracks().forEach(t=>t.stop());
+    liveStream=null;
+  }
+
+  if(ocrWorker){
+    ocrWorker.terminate();
+    ocrWorker=null;
+  }
+
+  document.getElementById("liveBox").classList.add("hidden");
+}
 </script>
 </body>
 </html>
