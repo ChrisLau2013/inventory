@@ -289,7 +289,7 @@ function saveSelected(){
   if(!productSelect.value) return showToast('Select product','warn');
   if(!locationSelect.value) return showToast('Select location','warn');
 
-  const qty=parsefloat(qtyInput.value);
+  const qty=parseFloat(qtyInput.value);
   if(isNaN(qty)) return showToast('Enter quantity','warn');
 
   const [ci,pi,ki]=productSelect.value.split('-');
@@ -310,7 +310,7 @@ function toggleManual(){ manualPanel.classList.toggle('hidden'); }
 function manualSave(){
   if(!locationSelect.value) return showToast('Select location','warn');
   const prod=mProd.value.trim(),unit=mUnit.value.trim();
-  const sup=mSup.value.trim(),qty=parsefloat(mQty.value);
+  const sup=mSup.value.trim(),qty=parseFloat(mQty.value);
   if(!prod||!unit||isNaN(qty)) return showToast('Complete fields','warn');
 
   addProduct('Temporary',prod,unit,sup);
