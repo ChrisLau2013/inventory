@@ -152,6 +152,7 @@ video { width:100%; border:1px solid #ccc; border-radius:8px; }
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script>
+// ⭐ OCR Worker 初始化
 let worker = null;
 async function initOCR(){
   worker = await Tesseract.createWorker('eng');
@@ -159,6 +160,16 @@ async function initOCR(){
     tessedit_pageseg_mode: 7,
     tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '
   });
+}
+// ---------- 停止 OCR 函数 ----------
+function stopOCR(){
+  ocrActive = false;
+  if(video.srcObject){
+    video.srcObject.getTracks().forEach(track => track.stop());
+    video.srcObject = null;
+  }
+  videoContainer.classList.add('hidden');
+  ocrBtn.textContent = "Start OCR Scan";
 }
 // ---------- 工具 ----------
 function parseCSVLine(line){
@@ -366,38 +377,34 @@ function clearAll(){ if(confirm('Clear all data?')){ localStorage.clear(); locat
 // ---------- OCR ----------
 ocrBtn.onclick = async () => {
 
-  if(!ocrActive){
-
-    ocrBtn.textContent = 'Initializing OCR...';
-    ocrBtn.disabled = true;
-
-    if(!worker){
-      await initOCR();   // ⭐ 只初始化一次
-    }
-
-    ocrActive = true;
-    ocrBtn.textContent='Stop OCR Scan';
-    ocrBtn.disabled = false;
-    videoContainer.classList.remove('hidden');
-
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" }
-    });
-
-    video.srcObject = stream;
-
-    recognizeFrame();
-
-  }else{
-    ocrActive = false;
-    ocrBtn.textContent='Start OCR Scan';
-    videoContainer.classList.add('hidden');
-
-    if(video.srcObject){
-      video.srcObject.getTracks().forEach(t=>t.stop());
-      video.srcObject=null;
-    }
+  // 如果视频区域已经显示，关闭 OCR
+  if(ocrActive){
+    stopOCR();
+    return;
   }
+
+  // ✅ 视频框必须显示才开始扫描
+  videoContainer.classList.remove('hidden');  // 显示红框 + 视频
+  ocrActive = true;
+  ocrBtn.textContent = "Stop OCR Scan";
+
+  // 初始化 OCR worker（只初始化一次）
+  if(!worker){
+    ocrBtn.textContent = "Initializing OCR...";
+    ocrBtn.disabled = true;
+    await initOCR();
+    ocrBtn.disabled = false;
+    ocrBtn.textContent = "Stop OCR Scan";
+  }
+
+  // 打开摄像头
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" }
+  });
+  video.srcObject = stream;
+
+  // 开始扫描
+  recognizeFrame();
 };
 
 let lastResult = '';
@@ -455,18 +462,9 @@ async function recognizeFrame(){
       if(navigator.vibrate){
         navigator.vibrate([100,50,100]);
       }
-      // ✅ 关闭 OCR
-      ocrActive = false;
-      // 关闭摄像头
-      if(video.srcObject){
-        video.srcObject.getTracks().forEach(track => track.stop());
-        video.srcObject = null;
-      }
-      // 隐藏视频区域
-      videoContainer.classList.add('hidden');
-      // 恢复按钮文字
-      
-      ocrBtn.textContent='Start OCR Scan';
+      // ✅ 成功后关闭 OCR
+      stopOCR();
+
 
       return;
     }
