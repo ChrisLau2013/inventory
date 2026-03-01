@@ -443,7 +443,11 @@ async function recognizeFrame(){
       // 显示结果
       search.value = cleaned;
       buildProductSelect();
-
+      // ⭐ 自动选中唯一匹配项
+      if(productSelect.options.length === 2){
+        productSelect.selectedIndex = 1;
+        showInfo();
+      }
       // 🔔 成功提示
       showToast("Product Detected: " + cleaned,'success');
 
