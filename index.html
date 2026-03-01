@@ -386,7 +386,7 @@ ocrBtn.onclick = async () => {
   // ✅ 视频框必须显示才开始扫描
   videoContainer.classList.remove('hidden');  // 显示红框 + 视频
   ocrActive = true;
-  ocrBtn.textContent = "Stop OCR Scan";
+  ocrBtn.textContent = "Click Red Box to Scan";
 
   // 初始化 OCR worker（只初始化一次）
   if(!worker){
@@ -394,7 +394,7 @@ ocrBtn.onclick = async () => {
     ocrBtn.disabled = true;
     await initOCR();
     ocrBtn.disabled = false;
-    ocrBtn.textContent = "Stop OCR Scan";
+    ocrBtn.textContent = "Click Red box to Scan";
   }
 
   // 打开摄像头
@@ -403,7 +403,13 @@ ocrBtn.onclick = async () => {
   });
   video.srcObject = stream;
 
-  // 开始扫描
+  // ⚠️ 不自动扫描，等待用户点击红框
+};
+// ---------- 扫描框点击 ----------
+const scanBox = document.getElementById('scanBox');
+scanBox.onclick = () => {
+  if(!ocrActive) return;
+  showToast("Scanning...", "success");
   recognizeFrame();
 };
 
