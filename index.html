@@ -37,6 +37,17 @@ thead th { position:sticky; top:0; background:#eee; }
 #ocrCanvas { display:none; }
 #videoContainer { text-align:center; margin-bottom:12px; }
 video { width:100%; border:1px solid #ccc; border-radius:8px; }
+#scanBox{
+  position:absolute;
+  top:35%;
+  left:15%;
+  width:70%;
+  height:25%;
+  border:3px solid red;
+  border-radius:8px;
+  box-shadow:0 0 0 2000px rgba(0,0,0,0.3);
+  pointer-events:none;
+}
 </style>
 </head>
 
@@ -81,10 +92,11 @@ video { width:100%; border:1px solid #ccc; border-radius:8px; }
 <button id="lockLocationBtn" class="lock-btn">🔓 Location Unlocked</button>
 
 <!-- OCR 按钮和视频 -->
-<div id="videoContainer" class="hidden">
+<div id="videoContainer" class="hidden" style="position:relative;">
   <video id="video" autoplay></video>
+  <div id="scanBox"></div>
 </div>
-<button id="ocrBtn">启用 OCR 扫描</button>
+<button id="ocrBtn">Start OCR Scan</button>
 
 <!-- Search -->
 <input id="search" placeholder="Search product" oninput="buildProductSelect()">
@@ -346,17 +358,35 @@ function clearAll(){ if(confirm('Clear all data?')){ localStorage.clear(); locat
 // ---------- OCR ----------
 ocrBtn.onclick = async () => {
   if(!ocrActive){
-    ocrActive = true; ocrBtn.textContent='停止 OCR 扫描'; videoContainer.classList.remove('hidden');
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+    ocrActive = true;
+    ocrBtn.textContent='Stop OCR Scan';
+    videoContainer.classList.remove('hidden');
+
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" }
+    });
+
     video.srcObject = stream;
+
     recognizeFrame();
-  } else {
-    ocrActive = false; ocrBtn.textContent='启用 OCR 扫描'; videoContainer.classList.add('hidden');
-    if(video.srcObject){ video.srcObject.getTracks().forEach(t=>t.stop()); video.srcObject=null; }
+  }else{
+    ocrActive = false;
+    ocrBtn.textContent='Start OCR Scan';
+    videoContainer.classList.add('hidden');
+
+    if(video.srcObject){
+      video.srcObject.getTracks().forEach(t=>t.stop());
+      video.srcObject=null;
+    }
   }
 };
 
+let lastResult = '';
+let stableCount = 0;
+
 async function recognizeFrame(){
+  if(!ocrActive) return;
+
   if(video.readyState < 2){
     requestAnimationFrame(recognizeFrame);
     return;
@@ -364,51 +394,75 @@ async function recognizeFrame(){
 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
-
   ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-  // ✅ 只识别中间区域
+  // ⭐ 只裁剪红框区域
   const cropWidth = canvas.width * 0.7;
   const cropHeight = canvas.height * 0.25;
-  const x = (canvas.width - cropWidth) / 2;
-  const y = (canvas.height - cropHeight) / 2;
+  const x = canvas.width * 0.15;
+  const y = canvas.height * 0.35;
 
-  const imageData = ctx.getImageData(x, y, cropWidth, cropHeight);
+  const imageData = ctx.getImageData(x,y,cropWidth,cropHeight);
 
   const tempCanvas = document.createElement("canvas");
   tempCanvas.width = cropWidth;
   tempCanvas.height = cropHeight;
   const tempCtx = tempCanvas.getContext("2d");
-  tempCtx.putImageData(imageData, 0, 0);
+  tempCtx.putImageData(imageData,0,0);
 
   try{
     const { data: { text } } = await Tesseract.recognize(
       tempCanvas,
       'eng',
       {
-        tessedit_pageseg_mode: 7, // ⭐ 单行文本模式
+        tessedit_pageseg_mode: 7, // 单行
         tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ',
         logger: m=>{}
       }
     );
 
     let cleaned = text
-      .replace(/[^a-zA-Z ]/g,'')   // 过滤乱字符
+      .replace(/[^a-zA-Z ]/g,'')
       .replace(/\s+/g,' ')
       .trim();
 
     if(cleaned.length > 3){
-      search.value = cleaned;
-      buildProductSelect();
+
+      // ⭐ 两次相同才算成功（防跳字）
+      if(cleaned === lastResult){
+        stableCount++;
+      }else{
+        stableCount = 0;
+      }
+
+      lastResult = cleaned;
+
+      if(stableCount >= 1){
+        search.value = cleaned;
+        buildProductSelect();
+
+        // 📳 震动提示
+        if(navigator.vibrate){
+          navigator.vibrate(200);
+        }
+
+        // ⭐ 暂停3秒防重复扫描
+        ocrActive = false;
+        setTimeout(()=>{
+          ocrActive = true;
+          recognizeFrame();
+        },3000);
+
+        return;
+      }
     }
 
   }catch(e){
     console.error(e);
   }
 
-  if(ocrActive) setTimeout(recognizeFrame, 2000);
+  setTimeout(recognizeFrame,1500);
 }
-
 refresh();
 </script>
 </body>
