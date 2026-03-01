@@ -364,31 +364,49 @@ async function recognizeFrame(){
 
   canvas.width = video.videoWidth;
   canvas.height = video.videoHeight;
+
   ctx.drawImage(video,0,0,canvas.width,canvas.height);
+
+  // ✅ 只识别中间区域
+  const cropWidth = canvas.width * 0.7;
+  const cropHeight = canvas.height * 0.25;
+  const x = (canvas.width - cropWidth) / 2;
+  const y = (canvas.height - cropHeight) / 2;
+
+  const imageData = ctx.getImageData(x, y, cropWidth, cropHeight);
+
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = cropWidth;
+  tempCanvas.height = cropHeight;
+  const tempCtx = tempCanvas.getContext("2d");
+  tempCtx.putImageData(imageData, 0, 0);
 
   try{
     const { data: { text } } = await Tesseract.recognize(
-      canvas,
+      tempCanvas,
       'eng',
       {
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789- ',
-        tessedit_pageseg_mode: 6,
+        tessedit_pageseg_mode: 7, // ⭐ 单行文本模式
+        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ',
         logger: m=>{}
       }
     );
 
-    const cleaned = text.replace(/[^a-zA-Z0-9\- ]/g,'').trim();
+    let cleaned = text
+      .replace(/[^a-zA-Z ]/g,'')   // 过滤乱字符
+      .replace(/\s+/g,' ')
+      .trim();
 
-    if(cleaned.length > 2){
+    if(cleaned.length > 3){
       search.value = cleaned;
       buildProductSelect();
     }
 
   }catch(e){
-    console.error('OCR Error:',e);
+    console.error(e);
   }
 
-  if(ocrActive) setTimeout(recognizeFrame,2000);
+  if(ocrActive) setTimeout(recognizeFrame, 2000);
 }
 
 refresh();
