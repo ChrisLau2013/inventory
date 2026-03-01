@@ -152,6 +152,14 @@ video { width:100%; border:1px solid #ccc; border-radius:8px; }
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script>
+let worker = null;
+async function initOCR(){
+  worker = await Tesseract.createWorker('eng');
+  await worker.setParameters({
+    tessedit_pageseg_mode: 7,
+    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '
+  });
+}
 // ---------- 工具 ----------
 function parseCSVLine(line){
   const result=[],len=line.length;
@@ -357,9 +365,19 @@ function clearAll(){ if(confirm('Clear all data?')){ localStorage.clear(); locat
 
 // ---------- OCR ----------
 ocrBtn.onclick = async () => {
+
   if(!ocrActive){
+
+    ocrBtn.textContent = 'Initializing OCR...';
+    ocrBtn.disabled = true;
+
+    if(!worker){
+      await initOCR();   // ⭐ 只初始化一次
+    }
+
     ocrActive = true;
     ocrBtn.textContent='Stop OCR Scan';
+    ocrBtn.disabled = false;
     videoContainer.classList.remove('hidden');
 
     const stream = await navigator.mediaDevices.getUserMedia({
@@ -369,6 +387,7 @@ ocrBtn.onclick = async () => {
     video.srcObject = stream;
 
     recognizeFrame();
+
   }else{
     ocrActive = false;
     ocrBtn.textContent='Start OCR Scan';
@@ -382,9 +401,9 @@ ocrBtn.onclick = async () => {
 };
 
 let lastResult = '';
-let stableCount = 0;
 
 async function recognizeFrame(){
+
   if(!ocrActive) return;
 
   if(video.readyState < 2){
@@ -396,7 +415,7 @@ async function recognizeFrame(){
   canvas.height = video.videoHeight;
   ctx.drawImage(video,0,0,canvas.width,canvas.height);
 
-  // ⭐ 只裁剪红框区域
+  // 裁剪中间区域
   const cropWidth = canvas.width * 0.7;
   const cropHeight = canvas.height * 0.25;
   const x = canvas.width * 0.15;
@@ -411,57 +430,40 @@ async function recognizeFrame(){
   tempCtx.putImageData(imageData,0,0);
 
   try{
-    const { data: { text } } = await Tesseract.recognize(
-      tempCanvas,
-      'eng',
-      {
-        tessedit_pageseg_mode: 7, // 单行
-        tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ',
-        logger: m=>{}
-      }
-    );
+    const { data: { text } } = await worker.recognize(tempCanvas);
 
     let cleaned = text
       .replace(/[^a-zA-Z ]/g,'')
       .replace(/\s+/g,' ')
       .trim();
 
-    if(cleaned.length > 3){
-
-      // ⭐ 两次相同才算成功（防跳字）
-      if(cleaned === lastResult){
-        stableCount++;
-      }else{
-        stableCount = 0;
-      }
+    if(cleaned.length > 3 && cleaned !== lastResult){
 
       lastResult = cleaned;
 
-      if(stableCount >= 1){
-        search.value = cleaned;
-        buildProductSelect();
+      // 🔔 成功提示
+      showToast("Product Detected: " + cleaned,'success');
 
-        // 📳 震动提示
-        if(navigator.vibrate){
-          navigator.vibrate(200);
-        }
-
-        // ⭐ 暂停3秒防重复扫描
-        ocrActive = false;
-        setTimeout(()=>{
-          ocrActive = true;
-          recognizeFrame();
-        },3000);
-
-        return;
+      // 📳 震动
+      if(navigator.vibrate){
+        navigator.vibrate([100,50,100]);
       }
+
+      search.value = cleaned;
+      buildProductSelect();
+
+      // ⭐ 自动停止扫描
+      ocrActive = false;
+      ocrBtn.textContent='Start OCR Scan';
+
+      return;
     }
 
   }catch(e){
     console.error(e);
   }
 
-  setTimeout(recognizeFrame,1500);
+  setTimeout(recognizeFrame,1200);
 }
 refresh();
 </script>
