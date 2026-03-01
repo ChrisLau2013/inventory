@@ -165,7 +165,7 @@ let worker = null;
 async function initOCR(){
   worker = await Tesseract.createWorker('eng');
   await worker.setParameters({
-    tessedit_pageseg_mode: 7,
+    tessedit_pageseg_mode: 3,
     tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '
   });
 }
@@ -443,7 +443,17 @@ async function recognizeFrame(){
   const y = canvas.height * 0.35;
 
   const imageData = ctx.getImageData(x,y,cropWidth,cropHeight);
+  const data = imageData.data;
+  // 反色处理
+   for(let i=0;i<data.length;i+=4){
+      data[i]   = 255 - data[i];   // R
+      data[i+1] = 255 - data[i+1]; // G
+      data[i+2] = 255 - data[i+2]; // B
+      // alpha 通道保持不变
+  }
 
+
+  ctx.putImageData(imageData,x,y);
   const tempCanvas = document.createElement("canvas");
   tempCanvas.width = cropWidth;
   tempCanvas.height = cropHeight;
