@@ -46,8 +46,15 @@ video { width:100%; border:1px solid #ccc; border-radius:8px; }
   border:3px solid red;
   border-radius:8px;
   box-shadow:0 0 0 2000px rgba(0,0,0,0.3);
-  /* pointer-events:none; */  
   cursor: pointer;
+  pointer-events: auto;       
+}
+
+#scanBox::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;      
 }
 </style>
 </head>
