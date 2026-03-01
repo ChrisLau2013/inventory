@@ -165,7 +165,7 @@ let worker = null;
 async function initOCR(){
   worker = await Tesseract.createWorker('eng');
   await worker.setParameters({
-    tessedit_pageseg_mode: 3,
+    tessedit_pageseg_mode: 7,
     tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '
   });
 }
