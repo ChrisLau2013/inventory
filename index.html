@@ -440,6 +440,9 @@ async function recognizeFrame(){
     if(cleaned.length > 3 && cleaned !== lastResult){
 
       lastResult = cleaned;
+      // 显示结果
+      search.value = cleaned;
+      buildProductSelect();
 
       // 🔔 成功提示
       showToast("Product Detected: " + cleaned,'success');
@@ -448,12 +451,17 @@ async function recognizeFrame(){
       if(navigator.vibrate){
         navigator.vibrate([100,50,100]);
       }
-
-      search.value = cleaned;
-      buildProductSelect();
-
-      // ⭐ 自动停止扫描
+      // ✅ 关闭 OCR
       ocrActive = false;
+      // 关闭摄像头
+      if(video.srcObject){
+        video.srcObject.getTracks().forEach(track => track.stop());
+        video.srcObject = null;
+      }
+      // 隐藏视频区域
+      videoContainer.classList.add('hidden');
+      // 恢复按钮文字
+      
       ocrBtn.textContent='Start OCR Scan';
 
       return;
