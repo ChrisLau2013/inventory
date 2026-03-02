@@ -8,7 +8,6 @@
 <link rel="icon" type="image/png" href="icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Inventory">
-
 <style>
 body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:0; }
 header { background:#1e90ff; color:#fff; text-align:center; padding:14px; font-size:20px; position:sticky; top:0; }
@@ -20,17 +19,24 @@ button.secondary { background:#666; }
 button:disabled {background: #bbb;color: #666;cursor: not-allowed;}
 .lock-btn { width:100%; font-size:16px; padding:12px; border-radius:8px; background:#ccc; color:#333; }
 .lock-btn.locked { background:#28a745; color:#fff; }
+.lock-btn.disabled { background:#ddd; color:#777; }
+
+.temp-tag { color:#ff5722; font-weight:600; }
 
 #toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); padding:14px 18px; border-radius:14px; font-size:15px; color:#fff; opacity:0; pointer-events:none; transition:.35s; }
 #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
 #toast.success { background:#28a745; }
 #toast.warn { background:#ff9800; }
 
+#history { max-height:300px; overflow:auto; border-top:1px solid #ccc; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th,td { border:1px solid #ccc; padding:5px; text-align:center; }
+thead th { position:sticky; top:0; background:#eee; }
+
 .hidden { display:none; }
 #ocrCanvas { display:none; }
-#videoContainer { text-align:center; margin-bottom:12px; position:relative; }
+#videoContainer { text-align:center; margin-bottom:12px; }
 video { width:100%; border:1px solid #ccc; border-radius:8px; }
-
 #scanBox{
   position:absolute;
   top:35%;
@@ -40,21 +46,33 @@ video { width:100%; border:1px solid #ccc; border-radius:8px; }
   border:3px solid red;
   border-radius:8px;
   box-shadow:0 0 0 2000px rgba(0,0,0,0.3);
-  cursor:pointer;
+  cursor: pointer;
+  pointer-events: auto;       
+}
+
+#scanBox::after {
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;      
 }
 </style>
 </head>
 
 <body>
 <header>Inventory Counting</header>
+
 <main>
 
+<h2>Inventory Counting</h2>
+
+<!-- File upload -->
 <input type="file" id="fileInput" accept=".csv" hidden>
 <button id="fileBtn">Choose CSV File</button>
 <div id="fileName"></div>
 
+<!-- Location -->
 <select id="locationSelect">
-<option value="">Select location</option>
   <option value="">Select location</option>
   <option>Warehouse Shifts near loading bay</option>
   <option>Warehouse Shifts near Boiler</option>
@@ -77,175 +95,462 @@ video { width:100%; border:1px solid #ccc; border-radius:8px; }
   <option>Upstairs Sauce Shifts</option>
   <option>Upstairs Cooler</option>
   <option>Upstairs freezer</option>
-
 </select>
 
 <button id="lockLocationBtn" class="lock-btn">🔓 Location Unlocked</button>
 
-<div id="videoContainer" class="hidden">
+<!-- OCR 按钮和视频 -->
+<div id="videoContainer" class="hidden" style="position:relative;">
   <video id="video" autoplay></video>
   <div id="scanBox"></div>
 </div>
-
 <button id="ocrBtn">Start OCR Scan</button>
 
+<!-- Search -->
 <input id="search" placeholder="Search product" oninput="buildProductSelect()">
+
+<select id="catalogSelect" onchange="buildProductSelect()">
+  <option value="">All Categories</option>
+</select>
+
 <select id="productSelect" onchange="showInfo()">
-<option value="">Select product</option>
+  <option value="">Select product</option>
 </select>
 
 <div id="info"></div>
 
-<input id="qtyInput" type="number" placeholder="Enter quantity">
+<input id="qtyInput" type="number" inputmode="decimal" step="0.01" placeholder="Enter quantity">
 <button onclick="saveSelected()">Save Count</button>
 
-<div id="toast"><span class="msg"></span></div>
+<button class="secondary" onclick="toggleManual()">Product not found? Manual entry</button>
+
+<div id="manualPanel" class="hidden">
+  <hr>
+  <h3>Temporary Product</h3>
+  <input id="mProd" placeholder="Product name">
+  <input id="mUnit" placeholder="Packaging unit">
+  <input id="mSup" placeholder="Supplier">
+  <input id="mQty" type="number" placeholder="Quantity">
+  <button onclick="manualSave()">Save Temporary Count</button>
+</div>
+
+<hr>
+<button class="secondary" onclick="exportCSV()">Export CSV</button>
+<button class="secondary" onclick="clearAll()">Clear All Data</button>
+
+<div id="history">
+<h3>Counting History</h3>
+<table>
+<thead>
+<tr>
+<th>Time</th><th>Location</th><th>Category</th><th>Supplier</th>
+<th>Product</th><th>Unit</th><th>Qty</th>
+</tr>
+</thead>
+<tbody id="historyBody"></tbody>
+</table>
+</div>
+
+</main>
+
+<div id="toast"><span class="icon"></span><span class="msg"></span></div>
 <canvas id="ocrCanvas"></canvas>
 
+<!-- Tesseract.js -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <script>
-// ================= DATA =================
-let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
-function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
+// ⭐ OCR Worker 初始化
+let worker = null;
+async function initOCR(){
+  worker = await Tesseract.createWorker('eng');
+  await worker.setParameters({
+    tessedit_pageseg_mode: 8,
+    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '
+  });
+}
+// ---------- 停止 OCR 函数 ----------
+function stopOCR(){
+  ocrActive = false;
+  if(video.srcObject){
+    video.srcObject.getTracks().forEach(track => track.stop());
+    video.srcObject = null;
+  }
+  videoContainer.classList.add('hidden');
+  ocrBtn.textContent = "Start OCR Scan";
+}
+// ---------- 工具 ----------
+function parseCSVLine(line){
+  const result=[],len=line.length;
+  let current='',inQuotes=false;
+  for(let i=0;i<len;i++){
+    const c=line[i];
+    if(c==='"') inQuotes=!inQuotes;
+    else if(c===','&&!inQuotes){ result.push(current); current=''; }
+    else current+=c;
+  }
+  result.push(current);
+  return result.map(v=>v.trim().replace(/^"|"$/g,''));
+}
+function similarity(a, b){
+  const matrix = [];
 
-// ================= TOAST =================
+  for(let i = 0; i <= b.length; i++){
+    matrix[i] = [i];
+  }
+  for(let j = 0; j <= a.length; j++){
+    matrix[0][j] = j;
+  }
+
+  for(let i = 1; i <= b.length; i++){
+    for(let j = 1; j <= a.length; j++){
+      if(b.charAt(i-1) === a.charAt(j-1)){
+        matrix[i][j] = matrix[i-1][j-1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i-1][j-1] + 1,
+          matrix[i][j-1] + 1,
+          matrix[i-1][j] + 1
+        );
+      }
+    }
+  }
+
+  const distance = matrix[b.length][a.length];
+  return 1 - distance / Math.max(a.length, b.length);
+}
+function findBestMatch(text){
+  let best = '';
+  let bestScore = 0;
+
+  data.catalogs.forEach(c=>{
+    c.products.forEach(p=>{
+      const score = similarity(text.toLowerCase(), p.name.toLowerCase());
+      if(score > bestScore){
+        bestScore = score;
+        best = p.name;
+      }
+    });
+  });
+
+  return bestScore > 0.7 ? best : text;
+}
+
+let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
+
+// ---------- DOM ----------
+const fileInput = document.getElementById('fileInput');
+const fileBtn = document.getElementById('fileBtn');
+const fileNameDiv = document.getElementById('fileName');
+const locationSelect = document.getElementById('locationSelect');
+const lockBtn = document.getElementById('lockLocationBtn');
+const catalogSelect = document.getElementById('catalogSelect');
+const productSelect = document.getElementById('productSelect');
+const search = document.getElementById('search');
+const qtyInput = document.getElementById('qtyInput');
+const info = document.getElementById('info');
+const manualPanel = document.getElementById('manualPanel');
+const historyBody = document.getElementById('historyBody');
+
+const ocrBtn = document.getElementById('ocrBtn');
+const videoContainer = document.getElementById('videoContainer');
+const video = document.getElementById('video');
+const canvas = document.getElementById('ocrCanvas');
+const ctx = canvas.getContext('2d');
+
+let locationLocked = false;
+let ocrActive = false;
+
+// ---------- Toast ----------
 function showToast(msg,type='success'){
   const t=document.getElementById('toast');
-  t.className=`show ${type}`;
-  t.querySelector('.msg').textContent=msg;
+  t.className = `show ${type}`;
+  t.querySelector('.icon').textContent = type==='success'?'✅':'⚠️';
+  t.querySelector('.msg').textContent = msg;
   setTimeout(()=>t.classList.remove('show'),2000);
 }
 
-// ================= OCR =================
-let worker=null;
-let ocrActive=false;
-let lastResult='';
+// ---------- Location Lock ----------
+lockBtn.onclick = () => {
+  if(!locationSelect.value){ showToast('Please select location first','warn'); return; }
+  locationLocked = !locationLocked;
+  lockBtn.textContent = locationLocked ? '🔒 Location Locked' : '🔓 Location Unlocked';
+  lockBtn.classList.toggle('locked',locationLocked);
+};
+locationSelect.onchange = () => { lockBtn.disabled = !locationSelect.value; };
 
-async function initOCR(){
-  worker=await Tesseract.createWorker('eng');
-  await worker.setParameters({
-    tessedit_pageseg_mode:8,
-    tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '
+// ---------- File ----------
+fileBtn.onclick=()=>fileInput.click();
+fileInput.onchange=e=>{
+  const file=e.target.files[0];
+  if(!file) return;
+  fileNameDiv.textContent=`Loaded: ${file.name}`;
+  importCSV(file);
+};
+function importCSV(file){
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());
+    const headers=parseCSVLine(lines[0]).map(h=>h.toLowerCase());
+    lines.slice(1).forEach(l=>{
+      const v=parseCSVLine(l),o={};
+      headers.forEach((h,i)=>o[h]=v[i]||'');
+      addProduct(o.category||'Temporary',o.product,o.unit,o.supplier);
+    });
+    save(); refresh();
+    showToast('CSV loaded');
+    fileBtn.disabled = true;
+    fileBtn.textContent = 'CSV Loaded';
+    localStorage.setItem('csvImported','1');
+  };
+  reader.readAsText(file);
+}
+
+// ---------- Data ----------
+function addProduct(cat,prod,unit,sup){
+  if(!prod||!unit) return;
+  let c=data.catalogs.find(x=>x.name===cat);
+  if(!c){ c={name:cat,products:[]}; data.catalogs.push(c); }
+  let p=c.products.find(x=>x.name===prod&&x.supplier===sup);
+  if(!p){ p={name:prod,supplier:sup,packages:[]}; c.products.push(p); }
+  if(!p.packages.find(x=>x.unit===unit)) p.packages.push({unit,records:[]});
+}
+function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
+
+// ---------- UI ----------
+function refresh(){
+  catalogSelect.innerHTML='<option value="">All Categories</option>';
+  data.catalogs.forEach(c=>{
+    const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
+    catalogSelect.appendChild(o);
+  });
+  buildProductSelect(); updateHistory();
+}
+
+function buildProductSelect(){
+  productSelect.innerHTML='<option value="">Select product</option>';
+  const key=search.value.toLowerCase();
+  const cat=catalogSelect.value;
+  data.catalogs.forEach((c,ci)=>{
+    if(cat&&c.name!==cat) return;
+    c.products.forEach((p,pi)=>{
+      if(key&&!p.name.toLowerCase().includes(key)) return;
+      p.packages.forEach((pkg,ki)=>{
+        const o=document.createElement('option');
+        o.value=`${ci}-${pi}-${ki}`;
+        o.textContent=`${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
+        productSelect.appendChild(o);
+      });
+    });
   });
 }
 
-function stopOCR(){
-  ocrActive=false;
-  if(video.srcObject){
-    video.srcObject.getTracks().forEach(track=>track.stop());
-    video.srcObject=null;
-  }
-  videoContainer.classList.add('hidden');
-  ocrBtn.textContent="Start OCR Scan";
+function showInfo(){
+  if(!productSelect.value){ info.textContent=''; return; }
+  const [ci,pi,ki]=productSelect.value.split('-');
+  const r=data.catalogs[ci].products[pi].packages[ki].records.at(-1);
+  info.textContent=r?`Last: ${r.qty} @ ${r.location}`:'No record';
 }
 
-ocrBtn.onclick=async()=>{
-  if(ocrActive){ stopOCR(); return; }
+// ---------- Save ----------
+function saveSelected(){
+  if(!productSelect.value){ showToast('Select product','warn'); return; }
+  if(!locationSelect.value){ showToast('Select location','warn'); return; }
 
-  videoContainer.classList.remove('hidden');
-  ocrActive=true;
-  ocrBtn.textContent="Click Red Box";
+  const qty=parseFloat(qtyInput.value);
+  if(isNaN(qty)){ showToast('Enter quantity','warn'); return; }
 
+  const [ci,pi,ki]=productSelect.value.split('-');
+  data.catalogs[ci].products[pi].packages[ki].records.push({
+    qty, location:locationSelect.value, time:new Date().toLocaleString()
+  });
+  save(); refresh(); qtyInput.value=''; search.value=''; productSelect.value='';
+  if(!locationLocked) locationSelect.value='';
+  showToast('Saved');
+}
+
+// ---------- Manual ----------
+function toggleManual(){ manualPanel.classList.toggle('hidden'); }
+function manualSave(){
+  if(!locationSelect.value){ showToast('Select location','warn'); return; }
+  const prod=mProd.value.trim(),unit=mUnit.value.trim(),sup=mSup.value.trim(),qty=parseFloat(mQty.value);
+  if(!prod||!unit||isNaN(qty)){ showToast('Complete fields','warn'); return; }
+
+  addProduct('Temporary',prod,unit,sup);
+  const c=data.catalogs.find(x=>x.name==='Temporary');
+  const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
+  p.packages[0].records.push({ qty, location:locationSelect.value, time:new Date().toLocaleString() });
+  save(); refresh(); mProd.value=mUnit.value=mSup.value=mQty.value='';
+  showToast('Temporary saved');
+}
+
+// ---------- History ----------
+function updateHistory(){
+  historyBody.innerHTML='';
+  let rows=[];
+  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
+    pkg.records.forEach(r=>{
+      rows.push({...r,c:c.name,p:p.name,u:pkg.unit,s:p.supplier});
+    });
+  })));
+  rows.reverse().forEach(r=>{
+    historyBody.innerHTML+=
+      `<tr><td>${r.time}</td><td>${r.location}</td><td>${r.c}</td><td>${r.s||''}</td>
+       <td>${r.p}</td><td>${r.u}</td><td>${r.qty}</td></tr>`;
+  });
+}
+
+// ---------- Export CSV ----------
+function exportCSV(){
+  let csv='date,time,location,category,supplier,product,unit,qty\n';
+  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
+    pkg.records.forEach(r=>{
+      const qty = Number(r.qty || 0).toFixed(2);
+      csv+=`${r.time},${r.location},${c.name},${p.supplier||''},${p.name},${pkg.unit},${qty}\n`;
+    });
+  })));
+  if(csv.split('\n').length <= 1){ showToast('No data to export','warn'); return; }
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  const now = new Date();
+  const pad = n => n.toString().padStart(2,'0');
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+  link.download = `inventory_${dateStr}.csv`;
+  document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
+  showToast('CSV Exported');
+}
+
+// ---------- Clear ----------
+function clearAll(){ if(confirm('Clear all data?')){ localStorage.clear(); location.reload(); } }
+
+// ---------- OCR ----------
+ocrBtn.onclick = async () => {
+
+  // 如果视频区域已经显示，关闭 OCR
+  if(ocrActive){
+    stopOCR();
+    return;
+  }
+
+  // ✅ 视频框必须显示才开始扫描
+  videoContainer.classList.remove('hidden');  // 显示红框 + 视频
+  ocrActive = true;
+  ocrBtn.textContent = "Click Red Box to Scan";
+
+  // 初始化 OCR worker（只初始化一次）
   if(!worker){
-    ocrBtn.disabled=true;
+    ocrBtn.textContent = "Initializing OCR...";
+    ocrBtn.disabled = true;
     await initOCR();
-    ocrBtn.disabled=false;
+    ocrBtn.disabled = false;
+    ocrBtn.textContent = "Click Red box to Scan";
   }
 
-  const stream=await navigator.mediaDevices.getUserMedia({
-    video:{
-      facingMode:"environment",
-      width:{ideal:1920},
-      height:{ideal:1080}
-    }
+  // 打开摄像头
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" }
   });
-  video.srcObject=stream;
+  video.srcObject = stream;
+
+  // ⚠️ 不自动扫描，等待用户点击红框
+};
+// ---------- 扫描框点击 ----------
+const scanBox = document.getElementById('scanBox');
+scanBox.onclick = () => {
+  if(!ocrActive) return;
+  showToast("Scanning...", "success");
+  recognizeFrame();
 };
 
-scanBox.onclick=()=>{ if(ocrActive) recognizeFrame(); };
+let lastResult = '';
 
 async function recognizeFrame(){
 
-  const scale=2;
+  if(!ocrActive) return;
 
-  canvas.width=video.videoWidth*scale;
-  canvas.height=video.videoHeight*scale;
-
-  const ctx=canvas.getContext('2d');
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.scale(scale,scale);
-  ctx.drawImage(video,0,0);
-
-  const cropWidth=video.videoWidth*0.7*scale;
-  const cropHeight=video.videoHeight*0.25*scale;
-  const x=video.videoWidth*0.15*scale;
-  const y=video.videoHeight*0.35*scale;
-
-  const imageData=ctx.getImageData(x,y,cropWidth,cropHeight);
-  const arr=imageData.data;
-
-  for(let i=0;i<arr.length;i+=4){
-    const gray=0.299*arr[i]+0.587*arr[i+1]+0.114*arr[i+2];
-    arr[i]=arr[i+1]=arr[i+2]=gray;
+  if(video.readyState < 2){
+    requestAnimationFrame(recognizeFrame);
+    return;
   }
 
-  const temp=document.createElement("canvas");
-  temp.width=cropWidth;
-  temp.height=cropHeight;
-  temp.getContext("2d").putImageData(imageData,0,0);
+  // ⭐ 提高清晰度（关键优化）
+  const scale = 2;  // 放大倍数（可以改 1.5~3）
 
-  let results=[];
+  canvas.width = video.videoWidth * scale;
+  canvas.height = video.videoHeight * scale;
 
-  for(let i=0;i<3;i++){
-    const {data:{text}}=await worker.recognize(temp);
-    let cleaned=text.replace(/[^a-zA-Z ]/g,'').trim();
-    if(cleaned.length>3) results.push(cleaned);
+  // 每次必须重置 transform，否则会叠加
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(scale, scale);
+
+  ctx.drawImage(video, 0, 0);
+
+  // 裁剪中间区域
+  const cropWidth = canvas.width * 0.7;
+  const cropHeight = canvas.height * 0.25;
+  const x = canvas.width * 0.15;
+  const y = canvas.height * 0.35;
+
+  const imageData = ctx.getImageData(x, y, cropWidth, cropHeight);
+  const dataArr = imageData.data;
+
+  // ⭐ 图像预处理：灰度 + 二值化 + 反色
+  //const threshold = 128; // 可调，文字深浅可调
+  for (let i = 0; i < dataArr.length; i += 4) {
+    // 灰度
+    const gray = 0.299 * dataArr[i] + 0.587 * dataArr[i+1] + 0.114 * dataArr[i+2];
+    dataArr[i] = dataArr[i+1] = dataArr[i+2] = val;
+    // alpha 保持不变
   }
 
-  if(!results.length){ showToast("Not detected","warn"); return; }
+  // 放回临时 Canvas
+  const tempCanvas = document.createElement("canvas");
+  tempCanvas.width = cropWidth;
+  tempCanvas.height = cropHeight;
+  const tempCtx = tempCanvas.getContext("2d");
+  tempCtx.putImageData(imageData, 0, 0);
 
-  let final=mostCommon(results);
-  final=findBestMatch(final);
+  try{
+    const { data: { text } } = await worker.recognize(tempCanvas);
 
-  if(final!==lastResult){
-    lastResult=final;
-    search.value=final;
-    showToast("Detected: "+final);
-    stopOCR();
-  }
-}
+    let cleaned = text
+      .replace(/[^a-zA-Z ]/g,'')
+      .replace(/\s+/g,' ')
+      .trim();
 
-function mostCommon(arr){
-  const map={};
-  arr.forEach(v=>map[v]=(map[v]||0)+1);
-  return Object.keys(map).reduce((a,b)=>map[a]>map[b]?a:b);
-}
+    if(cleaned.length > 3 && cleaned !== lastResult){
+      cleaned = findBestMatch(cleaned);
+      lastResult = cleaned;
+      // 显示结果
+      search.value = cleaned;
+      buildProductSelect();
+      // ⭐ 自动选中唯一匹配项
+      if(productSelect.options.length === 2){
+        productSelect.selectedIndex = 1;
+        showInfo();
+      }
+      // 🔔 成功提示
+      showToast("Product Detected: " + cleaned,'success');
 
-function similarity(a,b){
-  const matrix=[];
-  for(let i=0;i<=b.length;i++) matrix[i]=[i];
-  for(let j=0;j<=a.length;j++) matrix[0][j]=j;
-  for(let i=1;i<=b.length;i++){
-    for(let j=1;j<=a.length;j++){
-      matrix[i][j]=(b[i-1]==a[j-1])?matrix[i-1][j-1]:
-      Math.min(matrix[i-1][j-1]+1,matrix[i][j-1]+1,matrix[i-1][j]+1);
+      // 📳 震动
+      if(navigator.vibrate){
+        navigator.vibrate([100,50,100]);
+      }
+      // ✅ 成功后关闭 OCR
+      stopOCR();
+
+      return;
     }
-  }
-  const dist=matrix[b.length][a.length];
-  return 1-dist/Math.max(a.length,b.length);
-}
 
-function findBestMatch(text){
-  let best=text,bestScore=0;
-  data.catalogs.forEach(c=>{
-    c.products.forEach(p=>{
-      const score=similarity(text.toLowerCase(),p.name.toLowerCase());
-      if(score>bestScore){ bestScore=score; best=p.name; }
-    });
-  });
-  return bestScore>0.7?best:text;
+  }catch(e){
+    console.error(e);
+  }
+
+  // 如果未识别成功，等待用户再次点击红框扫描
 }
+refresh();
 </script>
 </body>
 </html>
