@@ -233,7 +233,7 @@ function findBestMatch(text){
     });
   });
 
-  return bestScore > 0.7 ? best : text;
+  return bestScore > 0.65 ? best : text;
 }
 
 let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
@@ -476,7 +476,7 @@ async function recognizeFrame(){
     return;
   }
 
-  const scale = 3;   // ⭐ 提高到 3 倍（成功率提升明显）
+  const scale = 3;   // 工业推荐 3 倍
 
   canvas.width = video.videoWidth * scale;
   canvas.height = video.videoHeight * scale;
@@ -485,7 +485,6 @@ async function recognizeFrame(){
   ctx.scale(scale, scale);
   ctx.drawImage(video, 0, 0);
 
-  // ⭐ 用原始视频尺寸算裁剪（避免 scale 干扰）
   const cropWidth = video.videoWidth * 0.7 * scale;
   const cropHeight = video.videoHeight * 0.25 * scale;
   const x = video.videoWidth * 0.15 * scale;
@@ -494,14 +493,23 @@ async function recognizeFrame(){
   const imageData = ctx.getImageData(x, y, cropWidth, cropHeight);
   const dataArr = imageData.data;
 
-  // ⭐ 动态二值化（比固定阈值好很多）
+  // ====== ⭐ 1. 自动计算亮度平均值 ======
+  let total = 0;
+  for(let i=0;i<dataArr.length;i+=4){
+    const gray = 0.299*dataArr[i] + 0.587*dataArr[i+1] + 0.114*dataArr[i+2];
+    total += gray;
+  }
+  const avg = total / (dataArr.length/4);
+
+  // ====== ⭐ 2. 自适应阈值 ======
+  const threshold = avg * 0.9;
+
   for (let i = 0; i < dataArr.length; i += 4) {
 
-    const gray = 0.299 * dataArr[i] + 
-                 0.587 * dataArr[i+1] + 
-                 0.114 * dataArr[i+2];
+    let gray = 0.299*dataArr[i] + 0.587*dataArr[i+1] + 0.114*dataArr[i+2];
 
-    const threshold = 150;  // 可调 130~170
+    // ⭐ 对比度增强
+    gray = (gray - avg) * 1.5 + avg;
 
     const val = gray > threshold ? 255 : 0;
 
@@ -527,7 +535,7 @@ async function recognizeFrame(){
 
       cleaned = findBestMatch(cleaned);
 
-      // ⭐ 多帧投票机制
+      // ====== ⭐ 3. 三帧投票 ======
       scanBuffer.push(cleaned);
 
       if(scanBuffer.length >= 3){
@@ -549,7 +557,7 @@ async function recognizeFrame(){
 
         scanBuffer = [];
 
-        if(max >= 2){   // 至少 2 次一致
+        if(max >= 2){
 
           search.value = best;
           buildProductSelect();
@@ -575,8 +583,7 @@ async function recognizeFrame(){
     console.error(e);
   }
 
-  // ⭐ 如果没成功，自动再扫一帧
-  setTimeout(recognizeFrame, 300);
+  setTimeout(recognizeFrame, 250);
 }
 refresh();
 </script>
