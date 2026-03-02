@@ -165,7 +165,7 @@ let worker = null;
 async function initOCR(){
   worker = await Tesseract.createWorker('eng');
   await worker.setParameters({
-    tessedit_pageseg_mode: 8,
+    tessedit_pageseg_mode: 7,
     tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '
   });
 }
@@ -465,6 +465,7 @@ scanBox.onclick = () => {
 };
 
 let lastResult = '';
+let scanBuffer = [];
 
 async function recognizeFrame(){
 
@@ -475,37 +476,38 @@ async function recognizeFrame(){
     return;
   }
 
-  // ⭐ 提高清晰度（关键优化）
-  const scale = 2;  // 放大倍数（可以改 1.5~3）
+  const scale = 3;   // ⭐ 提高到 3 倍（成功率提升明显）
 
   canvas.width = video.videoWidth * scale;
   canvas.height = video.videoHeight * scale;
 
-  // 每次必须重置 transform，否则会叠加
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(scale, scale);
-
   ctx.drawImage(video, 0, 0);
 
-  // 裁剪中间区域
-  const cropWidth = canvas.width * 0.7;
-  const cropHeight = canvas.height * 0.25;
-  const x = canvas.width * 0.15;
-  const y = canvas.height * 0.35;
+  // ⭐ 用原始视频尺寸算裁剪（避免 scale 干扰）
+  const cropWidth = video.videoWidth * 0.7 * scale;
+  const cropHeight = video.videoHeight * 0.25 * scale;
+  const x = video.videoWidth * 0.15 * scale;
+  const y = video.videoHeight * 0.35 * scale;
 
   const imageData = ctx.getImageData(x, y, cropWidth, cropHeight);
   const dataArr = imageData.data;
 
-  // ⭐ 图像预处理：灰度 + 二值化 + 反色
-  //const threshold = 128; // 可调，文字深浅可调
+  // ⭐ 动态二值化（比固定阈值好很多）
   for (let i = 0; i < dataArr.length; i += 4) {
-    // 灰度
-    const gray = 0.299 * dataArr[i] + 0.587 * dataArr[i+1] + 0.114 * dataArr[i+2];
+
+    const gray = 0.299 * dataArr[i] + 
+                 0.587 * dataArr[i+1] + 
+                 0.114 * dataArr[i+2];
+
+    const threshold = 150;  // 可调 130~170
+
+    const val = gray > threshold ? 255 : 0;
+
     dataArr[i] = dataArr[i+1] = dataArr[i+2] = val;
-    // alpha 保持不变
   }
 
-  // 放回临时 Canvas
   const tempCanvas = document.createElement("canvas");
   tempCanvas.width = cropWidth;
   tempCanvas.height = cropHeight;
@@ -513,6 +515,7 @@ async function recognizeFrame(){
   tempCtx.putImageData(imageData, 0, 0);
 
   try{
+
     const { data: { text } } = await worker.recognize(tempCanvas);
 
     let cleaned = text
@@ -520,35 +523,60 @@ async function recognizeFrame(){
       .replace(/\s+/g,' ')
       .trim();
 
-    if(cleaned.length > 3 && cleaned !== lastResult){
+    if(cleaned.length > 3){
+
       cleaned = findBestMatch(cleaned);
-      lastResult = cleaned;
-      // 显示结果
-      search.value = cleaned;
-      buildProductSelect();
-      // ⭐ 自动选中唯一匹配项
-      if(productSelect.options.length === 2){
-        productSelect.selectedIndex = 1;
-        showInfo();
-      }
-      // 🔔 成功提示
-      showToast("Product Detected: " + cleaned,'success');
 
-      // 📳 震动
-      if(navigator.vibrate){
-        navigator.vibrate([100,50,100]);
-      }
-      // ✅ 成功后关闭 OCR
-      stopOCR();
+      // ⭐ 多帧投票机制
+      scanBuffer.push(cleaned);
 
-      return;
+      if(scanBuffer.length >= 3){
+
+        const counts = {};
+        scanBuffer.forEach(t=>{
+          counts[t] = (counts[t] || 0) + 1;
+        });
+
+        let best = '';
+        let max = 0;
+
+        for(let key in counts){
+          if(counts[key] > max){
+            max = counts[key];
+            best = key;
+          }
+        }
+
+        scanBuffer = [];
+
+        if(max >= 2){   // 至少 2 次一致
+
+          search.value = best;
+          buildProductSelect();
+
+          if(productSelect.options.length === 2){
+            productSelect.selectedIndex = 1;
+            showInfo();
+          }
+
+          showToast("Product Detected: " + best,'success');
+
+          if(navigator.vibrate){
+            navigator.vibrate([100,50,100]);
+          }
+
+          stopOCR();
+          return;
+        }
+      }
     }
 
   }catch(e){
     console.error(e);
   }
 
-  // 如果未识别成功，等待用户再次点击红框扫描
+  // ⭐ 如果没成功，自动再扫一帧
+  setTimeout(recognizeFrame, 300);
 }
 refresh();
 </script>
