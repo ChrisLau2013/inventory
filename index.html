@@ -107,9 +107,9 @@ video { width:100%; border:1px solid #ccc; border-radius:8px; }
 <button id="ocrBtn">Start OCR Scan</button>
 
 <!-- Search -->
-<input id="search" placeholder="Search product" oninput="buildProductSelect()">
+<input id="search" placeholder="Search product" oninput="">
 
-<select id="catalogSelect" onchange="buildProductSelect()">
+<select id="catalogSelect" onchange="">
   <option value="">All Categories</option>
 </select>
 
@@ -311,7 +311,8 @@ function addProduct(cat,prod,unit,sup,brand){
   if(!prod||!unit) return;
   let c=data.catalogs.find(x=>x.name===cat);
   if(!c){ c={name:cat,products:[]}; data.catalogs.push(c); }
-  let p=c.products.find(x=>x.name===prod&&x.supplier===sup);
+  
+  let p=c.products.find(x=>x.name===prod&&x.supplier===sup&&x.brand===brand);
   if(!p){ p={name:prod,supplier:sup,brand:brand||'',packages:[]}; c.products.push(p); }
   if(!p.packages.find(x=>x.unit===unit)) p.packages.push({unit,records:[]});
 }
@@ -324,7 +325,7 @@ function refresh(){
     const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
     catalogSelect.appendChild(o);
   });
-  buildProductSelect(); updateHistory();
+  ; updateHistory();
 }
 
 function buildProductSelect(){
@@ -338,7 +339,7 @@ function buildProductSelect(){
       p.packages.forEach((pkg,ki)=>{
         const o=document.createElement('option');
         o.value=`${ci}-${pi}-${ki}`;
-        o.textContent=`${p.supplier||'N/A'} | ${p.name} | ${pkg.unit}`;
+        o.textContent=`${p.supplier||'N/A'} | ${p.brand||'N/A'} | ${p.name} | ${pkg.unit}`;
         productSelect.appendChild(o);
       });
     });
