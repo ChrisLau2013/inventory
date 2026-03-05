@@ -295,7 +295,7 @@ function importCSV(file){
     lines.slice(1).forEach(l=>{
       const v=parseCSVLine(l),o={};
       headers.forEach((h,i)=>o[h]=v[i]||'');
-      addProduct(o.category||'Temporary',o.product,o.unit,o.supplier);
+      addProduct(o.category||'Temporary',o.product,o.unit,o.supplier,o.brand);
     });
     save(); refresh();
     showToast('CSV loaded');
@@ -307,12 +307,12 @@ function importCSV(file){
 }
 
 // ---------- Data ----------
-function addProduct(cat,prod,unit,sup){
+function addProduct(cat,prod,unit,sup,brand){
   if(!prod||!unit) return;
   let c=data.catalogs.find(x=>x.name===cat);
   if(!c){ c={name:cat,products:[]}; data.catalogs.push(c); }
   let p=c.products.find(x=>x.name===prod&&x.supplier===sup);
-  if(!p){ p={name:prod,supplier:sup,packages:[]}; c.products.push(p); }
+  if(!p){ p={name:prod,supplier:sup,brand:brand||'',packages:[]}; c.products.push(p); }
   if(!p.packages.find(x=>x.unit===unit)) p.packages.push({unit,records:[]});
 }
 function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
@@ -346,10 +346,21 @@ function buildProductSelect(){
 }
 
 function showInfo(){
-  if(!productSelect.value){ info.textContent=''; return; }
+  if(!productSelect.value){
+    info.textContent='';
+    return;
+  }
+
   const [ci,pi,ki]=productSelect.value.split('-');
-  const r=data.catalogs[ci].products[pi].packages[ki].records.at(-1);
-  info.textContent=r?`Last: ${r.qty} @ ${r.location}`:'No record';
+
+  const product = data.catalogs[ci].products[pi];
+  const r = product.packages[ki].records.at(-1);
+
+  const brand = product.brand || 'N/A';
+
+  info.innerHTML =
+    `Brand: <b>${brand}</b><br>` +
+    (r ? `Last: ${r.qty} @ ${r.location}` : 'No record');
 }
 
 // ---------- Save ----------
