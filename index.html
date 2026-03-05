@@ -407,7 +407,7 @@ function updateHistory(){
     });
   })));
   rows.sort((a,b)=> new Date(b.time) - new Date(a.time));
-  rows.reverse().forEach(r=>{
+  rows.forEach(r=>{
     historyBody.innerHTML+=
       `<tr><td>${r.time}</td><td>${r.location}</td><td>${r.c}</td><td>${r.s||''}</td>
        <td>${r.p}</td><td>${r.u}</td><td>${r.qty}</td></tr>`;
