@@ -107,9 +107,9 @@ video { width:100%; border:1px solid #ccc; border-radius:8px; }
 <button id="ocrBtn">Start OCR Scan</button>
 
 <!-- Search -->
-<input id="search" placeholder="Search product" oninput="">
+<input id="search" placeholder="Search product" oninput="buildProductSelect()">
 
-<select id="catalogSelect" onchange="">
+<select id="catalogSelect" onchange="buildProductSelect()">
   <option value="">All Categories</option>
 </select>
 
@@ -325,7 +325,8 @@ function refresh(){
     const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
     catalogSelect.appendChild(o);
   });
-  ; updateHistory();
+  buildProductSelect();
+  updateHistory();
 }
 
 function buildProductSelect(){
