@@ -404,6 +404,7 @@ function updateHistory(){
       rows.push({...r,c:c.name,p:p.name,u:pkg.unit,s:p.supplier});
     });
   })));
+  rows.sort((a,b)=> new Date(b.time) - new Date(a.time));
   rows.reverse().forEach(r=>{
     historyBody.innerHTML+=
       `<tr><td>${r.time}</td><td>${r.location}</td><td>${r.c}</td><td>${r.s||''}</td>
