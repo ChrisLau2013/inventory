@@ -165,8 +165,8 @@ let worker = null;
 async function initOCR(){
   worker = await Tesseract.createWorker('eng');
   await worker.setParameters({
-    tessedit_pageseg_mode: 7,
-    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz '
+    tessedit_pageseg_mode: 6,
+    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789- '
   });
 }
 // ---------- 停止 OCR 函数 ----------
@@ -490,7 +490,7 @@ async function recognizeFrame(){
     return;
   }
 
-  const scale = 3;   // 工业推荐 3 倍
+  const scale = 4;   
 
   canvas.width = video.videoWidth * scale;
   canvas.height = video.videoHeight * scale;
@@ -516,14 +516,14 @@ async function recognizeFrame(){
   const avg = total / (dataArr.length/4);
 
   // ====== ⭐ 2. 自适应阈值 ======
-  const threshold = avg * 0.9;
+  const threshold = avg * 0.8;
 
   for (let i = 0; i < dataArr.length; i += 4) {
 
     let gray = 0.299*dataArr[i] + 0.587*dataArr[i+1] + 0.114*dataArr[i+2];
 
     // ⭐ 对比度增强
-    gray = (gray - avg) * 1.5 + avg;
+    gray = (gray - avg) * 2.2 + avg;
 
     const val = gray > threshold ? 255 : 0;
 
@@ -552,7 +552,7 @@ async function recognizeFrame(){
       // ====== ⭐ 3. 三帧投票 ======
       scanBuffer.push(cleaned);
 
-      if(scanBuffer.length >= 3){
+      if(scanBuffer.length >= 5){
 
         const counts = {};
         scanBuffer.forEach(t=>{
@@ -571,7 +571,7 @@ async function recognizeFrame(){
 
         scanBuffer = [];
 
-        if(max >= 2){
+        if(max >= 3){
 
           search.value = best;
           buildProductSelect();
