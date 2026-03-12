@@ -295,7 +295,7 @@ function importCSV(file){
     lines.slice(1).forEach(l=>{
       const v=parseCSVLine(l),o={};
       headers.forEach((h,i)=>o[h]=v[i]||'');
-      addProduct(o.category||'Temporary',o.product,o.unit,o.supplier,o.brand);
+      addProduct(category,supplier,brand,product,packagingunit,);
     });
     save(); refresh();
     showToast('CSV loaded');
