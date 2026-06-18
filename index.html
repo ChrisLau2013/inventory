@@ -3,345 +3,415 @@
 <head>
 <meta charset="UTF-8">
 <title>Inventory Counting</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="apple-touch-icon" sizes="180x180" href="icon.png">
-<link rel="icon" type="image/png" href="icon.png">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Inventory">
+<meta name="theme-color" content="#1e90ff">
 <style>
-body { font-family:-apple-system,BlinkMacSystemFont,sans-serif; margin:0; padding:0; }
-header { background:#1e90ff; color:#fff; text-align:center; padding:14px; font-size:20px; position:sticky; top:0; }
-main { padding:14px; }
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:0;background:#f5f5f7;color:#1c1c1e;}
 
-input, select, button { width:100%; font-size:18px; padding:10px; margin-bottom:12px; border-radius:6px; box-sizing:border-box; }
-button { background:#1e90ff; color:#fff; border:none; }
-button.secondary { background:#666; }
-button:disabled {background: #bbb;color: #666;cursor: not-allowed;}
-.lock-btn { width:100%; font-size:16px; padding:12px; border-radius:8px; background:#ccc; color:#333; }
-.lock-btn.locked { background:#28a745; color:#fff; }
-.lock-btn.disabled { background:#ddd; color:#777; }
+/* ── Header ── */
+header{background:#1e90ff;color:#fff;text-align:center;padding:14px 16px;font-size:18px;font-weight:600;position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;}
+header span.title{flex:1;text-align:center;}
+.header-badge{background:rgba(255,255,255,0.25);border-radius:10px;font-size:11px;padding:3px 8px;}
 
-.temp-tag { color:#ff5722; font-weight:600; }
+/* ── Sections ── */
+.section{background:#fff;border-radius:12px;margin:12px;padding:14px;box-shadow:0 1px 3px rgba(0,0,0,0.08);}
+.section-title{font-size:13px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px;}
 
-#toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(20px); padding:14px 18px; border-radius:14px; font-size:15px; color:#fff; opacity:0; pointer-events:none; transition:.35s; }
-#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
-#toast.success { background:#28a745; }
-#toast.warn { background:#ff9800; }
+/* ── Inputs ── */
+input,select{width:100%;font-size:16px;padding:11px 12px;margin-bottom:10px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fafafa;outline:none;transition:border .2s;}
+input:focus,select:focus{border-color:#1e90ff;background:#fff;}
+input[type=number]{-moz-appearance:textfield;}
+input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
 
-#history { max-height:300px; overflow:auto; border-top:1px solid #ccc; }
-table { width:100%; border-collapse:collapse; font-size:13px; }
-th,td { border:1px solid #ccc; padding:5px; text-align:center; }
-thead th { position:sticky; top:0; background:#eee; }
+/* ── Buttons ── */
+.btn{width:100%;font-size:16px;padding:12px;margin-bottom:10px;border-radius:10px;border:none;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.btn:active{opacity:.8;transform:scale(.98);}
+.btn-primary{background:#1e90ff;color:#fff;}
+.btn-success{background:#34c759;color:#fff;}
+.btn-danger{background:#ff3b30;color:#fff;}
+.btn-secondary{background:#e5e5ea;color:#3a3a3c;}
+.btn-warning{background:#ff9500;color:#fff;}
+.btn-sm{font-size:14px;padding:9px 12px;border-radius:8px;}
+button:disabled{opacity:.45;cursor:not-allowed;}
 
-.hidden { display:none; }
-#ocrCanvas { display:none; }
-#videoContainer { text-align:center; margin-bottom:12px; }
-video { width:100%; border:1px solid #ccc; border-radius:8px; }
-#scanBox{
-  position:absolute;
-  top:35%;
-  left:15%;
-  width:70%;
-  height:25%;
-  border:3px solid red;
-  border-radius:8px;
-  box-shadow:0 0 0 2000px rgba(0,0,0,0.3);
-  cursor: pointer;
-  pointer-events: auto;       
-}
+/* ── Lock ── */
+.lock-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:10px;}
+.lock-row select{flex:1;margin-bottom:0;}
+.lock-toggle{flex:0 0 52px;height:46px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fafafa;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.lock-toggle.locked{background:#34c759;border-color:#34c759;}
 
-#scanBox::after {
-  content:"";
-  position:absolute;
-  inset:0;
-  pointer-events:none;      
-}
+/* ── Qty row ── */
+.qty-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;}
+.qty-row input{flex:1;margin-bottom:0;}
+.qty-adj{width:44px;height:46px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fafafa;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:300;}
+.qty-adj:active{background:#e5e5ea;}
+
+/* ── Info box ── */
+#info{font-size:14px;color:#555;background:#f0f7ff;border-radius:8px;padding:10px 12px;margin-bottom:10px;min-height:0;display:none;}
+#info.visible{display:block;}
+
+/* ── Scan ── */
+#videoContainer{position:relative;border-radius:12px;overflow:hidden;margin-bottom:10px;background:#000;}
+video{width:100%;display:block;}
+#scanBox{position:absolute;top:35%;left:15%;width:70%;height:25%;border:3px solid #ff3b30;border-radius:8px;box-shadow:0 0 0 2000px rgba(0,0,0,.35);}
+#scanStatus{text-align:center;font-size:13px;color:#888;margin-bottom:8px;}
+
+/* ── Scan mode tabs ── */
+.scan-tabs{display:flex;gap:6px;margin-bottom:10px;}
+.scan-tab{flex:1;padding:9px;border-radius:8px;border:1.5px solid #e0e0e0;background:#fafafa;font-size:14px;font-weight:500;cursor:pointer;text-align:center;}
+.scan-tab.active{background:#1e90ff;border-color:#1e90ff;color:#fff;}
+
+/* ── Toast ── */
+#toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(20px);padding:12px 20px;border-radius:14px;font-size:15px;font-weight:500;color:#fff;opacity:0;pointer-events:none;transition:.3s;z-index:999;white-space:nowrap;max-width:90vw;display:flex;align-items:center;gap:8px;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.success{background:#34c759;}
+#toast.warn{background:#ff9500;}
+#toast.error{background:#ff3b30;}
+
+/* ── History ── */
+.history-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.history-count{font-size:13px;color:#888;}
+.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;border:1px solid #e5e5ea;}
+table{width:100%;border-collapse:collapse;font-size:12px;min-width:480px;}
+th,td{border-bottom:1px solid #f0f0f0;padding:8px 7px;text-align:left;white-space:nowrap;}
+th{background:#f5f5f7;font-weight:600;color:#555;font-size:11px;text-transform:uppercase;letter-spacing:.3px;position:sticky;top:0;}
+tr:last-child td{border-bottom:none;}
+tr:nth-child(even){background:#fafafa;}
+.pager{display:flex;justify-content:center;align-items:center;gap:12px;margin-top:10px;font-size:14px;color:#555;}
+.pager button{padding:6px 14px;border-radius:8px;border:1.5px solid #e0e0e0;background:#fafafa;cursor:pointer;font-size:14px;}
+.pager button:disabled{opacity:.4;}
+
+/* ── Manual panel ── */
+#manualPanel{border-top:1px solid #f0f0f0;padding-top:12px;margin-top:4px;}
+.hidden{display:none!important;}
+
+/* ── Temp tag ── */
+.temp-tag{color:#ff9500;font-size:11px;font-weight:600;}
+
+/* ── Canvas hidden ── */
+#ocrCanvas{display:none;}
+
+/* ── Safe area ── */
+main{padding-bottom:env(safe-area-inset-bottom,16px);}
 </style>
 </head>
 
 <body>
-<header>Inventory Counting</header>
+<header>
+  <span class="title">📦 Inventory Counting</span>
+  <span class="header-badge" id="recordBadge">0 records</span>
+</header>
 
 <main>
 
-<h2>Inventory Counting</h2>
-
-<!-- File upload -->
-<input type="file" id="fileInput" accept=".csv" hidden>
-<button id="fileBtn">Choose CSV File</button>
-<div id="fileName"></div>
-
-<!-- Location -->
-<select id="locationSelect">
-  <option value="">Select location</option>
-  <option>Warehouse Shifts near loading bay</option>
-  <option>Warehouse Shifts near Boiler</option>
-  <option>Warehouse Shifts close cooler wall</option>
-  <option>Warehouse Middle Shifts</option>
-  <option>Warehouse Shifts at flour mixer room hallway</option>
-  <option>Flour mixer room</option>
-  <option>Packaging Room</option>
-  <option>Line 4</option>
-  <option>Line 5&6</option>
-  <option>Line 1-3</option>
-  <option>Loading Bay 1</option>
-  <option>Loading Bay 2</option>
-  <option>Loading Bay 3</option>
-  <option>Loading Bay 4</option>
-  <option>Loading Bay 5</option>
-  <option>Loading Bay 6</option>
-  <option>MC Cooler</option>
-  <option>MC Freezer</option>
-  <option>MC Upstairs Sauce Shifts</option>
-  <option>MC Upstairs Cooler</option>
-  <option>MC Upstairs freezer</option>
-  <option>Rowan</option>
-</select>
-
-<button id="lockLocationBtn" class="lock-btn">🔓 Location Unlocked</button>
-
-<!-- OCR 按钮和视频 -->
-<div id="videoContainer" class="hidden" style="position:relative;">
-  <video id="video" autoplay></video>
-  <div id="scanBox"></div>
-</div>
-<button id="ocrBtn">Start OCR Scan</button>
-
-<!-- Search -->
-<input id="search" placeholder="Search product" oninput="buildProductSelect()">
-
-<select id="catalogSelect" onchange="buildProductSelect()">
-  <option value="">All Categories</option>
-</select>
-
-<select id="productSelect" onchange="showInfo()">
-  <option value="">Select product</option>
-</select>
-
-<div id="info"></div>
-
-<input id="qtyInput" type="number" inputmode="decimal" step="0.01" placeholder="Enter quantity">
-<button onclick="saveSelected()">Save Count</button>
-
-<button class="secondary" onclick="toggleManual()">Product not found? Manual entry</button>
-
-<div id="manualPanel" class="hidden">
-  <hr>
-  <h3>Temporary Product</h3>
-  <input id="mProd" placeholder="Product name">
-  <input id="mUnit" placeholder="Packaging unit">
-  <input id="mSup" placeholder="Supplier">
-  <input id="mQty" type="number" placeholder="Quantity">
-  <button onclick="manualSave()">Save Temporary Count</button>
+<!-- ① CSV Load -->
+<div class="section">
+  <div class="section-title">1 · Load Product List</div>
+  <input type="file" id="fileInput" accept=".csv" hidden>
+  <button class="btn btn-primary" id="fileBtn" onclick="document.getElementById('fileInput').click()">📄 Choose CSV File</button>
+  <div id="fileName" style="font-size:13px;color:#888;margin-top:-4px;"></div>
 </div>
 
-<hr>
-<button class="secondary" onclick="exportCSV()">Export CSV</button>
-<button class="secondary" onclick="clearAll()">Clear All Data</button>
+<!-- ② Location -->
+<div class="section">
+  <div class="section-title">2 · Location</div>
+  <div class="lock-row">
+    <select id="locationSelect" onchange="onLocationChange()">
+      <option value="">Select location…</option>
+      <option>Warehouse Shifts near loading bay</option>
+      <option>Warehouse Shifts near Boiler</option>
+      <option>Warehouse Shifts close cooler wall</option>
+      <option>Warehouse Middle Shifts</option>
+      <option>Warehouse Shifts at flour mixer room hallway</option>
+      <option>Flour mixer room</option>
+      <option>Packaging Room</option>
+      <option>Line 4</option>
+      <option>Line 5&amp;6</option>
+      <option>Line 1-3</option>
+      <option>Loading Bay 1</option>
+      <option>Loading Bay 2</option>
+      <option>Loading Bay 3</option>
+      <option>Loading Bay 4</option>
+      <option>Loading Bay 5</option>
+      <option>Loading Bay 6</option>
+      <option>MC Cooler</option>
+      <option>MC Freezer</option>
+      <option>MC Upstairs Sauce Shifts</option>
+      <option>MC Upstairs Cooler</option>
+      <option>MC Upstairs freezer</option>
+      <option>Rowan</option>
+    </select>
+    <button class="lock-toggle" id="lockBtn" onclick="toggleLock()" title="Lock location">🔓</button>
+  </div>
+</div>
 
-<div id="history">
-<h3>Counting History</h3>
-<table>
-<thead>
-<tr>
-<th>Time</th><th>Location</th><th>Category</th><th>Supplier</th>
-<th>Product</th><th>Unit</th><th>Qty</th>
-</tr>
-</thead>
-<tbody id="historyBody"></tbody>
-</table>
+<!-- ③ Scan -->
+<div class="section">
+  <div class="section-title">3 · Scan / Search</div>
+
+  <div class="scan-tabs">
+    <div class="scan-tab active" id="tabOCR" onclick="setScanMode('ocr')">📷 OCR</div>
+    <div class="scan-tab" id="tabBar" onclick="setScanMode('barcode')">🔳 Barcode</div>
+  </div>
+
+  <div id="videoContainer" class="hidden">
+    <video id="video" autoplay playsinline muted></video>
+    <div id="scanBox"></div>
+  </div>
+  <div id="scanStatus"></div>
+
+  <button class="btn btn-warning" id="scanBtn" onclick="toggleScan()">📷 Start OCR Scan</button>
+
+  <input id="search" placeholder="🔍 Search product name…" oninput="buildProductSelect()">
+
+  <select id="catalogSelect" onchange="buildProductSelect()">
+    <option value="">All Categories</option>
+  </select>
+
+  <select id="productSelect" onchange="showInfo()">
+    <option value="">Select product…</option>
+  </select>
+
+  <div id="info"></div>
+</div>
+
+<!-- ④ Count -->
+<div class="section">
+  <div class="section-title">4 · Count</div>
+  <div class="qty-row">
+    <button class="qty-adj" onclick="adjustQty(-1)">−</button>
+    <input id="qtyInput" type="number" inputmode="decimal" step="0.01" placeholder="Quantity">
+    <button class="qty-adj" onclick="adjustQty(1)">+</button>
+  </div>
+  <button class="btn btn-success" onclick="saveSelected()">✅ Save Count</button>
+  <button class="btn btn-secondary btn-sm" onclick="toggleManual()">➕ Product not found? Manual entry</button>
+
+  <div id="manualPanel" class="hidden">
+    <div class="section-title" style="margin-top:12px;">Temporary Product</div>
+    <input id="mProd" placeholder="Product name *">
+    <input id="mUnit" placeholder="Packaging unit *">
+    <input id="mSup" placeholder="Supplier">
+    <div class="qty-row">
+      <button class="qty-adj" onclick="adjustQty(-1,'mQty')">−</button>
+      <input id="mQty" type="number" inputmode="decimal" placeholder="Quantity *">
+      <button class="qty-adj" onclick="adjustQty(1,'mQty')">+</button>
+    </div>
+    <button class="btn btn-warning btn-sm" onclick="manualSave()">💾 Save Temporary</button>
+  </div>
+</div>
+
+<!-- ⑤ Export & Clear -->
+<div class="section">
+  <div class="section-title">5 · Export &amp; Manage</div>
+  <button class="btn btn-primary btn-sm" onclick="exportCSV()">📥 Export CSV</button>
+  <button class="btn btn-danger btn-sm" onclick="clearAll()">🗑 Clear All Data</button>
+</div>
+
+<!-- ⑥ History -->
+<div class="section">
+  <div class="history-header">
+    <div class="section-title" style="margin:0;">History</div>
+    <div class="history-count" id="historyCount"></div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th><th>Time</th><th>Location</th><th>Category</th>
+          <th>Supplier</th><th>Product</th><th>Unit</th><th>Qty</th>
+        </tr>
+      </thead>
+      <tbody id="historyBody"></tbody>
+    </table>
+  </div>
+  <div class="pager">
+    <button id="prevBtn" onclick="changePage(-1)">‹ Prev</button>
+    <span id="pageInfo"></span>
+    <button id="nextBtn" onclick="changePage(1)">Next ›</button>
+  </div>
 </div>
 
 </main>
 
-<div id="toast"><span class="icon"></span><span class="msg"></span></div>
+<div id="toast"><span id="toastIcon"></span><span id="toastMsg"></span></div>
 <canvas id="ocrCanvas"></canvas>
 
-<!-- Tesseract.js -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest/umd/index.min.js"></script>
 
 <script>
-// ⭐ OCR Worker 初始化
-let worker = null;
-async function initOCR(){
-  worker = await Tesseract.createWorker('eng');
-  await worker.setParameters({
-    tessedit_pageseg_mode: 6,
-    tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789- '
-  });
-}
-// ---------- 停止 OCR 函数 ----------
-function stopOCR(){
-  ocrActive = false;
-  if(video.srcObject){
-    video.srcObject.getTracks().forEach(track => track.stop());
-    video.srcObject = null;
-  }
-  videoContainer.classList.add('hidden');
-  ocrBtn.textContent = "Start OCR Scan";
-}
-// ---------- 工具 ----------
-function parseCSVLine(line){
-  const result=[],len=line.length;
-  let current='',inQuotes=false;
-  for(let i=0;i<len;i++){
-    const c=line[i];
-    if(c==='"') inQuotes=!inQuotes;
-    else if(c===','&&!inQuotes){ result.push(current); current=''; }
-    else current+=c;
-  }
-  result.push(current);
-  return result.map(v=>v.trim().replace(/^"|"$/g,''));
-}
-function similarity(a, b){
-  const matrix = [];
+'use strict';
 
-  for(let i = 0; i <= b.length; i++){
-    matrix[i] = [i];
-  }
-  for(let j = 0; j <= a.length; j++){
-    matrix[0][j] = j;
-  }
-
-  for(let i = 1; i <= b.length; i++){
-    for(let j = 1; j <= a.length; j++){
-      if(b.charAt(i-1) === a.charAt(j-1)){
-        matrix[i][j] = matrix[i-1][j-1];
-      } else {
-        matrix[i][j] = Math.min(
-          matrix[i-1][j-1] + 1,
-          matrix[i][j-1] + 1,
-          matrix[i-1][j] + 1
-        );
-      }
-    }
-  }
-
-  const distance = matrix[b.length][a.length];
-  return 1 - distance / Math.max(a.length, b.length);
-}
-function findBestMatch(text){
-  let best = '';
-  let bestScore = 0;
-
-  data.catalogs.forEach(c=>{
-    c.products.forEach(p=>{
-      const score = similarity(text.toLowerCase(), p.name.toLowerCase());
-      if(score > bestScore){
-        bestScore = score;
-        best = p.name;
-      }
-    });
-  });
-
-  return bestScore > 0.65 ? best : text;
+// ── Service Worker ──────────────────────────────────────────────
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
 }
 
-let data = JSON.parse(localStorage.getItem('inventory')) || { catalogs: [] };
-
-// ---------- DOM ----------
-const fileInput = document.getElementById('fileInput');
-const fileBtn = document.getElementById('fileBtn');
-const fileNameDiv = document.getElementById('fileName');
-const locationSelect = document.getElementById('locationSelect');
-const lockBtn = document.getElementById('lockLocationBtn');
-const catalogSelect = document.getElementById('catalogSelect');
-const productSelect = document.getElementById('productSelect');
-const search = document.getElementById('search');
-const qtyInput = document.getElementById('qtyInput');
-const info = document.getElementById('info');
-const manualPanel = document.getElementById('manualPanel');
-const historyBody = document.getElementById('historyBody');
-
-const ocrBtn = document.getElementById('ocrBtn');
-const videoContainer = document.getElementById('videoContainer');
-const video = document.getElementById('video');
-const canvas = document.getElementById('ocrCanvas');
-const ctx = canvas.getContext('2d');
+// ── State ───────────────────────────────────────────────────────
+let data = (() => {
+  try { return JSON.parse(localStorage.getItem('inventory')) || {catalogs:[]}; }
+  catch(e) { return {catalogs:[]}; }
+})();
 
 let locationLocked = false;
 let ocrActive = false;
+let ocrWorker = null;
+let scanMode = 'ocr';
+let barcodeReader = null;
+let currentPage = 1;
+const PAGE_SIZE = 20;
 
-// ---------- Toast ----------
-function showToast(msg,type='success'){
-  const t=document.getElementById('toast');
+// ── DOM ─────────────────────────────────────────────────────────
+const fileInput       = document.getElementById('fileInput');
+const fileBtn         = document.getElementById('fileBtn');
+const fileNameDiv     = document.getElementById('fileName');
+const locationSelect  = document.getElementById('locationSelect');
+const lockBtn         = document.getElementById('lockBtn');
+const catalogSelect   = document.getElementById('catalogSelect');
+const productSelect   = document.getElementById('productSelect');
+const searchInput     = document.getElementById('search');
+const qtyInput        = document.getElementById('qtyInput');
+const infoDiv         = document.getElementById('info');
+const manualPanel     = document.getElementById('manualPanel');
+const historyBody     = document.getElementById('historyBody');
+const ocrBtn          = document.getElementById('scanBtn');
+const videoContainer  = document.getElementById('videoContainer');
+const video           = document.getElementById('video');
+const canvas          = document.getElementById('ocrCanvas');
+const ctx             = canvas.getContext('2d');
+const scanStatus      = document.getElementById('scanStatus');
+const recordBadge     = document.getElementById('recordBadge');
+
+// ── Toast ───────────────────────────────────────────────────────
+let toastTimer = null;
+function showToast(msg, type='success'){
+  const t = document.getElementById('toast');
+  const icons = {success:'✅', warn:'⚠️', error:'❌'};
+  document.getElementById('toastIcon').textContent = icons[type]||'ℹ️';
+  document.getElementById('toastMsg').textContent = msg;
   t.className = `show ${type}`;
-  t.querySelector('.icon').textContent = type==='success'?'✅':'⚠️';
-  t.querySelector('.msg').textContent = msg;
-  setTimeout(()=>t.classList.remove('show'),2000);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2500);
 }
 
-// ---------- Location Lock ----------
-lockBtn.onclick = () => {
-  if(!locationSelect.value){ showToast('Please select location first','warn'); return; }
-  locationLocked = !locationLocked;
-  lockBtn.textContent = locationLocked ? '🔒 Location Locked' : '🔓 Location Unlocked';
-  lockBtn.classList.toggle('locked',locationLocked);
-};
-locationSelect.onchange = () => { lockBtn.disabled = !locationSelect.value; };
+// ── Scan mode tabs ───────────────────────────────────────────────
+function setScanMode(mode){
+  scanMode = mode;
+  document.getElementById('tabOCR').classList.toggle('active', mode==='ocr');
+  document.getElementById('tabBar').classList.toggle('active', mode==='barcode');
+  ocrBtn.textContent = mode === 'ocr' ? '📷 Start OCR Scan' : '🔳 Start Barcode Scan';
+  if(ocrActive) stopScan();
+}
 
-// ---------- File ----------
-fileBtn.onclick=()=>fileInput.click();
-fileInput.onchange=e=>{
-  const file=e.target.files[0];
+// ── Location Lock ────────────────────────────────────────────────
+function onLocationChange(){
+  if(locationLocked){ locationLocked=false; updateLockUI(); }
+}
+function toggleLock(){
+  if(!locationSelect.value){ showToast('Select a location first','warn'); return; }
+  locationLocked = !locationLocked;
+  updateLockUI();
+}
+function updateLockUI(){
+  lockBtn.textContent = locationLocked ? '🔒' : '🔓';
+  lockBtn.classList.toggle('locked', locationLocked);
+  locationSelect.disabled = locationLocked;
+}
+
+// ── CSV Import ───────────────────────────────────────────────────
+fileInput.onchange = e => {
+  const file = e.target.files[0];
   if(!file) return;
-  fileNameDiv.textContent=`Loaded: ${file.name}`;
-  importCSV(file);
-};
-function importCSV(file){
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const lines=e.target.result.split(/\r?\n/).filter(l=>l.trim());
-    const headers=parseCSVLine(lines[0]).map(h=>h.toLowerCase());
+  fileNameDiv.textContent = `Loaded: ${file.name}`;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const lines = ev.target.result.split(/\r?\n/).filter(l=>l.trim());
+    if(lines.length < 2){ showToast('CSV is empty or invalid','warn'); return; }
+    const headers = parseCSVLine(lines[0]).map(h=>h.toLowerCase().trim());
     lines.slice(1).forEach(l=>{
-      const v=parseCSVLine(l),o={};
+      const v = parseCSVLine(l), o={};
       headers.forEach((h,i)=>o[h]=v[i]||'');
-      addProduct(o.category || 'Temporary', o.product, o.unit, o.supplier, o.brand);
+      addProduct(o.category||'Uncategorised', o.product, o.unit, o.supplier, o.brand);
     });
     save(); refresh();
-    showToast('CSV loaded');
+    showToast(`Loaded ${lines.length-1} products`);
     fileBtn.disabled = true;
-    fileBtn.textContent = 'CSV Loaded';
+    fileBtn.textContent = '✅ CSV Loaded';
     localStorage.setItem('csvImported','1');
   };
   reader.readAsText(file);
+};
+
+function parseCSVLine(line){
+  const result=[]; let cur='', inQ=false;
+  for(let i=0;i<line.length;i++){
+    const c=line[i];
+    if(c==='"'){ inQ=!inQ; }
+    else if(c===','&&!inQ){ result.push(cur.trim()); cur=''; }
+    else cur+=c;
+  }
+  result.push(cur.trim());
+  return result.map(v=>v.replace(/^"|"$/g,'').trim());
 }
 
-// ---------- Data ----------
+// ── Data ────────────────────────────────────────────────────────
 function addProduct(cat,prod,unit,sup,brand){
+  prod=(prod||'').trim(); unit=(unit||'').trim();
   if(!prod||!unit) return;
   let c=data.catalogs.find(x=>x.name===cat);
   if(!c){ c={name:cat,products:[]}; data.catalogs.push(c); }
-  
   let p=c.products.find(x=>x.name===prod&&x.supplier===sup&&x.brand===brand);
-  if(!p){ p={name:prod,supplier:sup,brand:brand||'',packages:[]}; c.products.push(p); }
+  if(!p){ p={name:prod,supplier:sup||'',brand:brand||'',packages:[]}; c.products.push(p); }
   if(!p.packages.find(x=>x.unit===unit)) p.packages.push({unit,records:[]});
 }
-function save(){ localStorage.setItem('inventory',JSON.stringify(data)); }
 
-// ---------- UI ----------
+function save(){
+  localStorage.setItem('inventory',JSON.stringify(data));
+  updateBadge();
+}
+
+function updateBadge(){
+  let total=0;
+  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>total+=pkg.records.length)));
+  recordBadge.textContent=`${total} record${total!==1?'s':''}`;
+}
+
+// ── UI Refresh ───────────────────────────────────────────────────
 function refresh(){
+  const prevCat = catalogSelect.value;
   catalogSelect.innerHTML='<option value="">All Categories</option>';
   data.catalogs.forEach(c=>{
-    const o=document.createElement('option'); o.value=c.name; o.textContent=c.name;
+    const o=document.createElement('option');
+    o.value=c.name; o.textContent=c.name;
     catalogSelect.appendChild(o);
   });
+  if(prevCat) catalogSelect.value=prevCat;
   buildProductSelect();
   updateHistory();
+  updateBadge();
 }
 
 function buildProductSelect(){
-  productSelect.innerHTML='<option value="">Select product</option>';
-  const key=search.value.toLowerCase();
-  const cat=catalogSelect.value;
+  const key = searchInput.value.toLowerCase().trim();
+  const cat = catalogSelect.value;
+  productSelect.innerHTML='<option value="">Select product…</option>';
   data.catalogs.forEach((c,ci)=>{
     if(cat&&c.name!==cat) return;
     c.products.forEach((p,pi)=>{
-      if(key&&!p.name.toLowerCase().includes(key)) return;
+      if(key&&!p.name.toLowerCase().includes(key)&&
+         !((p.supplier||'').toLowerCase().includes(key))&&
+         !((p.brand||'').toLowerCase().includes(key))) return;
       p.packages.forEach((pkg,ki)=>{
         const o=document.createElement('option');
         o.value=`${ci}-${pi}-${ki}`;
-        o.textContent=`${p.supplier||'N/A'} | ${p.brand||'N/A'} | ${p.name} | ${pkg.unit}`;
+        const prefix = c.name==='Temporary'?'⚠️ ':'';
+        o.textContent=`${prefix}${p.supplier||'–'} | ${p.brand||'–'} | ${p.name} | ${pkg.unit}`;
         productSelect.appendChild(o);
       });
     });
@@ -349,258 +419,270 @@ function buildProductSelect(){
 }
 
 function showInfo(){
-  if(!productSelect.value){
-    info.textContent='';
-    return;
-  }
-
-  const [ci,pi,ki]=productSelect.value.split('-');
-
-  const product = data.catalogs[ci].products[pi];
-  const r = product.packages[ki].records.at(-1);
-
-  const brand = product.brand || 'N/A';
-
-  info.innerHTML =
-    `Brand: <b>${brand}</b><br>` +
-    (r ? `Last: ${r.qty} @ ${r.location}` : 'No record');
+  if(!productSelect.value){ infoDiv.className=''; infoDiv.textContent=''; return; }
+  const [ci,pi,ki]=productSelect.value.split('-').map(Number);
+  const p=data.catalogs[ci].products[pi];
+  const pkg=p.packages[ki];
+  const r=pkg.records.at(-1);
+  const totalQty=pkg.records.reduce((s,x)=>s+Number(x.qty),0);
+  infoDiv.className='visible';
+  infoDiv.innerHTML=
+    `<b>${p.name}</b> <span style="color:#888;font-size:12px;">${p.brand||''}</span><br>`+
+    `Supplier: ${p.supplier||'–'} &nbsp;|&nbsp; Unit: ${pkg.unit}<br>`+
+    (r?`Last count: <b>${r.qty}</b> @ ${r.location} <span style="color:#aaa;font-size:11px;">${r.time}</span><br>`:'No previous record<br>')+
+    (pkg.records.length>1?`Total recorded today: <b>${totalQty.toFixed(2)}</b> across ${pkg.records.length} entries`:'');
 }
 
-// ---------- Save ----------
+// ── Qty adjust ───────────────────────────────────────────────────
+function adjustQty(delta, fieldId='qtyInput'){
+  const el=document.getElementById(fieldId);
+  const cur=parseFloat(el.value)||0;
+  el.value=Math.max(0,cur+delta).toFixed(cur%1===0&&delta===Math.round(delta)?0:2);
+}
+
+// ── Save ─────────────────────────────────────────────────────────
 function saveSelected(){
-  if(!productSelect.value){ showToast('Select product','warn'); return; }
-  if(!locationSelect.value){ showToast('Select location','warn'); return; }
-
+  if(!productSelect.value){ showToast('Select a product','warn'); return; }
+  if(!locationSelect.value){ showToast('Select a location','warn'); return; }
   const qty=parseFloat(qtyInput.value);
-  if(isNaN(qty)){ showToast('Enter quantity','warn'); return; }
-
-  const [ci,pi,ki]=productSelect.value.split('-');
+  if(isNaN(qty)||qty<0){ showToast('Enter a valid quantity','warn'); return; }
+  const [ci,pi,ki]=productSelect.value.split('-').map(Number);
   data.catalogs[ci].products[pi].packages[ki].records.push({
-    qty, location:locationSelect.value, time:new Date().toLocaleString()
+    qty, location:locationSelect.value, time:new Date().toLocaleString('en-CA')
   });
-  save(); refresh(); qtyInput.value=''; search.value=''; productSelect.value='';
+  save(); updateHistory();
+  qtyInput.value=''; searchInput.value='';
+  productSelect.innerHTML='<option value="">Select product…</option>';
+  infoDiv.className=''; infoDiv.textContent='';
   if(!locationLocked) locationSelect.value='';
-  showToast('Saved');
+  if(navigator.vibrate) navigator.vibrate(40);
+  showToast('Saved ✓');
 }
 
-// ---------- Manual ----------
+// ── Manual Entry ─────────────────────────────────────────────────
 function toggleManual(){ manualPanel.classList.toggle('hidden'); }
-function manualSave(){
-  if(!locationSelect.value){ showToast('Select location','warn'); return; }
-  const prod=mProd.value.trim(),unit=mUnit.value.trim(),sup=mSup.value.trim(),qty=parseFloat(mQty.value);
-  if(!prod||!unit||isNaN(qty)){ showToast('Complete fields','warn'); return; }
 
+function manualSave(){
+  if(!locationSelect.value){ showToast('Select a location','warn'); return; }
+  const prod=document.getElementById('mProd').value.trim();
+  const unit=document.getElementById('mUnit').value.trim();
+  const sup=document.getElementById('mSup').value.trim();
+  const qty=parseFloat(document.getElementById('mQty').value);
+  if(!prod||!unit||isNaN(qty)){ showToast('Fill in required fields','warn'); return; }
   addProduct('Temporary',prod,unit,sup);
   const c=data.catalogs.find(x=>x.name==='Temporary');
   const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
-  p.packages[0].records.push({ qty, location:locationSelect.value, time:new Date().toLocaleString() });
-  save(); refresh(); mProd.value=mUnit.value=mSup.value=mQty.value='';
-  showToast('Temporary saved');
+  p.packages[0].records.push({qty,location:locationSelect.value,time:new Date().toLocaleString('en-CA')});
+  save(); refresh();
+  ['mProd','mUnit','mSup','mQty'].forEach(id=>document.getElementById(id).value='');
+  showToast('Temporary entry saved');
 }
 
-// ---------- History ----------
+// ── History & Paging ─────────────────────────────────────────────
+function getAllRows(){
+  const rows=[];
+  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
+    pkg.records.forEach(r=>{
+      rows.push({time:r.time,loc:r.location,cat:c.name,sup:p.supplier,prod:p.name,unit:pkg.unit,qty:r.qty});
+    });
+  })));
+  return rows.sort((a,b)=>new Date(b.time)-new Date(a.time));
+}
+
 function updateHistory(){
-  historyBody.innerHTML='';
-  let rows=[];
-  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
-    pkg.records.forEach(r=>{
-      rows.push({...r,c:c.name,p:p.name,u:pkg.unit,s:p.supplier});
-    });
-  })));
-  rows.sort((a,b)=> new Date(b.time) - new Date(a.time));
-  rows.forEach(r=>{
-    historyBody.innerHTML+=
-      `<tr><td>${r.time}</td><td>${r.location}</td><td>${r.c}</td><td>${r.s||''}</td>
-       <td>${r.p}</td><td>${r.u}</td><td>${r.qty}</td></tr>`;
-  });
+  const rows=getAllRows();
+  const total=rows.length;
+  const pages=Math.max(1,Math.ceil(total/PAGE_SIZE));
+  if(currentPage>pages) currentPage=pages;
+  const slice=rows.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+
+  document.getElementById('historyCount').textContent=`${total} total`;
+  document.getElementById('pageInfo').textContent=`${currentPage} / ${pages}`;
+  document.getElementById('prevBtn').disabled=currentPage===1;
+  document.getElementById('nextBtn').disabled=currentPage===pages;
+
+  historyBody.innerHTML=slice.map(r=>{
+    const [date,...rest]=r.time.split(', ');
+    const time=rest.join(', ')||r.time;
+    const isTemp=r.cat==='Temporary';
+    return `<tr>
+      <td>${date}</td><td>${time}</td><td>${r.loc}</td>
+      <td>${isTemp?`<span class="temp-tag">TEMP</span>`:r.cat}</td>
+      <td>${r.sup||'–'}</td><td>${r.prod}</td>
+      <td>${r.unit}</td><td>${Number(r.qty).toFixed(2)}</td>
+    </tr>`;
+  }).join('');
 }
 
-// ---------- Export CSV ----------
+function changePage(d){ currentPage+=d; updateHistory(); }
+
+// ── Export CSV ───────────────────────────────────────────────────
 function exportCSV(){
-  let csv='date,time,location,category,supplier,product,unit,qty\n';
-  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
-    pkg.records.forEach(r=>{
-      const qty = Number(r.qty || 0).toFixed(2);
-      csv+=`${r.time},${r.location},${c.name},${p.supplier||''},${p.name},${pkg.unit},${qty}\n`;
-    });
-  })));
-  if(csv.split('\n').length <= 1){ showToast('No data to export','warn'); return; }
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-  const link = document.createElement('a');
-  const url = URL.createObjectURL(blob);
-  link.href = url;
-  const now = new Date();
-  const pad = n => n.toString().padStart(2,'0');
-  const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
-  link.download = `inventory_${dateStr}.csv`;
-  document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url);
-  showToast('CSV Exported');
+  const rows=getAllRows();
+  if(!rows.length){ showToast('No data to export','warn'); return; }
+  const header='Date,Time,Location,Category,Supplier,Product,Unit,Qty\n';
+  const body=rows.map(r=>{
+    const [date,...rest]=r.time.split(', ');
+    const time=rest.join(', ')||r.time;
+    return [date,time,r.loc,r.cat,r.sup||'',r.prod,r.unit,Number(r.qty).toFixed(2)]
+      .map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
+  }).join('\n');
+  const blob=new Blob([header+body],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url;
+  const now=new Date();
+  const pad=n=>n.toString().padStart(2,'0');
+  a.download=`inventory_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  showToast('CSV exported');
 }
 
-// ---------- Clear ----------
-function clearAll(){ if(confirm('Clear all data?')){ localStorage.clear(); location.reload(); } }
+// ── Clear ────────────────────────────────────────────────────────
+function clearAll(){
+  if(!confirm('This will permanently delete all counted data. Are you sure?')) return;
+  localStorage.clear(); location.reload();
+}
 
-// ---------- OCR ----------
-ocrBtn.onclick = async () => {
-
-  // 如果视频区域已经显示，关闭 OCR
-  if(ocrActive){
-    stopOCR();
-    return;
-  }
-
-  // ✅ 视频框必须显示才开始扫描
-  videoContainer.classList.remove('hidden');  // 显示红框 + 视频
-  ocrActive = true;
-  ocrBtn.textContent = "Click Red Box to Scan";
-
-  // 初始化 OCR worker（只初始化一次）
-  if(!worker){
-    ocrBtn.textContent = "Initializing OCR...";
-    ocrBtn.disabled = true;
-    await initOCR();
-    ocrBtn.disabled = false;
-    ocrBtn.textContent = "Click Red box to Scan";
-  }
-
-  // 打开摄像头
-  const stream = await navigator.mediaDevices.getUserMedia({
-    video: { facingMode: "environment" }
+// ── OCR ─────────────────────────────────────────────────────────
+async function initOCR(){
+  if(ocrWorker) return;
+  scanStatus.textContent='Initialising OCR engine…';
+  ocrWorker=await Tesseract.createWorker('eng');
+  await ocrWorker.setParameters({
+    tessedit_pageseg_mode:6,
+    tessedit_char_whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789- '
   });
-  video.srcObject = stream;
+  scanStatus.textContent='';
+}
 
-  // ⚠️ 不自动扫描，等待用户点击红框
-};
-// ---------- 扫描框点击 ----------
-const scanBox = document.getElementById('scanBox');
-scanBox.onclick = () => {
-  if(!ocrActive) return;
-  showToast("Scanning...", "success");
-  recognizeFrame();
-};
+function similarity(a,b){
+  const m=[];
+  for(let i=0;i<=b.length;i++) m[i]=[i];
+  for(let j=0;j<=a.length;j++) m[0][j]=j;
+  for(let i=1;i<=b.length;i++)
+    for(let j=1;j<=a.length;j++)
+      m[i][j]=b[i-1]===a[j-1]?m[i-1][j-1]:1+Math.min(m[i-1][j-1],m[i][j-1],m[i-1][j]);
+  return 1-m[b.length][a.length]/Math.max(a.length,b.length,1);
+}
 
-let lastResult = '';
-let scanBuffer = [];
+function findBestMatch(text){
+  let best='',bestScore=0;
+  data.catalogs.forEach(c=>c.products.forEach(p=>{
+    const score=similarity(text.toLowerCase(),p.name.toLowerCase());
+    if(score>bestScore){ bestScore=score; best=p.name; }
+  }));
+  return bestScore>0.65?best:text;
+}
+
+let scanBuffer=[];
 
 async function recognizeFrame(){
-
   if(!ocrActive) return;
-
-  if(video.readyState < 2){
-    requestAnimationFrame(recognizeFrame);
-    return;
+  if(video.readyState<2){ setTimeout(recognizeFrame,150); return; }
+  const scale=3;
+  canvas.width=video.videoWidth*scale;
+  canvas.height=video.videoHeight*scale;
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(scale,scale);
+  ctx.drawImage(video,0,0);
+  const cw=video.videoWidth*.7*scale, ch=video.videoHeight*.25*scale;
+  const cx=video.videoWidth*.15*scale, cy=video.videoHeight*.35*scale;
+  const imgData=ctx.getImageData(cx,cy,cw,ch), d=imgData.data;
+  let sum=0; for(let i=0;i<d.length;i+=4) sum+=.299*d[i]+.587*d[i+1]+.114*d[i+2];
+  const avg=sum/(d.length/4), thresh=avg*.8;
+  for(let i=0;i<d.length;i+=4){
+    let g=(.299*d[i]+.587*d[i+1]+.114*d[i+2]-avg)*2.2+avg;
+    d[i]=d[i+1]=d[i+2]=g>thresh?255:0;
   }
-
-  const scale = 4;   
-
-  canvas.width = video.videoWidth * scale;
-  canvas.height = video.videoHeight * scale;
-
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(scale, scale);
-  ctx.drawImage(video, 0, 0);
-
-  const cropWidth = video.videoWidth * 0.7 * scale;
-  const cropHeight = video.videoHeight * 0.25 * scale;
-  const x = video.videoWidth * 0.15 * scale;
-  const y = video.videoHeight * 0.35 * scale;
-
-  const imageData = ctx.getImageData(x, y, cropWidth, cropHeight);
-  const dataArr = imageData.data;
-
-  // ====== ⭐ 1. 自动计算亮度平均值 ======
-  let total = 0;
-  for(let i=0;i<dataArr.length;i+=4){
-    const gray = 0.299*dataArr[i] + 0.587*dataArr[i+1] + 0.114*dataArr[i+2];
-    total += gray;
-  }
-  const avg = total / (dataArr.length/4);
-
-  // ====== ⭐ 2. 自适应阈值 ======
-  const threshold = avg * 0.8;
-
-  for (let i = 0; i < dataArr.length; i += 4) {
-
-    let gray = 0.299*dataArr[i] + 0.587*dataArr[i+1] + 0.114*dataArr[i+2];
-
-    // ⭐ 对比度增强
-    gray = (gray - avg) * 2.2 + avg;
-
-    const val = gray > threshold ? 255 : 0;
-
-    dataArr[i] = dataArr[i+1] = dataArr[i+2] = val;
-  }
-
-  const tempCanvas = document.createElement("canvas");
-  tempCanvas.width = cropWidth;
-  tempCanvas.height = cropHeight;
-  const tempCtx = tempCanvas.getContext("2d");
-  tempCtx.putImageData(imageData, 0, 0);
-
+  const tmp=document.createElement('canvas'); tmp.width=cw; tmp.height=ch;
+  tmp.getContext('2d').putImageData(imgData,0,0);
   try{
-
-    const { data: { text } } = await worker.recognize(tempCanvas);
-
-    let cleaned = text
-      .replace(/[^a-zA-Z ]/g,'')
-      .replace(/\s+/g,' ')
-      .trim();
-
-    if(cleaned.length > 3){
-
-      cleaned = findBestMatch(cleaned);
-
-      // ====== ⭐ 3. 三帧投票 ======
+    const {data:{text}}=await ocrWorker.recognize(tmp);
+    let cleaned=text.replace(/[^a-zA-Z ]/g,'').replace(/\s+/g,' ').trim();
+    if(cleaned.length>3){
+      cleaned=findBestMatch(cleaned);
       scanBuffer.push(cleaned);
-
-      if(scanBuffer.length >= 5){
-
-        const counts = {};
-        scanBuffer.forEach(t=>{
-          counts[t] = (counts[t] || 0) + 1;
-        });
-
-        let best = '';
-        let max = 0;
-
-        for(let key in counts){
-          if(counts[key] > max){
-            max = counts[key];
-            best = key;
-          }
-        }
-
-        scanBuffer = [];
-
-        if(max >= 3){
-
-          search.value = best;
-          buildProductSelect();
-
-          if(productSelect.options.length === 2){
-            productSelect.selectedIndex = 1;
-            showInfo();
-          }
-
-          showToast("Product Detected: " + best,'success');
-
-          if(navigator.vibrate){
-            navigator.vibrate([100,50,100]);
-          }
-
-          stopOCR();
-          return;
+      scanStatus.textContent=`Scanning… detected: "${cleaned}"`;
+      if(scanBuffer.length>=5){
+        const counts={};
+        scanBuffer.forEach(t=>counts[t]=(counts[t]||0)+1);
+        const best=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+        scanBuffer=[];
+        if(best[1]>=3){
+          searchInput.value=best[0]; buildProductSelect();
+          if(productSelect.options.length===2){ productSelect.selectedIndex=1; showInfo(); }
+          showToast('Detected: '+best[0]);
+          if(navigator.vibrate) navigator.vibrate([80,40,80]);
+          stopScan(); return;
         }
       }
     }
-
-  }catch(e){
-    console.error(e);
-  }
-
-  setTimeout(recognizeFrame, 250);
+  }catch(e){ console.warn('OCR error',e); }
+  setTimeout(recognizeFrame,300);
 }
-refresh();
+
+// ── Barcode ──────────────────────────────────────────────────────
+async function startBarcodeScan(){
+  try{
+    const ZXing=window.ZXingBrowser;
+    if(!ZXing){ showToast('Barcode library not loaded','error'); return; }
+    barcodeReader=new ZXing.BrowserMultiFormatReader();
+    videoContainer.classList.remove('hidden');
+    const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    video.srcObject=stream;
+    scanStatus.textContent='Point at barcode…';
+    barcodeReader.decodeFromVideoElement(video, (result,err)=>{
+      if(result){
+        const code=result.getText();
+        searchInput.value=code; buildProductSelect();
+        showToast('Barcode: '+code);
+        if(navigator.vibrate) navigator.vibrate([80,40,80]);
+        stopScan();
+      }
+    });
+  }catch(e){ showToast('Camera error: '+e.message,'error'); stopScan(); }
+}
+
+// ── Scan toggle ──────────────────────────────────────────────────
+async function toggleScan(){
+  if(ocrActive){ stopScan(); return; }
+  ocrActive=true;
+  ocrBtn.textContent='⏹ Stop Scan';
+  if(scanMode==='ocr'){
+    ocrBtn.disabled=true;
+    await initOCR();
+    ocrBtn.disabled=false;
+    let stream;
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+    }catch(e){ showToast('Camera access denied','error'); stopScan(); return; }
+    video.srcObject=stream;
+    videoContainer.classList.remove('hidden');
+    scanStatus.textContent='Tap the red box to scan';
+    document.getElementById('scanBox').onclick=recognizeFrame;
+  } else {
+    await startBarcodeScan();
+  }
+}
+
+function stopScan(){
+  ocrActive=false; scanBuffer=[];
+  if(video.srcObject){ video.srcObject.getTracks().forEach(t=>t.stop()); video.srcObject=null; }
+  if(barcodeReader){ try{barcodeReader.reset();}catch(e){} barcodeReader=null; }
+  videoContainer.classList.add('hidden');
+  scanStatus.textContent='';
+  ocrBtn.textContent=scanMode==='ocr'?'📷 Start OCR Scan':'🔳 Start Barcode Scan';
+  document.getElementById('scanBox').onclick=null;
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+(function init(){
+  if(localStorage.getItem('csvImported')){
+    fileBtn.disabled=true;
+    fileBtn.textContent='✅ CSV Loaded';
+  }
+  refresh();
+})();
 </script>
 </body>
 </html>
