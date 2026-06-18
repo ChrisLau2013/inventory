@@ -99,6 +99,24 @@ tr:nth-child(even){background:#fafafa;}
 
 /* ── Safe area ── */
 main{padding-bottom:env(safe-area-inset-bottom,16px);}
+
+/* ── Edit Modal ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:flex-end;justify-content:center;}
+.modal-backdrop.hidden{display:none;}
+.modal-sheet{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px calc(20px + env(safe-area-inset-bottom,0px));width:100%;max-width:480px;animation:slideUp .25s ease;}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-title{font-size:16px;font-weight:600;margin:0 0 14px;text-align:center;}
+.modal-label{font-size:12px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;}
+.modal-row{display:flex;gap:8px;}
+.modal-row input{margin-bottom:10px;}
+.modal-actions{display:flex;gap:8px;margin-top:6px;}
+.modal-actions .btn{margin-bottom:0;}
+
+/* ── Action buttons in table ── */
+.act-btn{border:none;background:none;cursor:pointer;font-size:15px;padding:2px 5px;border-radius:6px;line-height:1;}
+.act-btn:active{opacity:.6;}
+.act-btn.edit{color:#1e90ff;}
+.act-btn.del{color:#ff3b30;}
 </style>
 </head>
 
@@ -224,7 +242,7 @@ main{padding-bottom:env(safe-area-inset-bottom,16px);}
       <thead>
         <tr>
           <th>Date</th><th>Time</th><th>Location</th><th>Category</th>
-          <th>Supplier</th><th>Product</th><th>Unit</th><th>Qty</th>
+          <th>Supplier</th><th>Product</th><th>Unit</th><th>Qty</th><th>Edit</th>
         </tr>
       </thead>
       <tbody id="historyBody"></tbody>
@@ -238,6 +256,62 @@ main{padding-bottom:env(safe-area-inset-bottom,16px);}
 </div>
 
 </main>
+
+<!-- Edit Record Modal -->
+<div class="modal-backdrop hidden" id="editBackdrop" onclick="closeEditModal(event)">
+  <div class="modal-sheet" id="editSheet">
+    <div class="modal-title">✏️ Edit Record</div>
+
+    <div class="modal-label">Product</div>
+    <input id="eProduct" placeholder="Product name" style="background:#f0f7ff;">
+
+    <div class="modal-label">Supplier</div>
+    <input id="eSupplier" placeholder="Supplier">
+
+    <div class="modal-label">Unit</div>
+    <input id="eUnit" placeholder="Unit">
+
+    <div class="modal-label">Location</div>
+    <select id="eLocation" style="margin-bottom:10px;">
+      <option value="">Select location…</option>
+      <option>Warehouse Shifts near loading bay</option>
+      <option>Warehouse Shifts near Boiler</option>
+      <option>Warehouse Shifts close cooler wall</option>
+      <option>Warehouse Middle Shifts</option>
+      <option>Warehouse Shifts at flour mixer room hallway</option>
+      <option>Flour mixer room</option>
+      <option>Packaging Room</option>
+      <option>Line 4</option>
+      <option>Line 5&amp;6</option>
+      <option>Line 1-3</option>
+      <option>Loading Bay 1</option>
+      <option>Loading Bay 2</option>
+      <option>Loading Bay 3</option>
+      <option>Loading Bay 4</option>
+      <option>Loading Bay 5</option>
+      <option>Loading Bay 6</option>
+      <option>MC Cooler</option>
+      <option>MC Freezer</option>
+      <option>MC Upstairs Sauce Shifts</option>
+      <option>MC Upstairs Cooler</option>
+      <option>MC Upstairs freezer</option>
+      <option>Rowan</option>
+    </select>
+
+    <div class="modal-label">Quantity</div>
+    <div class="modal-row" style="margin-bottom:10px;">
+      <button class="qty-adj" onclick="modalAdjQty(-1)" style="flex:0 0 44px;">−</button>
+      <input id="eQty" type="number" inputmode="decimal" step="0.01" placeholder="Quantity" style="margin-bottom:0;">
+      <button class="qty-adj" onclick="modalAdjQty(1)" style="flex:0 0 44px;">+</button>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-danger" style="flex:1;" onclick="deleteRecord()">🗑 Delete</button>
+      <button class="btn btn-success" style="flex:2;" onclick="saveEditRecord()">✅ Save Changes</button>
+    </div>
+    <button class="btn btn-secondary btn-sm" style="margin-top:8px;" onclick="closeEditModal()">Cancel</button>
+  </div>
+</div>
 
 <div id="toast"><span id="toastIcon"></span><span id="toastMsg"></span></div>
 <canvas id="ocrCanvas"></canvas>
@@ -481,9 +555,9 @@ function manualSave(){
 // ── History & Paging ─────────────────────────────────────────────
 function getAllRows(){
   const rows=[];
-  data.catalogs.forEach(c=>c.products.forEach(p=>p.packages.forEach(pkg=>{
-    pkg.records.forEach(r=>{
-      rows.push({time:r.time,loc:r.location,cat:c.name,sup:p.supplier,prod:p.name,unit:pkg.unit,qty:r.qty});
+  data.catalogs.forEach((c,ci)=>c.products.forEach((p,pi)=>p.packages.forEach((pkg,ki)=>{
+    pkg.records.forEach((r,ri)=>{
+      rows.push({time:r.time,loc:r.location,cat:c.name,sup:p.supplier,prod:p.name,unit:pkg.unit,qty:r.qty,ci,pi,ki,ri});
     });
   })));
   return rows.sort((a,b)=>new Date(b.time)-new Date(a.time));
@@ -505,11 +579,15 @@ function updateHistory(){
     const [date,...rest]=r.time.split(', ');
     const time=rest.join(', ')||r.time;
     const isTemp=r.cat==='Temporary';
+    const key=`${r.ci}-${r.pi}-${r.ki}-${r.ri}`;
     return `<tr>
       <td>${date}</td><td>${time}</td><td>${r.loc}</td>
-      <td>${isTemp?`<span class="temp-tag">TEMP</span>`:r.cat}</td>
+      <td>${isTemp?'<span class="temp-tag">TEMP</span>':r.cat}</td>
       <td>${r.sup||'–'}</td><td>${r.prod}</td>
       <td>${r.unit}</td><td>${Number(r.qty).toFixed(2)}</td>
+      <td style="white-space:nowrap;">
+        <button class="act-btn edit" onclick="openEditModal('${key}')" title="Edit">✏️</button>
+      </td>
     </tr>`;
   }).join('');
 }
@@ -673,6 +751,75 @@ function stopScan(){
   scanStatus.textContent='';
   ocrBtn.textContent=scanMode==='ocr'?'📷 Start OCR Scan':'🔳 Start Barcode Scan';
   document.getElementById('scanBox').onclick=null;
+}
+
+// ── Edit Modal ───────────────────────────────────────────────────
+let editTarget = null; // {ci, pi, ki, ri}
+
+function openEditModal(key){
+  const [ci,pi,ki,ri] = key.split('-').map(Number);
+  editTarget = {ci,pi,ki,ri};
+  const p   = data.catalogs[ci].products[pi];
+  const pkg = p.packages[ki];
+  const rec = pkg.records[ri];
+  document.getElementById('eProduct').value  = p.name;
+  document.getElementById('eSupplier').value = p.supplier||'';
+  document.getElementById('eUnit').value     = pkg.unit;
+  document.getElementById('eLocation').value = rec.location;
+  document.getElementById('eQty').value      = rec.qty;
+  document.getElementById('editBackdrop').classList.remove('hidden');
+}
+
+function closeEditModal(e){
+  if(e && e.target !== document.getElementById('editBackdrop')) return;
+  document.getElementById('editBackdrop').classList.add('hidden');
+  editTarget = null;
+}
+
+function modalAdjQty(d){
+  const el = document.getElementById('eQty');
+  el.value = Math.max(0, (parseFloat(el.value)||0) + d).toFixed(2);
+}
+
+function saveEditRecord(){
+  if(!editTarget){ return; }
+  const {ci,pi,ki,ri} = editTarget;
+  const newProd = document.getElementById('eProduct').value.trim();
+  const newSup  = document.getElementById('eSupplier').value.trim();
+  const newUnit = document.getElementById('eUnit').value.trim();
+  const newLoc  = document.getElementById('eLocation').value;
+  const newQty  = parseFloat(document.getElementById('eQty').value);
+
+  if(!newProd||!newUnit||!newLoc||isNaN(newQty)){
+    showToast('Please fill all fields','warn'); return;
+  }
+
+  // Update record quantity & location
+  data.catalogs[ci].products[pi].packages[ki].records[ri].qty      = newQty;
+  data.catalogs[ci].products[pi].packages[ki].records[ri].location = newLoc;
+
+  // Update product name & supplier if changed
+  data.catalogs[ci].products[pi].name     = newProd;
+  data.catalogs[ci].products[pi].supplier = newSup;
+
+  // Update unit if changed
+  data.catalogs[ci].products[pi].packages[ki].unit = newUnit;
+
+  save(); refresh();
+  document.getElementById('editBackdrop').classList.add('hidden');
+  editTarget = null;
+  showToast('Record updated ✓');
+}
+
+function deleteRecord(){
+  if(!editTarget) return;
+  if(!confirm('Delete this record?')) return;
+  const {ci,pi,ki,ri} = editTarget;
+  data.catalogs[ci].products[pi].packages[ki].records.splice(ri, 1);
+  save(); refresh();
+  document.getElementById('editBackdrop').classList.add('hidden');
+  editTarget = null;
+  showToast('Record deleted');
 }
 
 // ── Init ─────────────────────────────────────────────────────────
