@@ -522,7 +522,7 @@ function saveSelected(){
   if(isNaN(qty)||qty<0){ showToast('Enter a valid quantity','warn'); return; }
   const [ci,pi,ki]=productSelect.value.split('-').map(Number);
   data.catalogs[ci].products[pi].packages[ki].records.push({
-    qty, location:locationSelect.value, time:new Date().toLocaleString('en-CA')
+    qty, location:locationSelect.value, time:new Date().toISOString()
   });
   save(); updateHistory();
   qtyInput.value=''; searchInput.value='';
@@ -546,13 +546,23 @@ function manualSave(){
   addProduct('Temporary',prod,unit,sup);
   const c=data.catalogs.find(x=>x.name==='Temporary');
   const p=c.products.find(x=>x.name===prod&&x.supplier===sup);
-  p.packages[0].records.push({qty,location:locationSelect.value,time:new Date().toLocaleString('en-CA')});
+  p.packages[0].records.push({qty,location:locationSelect.value,time:new Date().toISOString()});
   save(); refresh();
   ['mProd','mUnit','mSup','mQty'].forEach(id=>document.getElementById(id).value='');
   showToast('Temporary entry saved');
 }
 
 // ── History & Paging ─────────────────────────────────────────────
+function formatTime(iso){
+  // Handles both new ISO strings and old toLocaleString strings gracefully
+  const d = new Date(iso);
+  if(isNaN(d)) return {date: iso, time: ''};
+  const pad = n => n.toString().padStart(2,'0');
+  const date = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  return {date, time};
+}
+
 function getAllRows(){
   const rows=[];
   data.catalogs.forEach((c,ci)=>c.products.forEach((p,pi)=>p.packages.forEach((pkg,ki)=>{
@@ -560,7 +570,13 @@ function getAllRows(){
       rows.push({time:r.time,loc:r.location,cat:c.name,sup:p.supplier,prod:p.name,unit:pkg.unit,qty:r.qty,ci,pi,ki,ri});
     });
   })));
-  return rows.sort((a,b)=>new Date(b.time)-new Date(a.time));
+  // ISO strings sort correctly as plain strings; fallback to Date parse for old records
+  return rows.sort((a,b)=>{
+    const ta = a.time, tb = b.time;
+    if(ta > tb) return -1;
+    if(ta < tb) return 1;
+    return 0;
+  });
 }
 
 function updateHistory(){
@@ -576,8 +592,7 @@ function updateHistory(){
   document.getElementById('nextBtn').disabled=currentPage===pages;
 
   historyBody.innerHTML=slice.map(r=>{
-    const [date,...rest]=r.time.split(', ');
-    const time=rest.join(', ')||r.time;
+    const {date,time} = formatTime(r.time);
     const isTemp=r.cat==='Temporary';
     const key=`${r.ci}-${r.pi}-${r.ki}-${r.ri}`;
     return `<tr>
@@ -600,8 +615,7 @@ function exportCSV(){
   if(!rows.length){ showToast('No data to export','warn'); return; }
   const header='Date,Time,Location,Category,Supplier,Product,Unit,Qty\n';
   const body=rows.map(r=>{
-    const [date,...rest]=r.time.split(', ');
-    const time=rest.join(', ')||r.time;
+    const {date,time} = formatTime(r.time);
     return [date,time,r.loc,r.cat,r.sup||'',r.prod,r.unit,Number(r.qty).toFixed(2)]
       .map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',');
   }).join('\n');
