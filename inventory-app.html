@@ -18,29 +18,25 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
   h1,h2,h3{margin:0 0 4px}
-  .app-shell{display:flex;min-height:100vh}
+  .app-shell{display:flex;flex-direction:column;min-height:100vh}
 
-  /* ---- Desktop sidebar (primary nav) ---- */
-  .sidebar{width:230px;flex:0 0 230px;background:var(--panel);border-right:1px solid var(--line);position:sticky;top:0;height:100vh;display:flex;flex-direction:column;padding:18px 0}
-  .sidebar .brand{padding:0 20px 18px;border-bottom:1px solid var(--line);margin-bottom:10px}
-  .sidebar .brand .name{font-size:15px;font-weight:700;line-height:1.3}
-  .sidebar .brand .sub{font-size:11px;color:var(--muted);margin-top:2px}
-  .sidebar nav{flex:1;display:flex;flex-direction:column;gap:2px;padding:0 10px}
-  .sidebar nav button{display:flex;align-items:center;gap:11px;padding:10px 12px;border:none;background:none;border-radius:9px;color:var(--muted);font-size:13.5px;font-weight:600;cursor:pointer;text-align:left;width:100%}
-  .sidebar nav button .ic{font-size:16px;width:20px;text-align:center}
-  .sidebar nav button:hover{background:var(--chip);color:var(--text)}
-  .sidebar nav button.active{background:var(--accent);color:var(--accent-ink)}
-  .sidebar .connwrap{padding:12px 20px 0;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+  /* ---- Top navigation (menu across the top) ---- */
+  .topnav{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
+  .topnav .row1{display:flex;align-items:center;gap:12px;padding:12px 20px 8px}
+  .topnav .brand .name{font-size:15px;font-weight:700;line-height:1.2}
+  .topnav .brand .sub{font-size:11px;color:var(--muted)}
+  .topnav .spacer{flex:1}
+  .topnav .connwrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+  .topnav nav{display:flex;gap:4px;padding:0 14px 10px;overflow-x:auto}
+  .topnav nav button{flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:8px 13px;border:none;background:none;border-radius:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
+  .topnav nav button .ic{font-size:15px}
+  .topnav nav button:hover{background:var(--chip);color:var(--text)}
+  .topnav nav button.active{background:var(--accent);color:var(--accent-ink)}
 
-  .content{flex:1;min-width:0;padding-bottom:24px}
-  .topbar{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line);padding:12px 22px;display:flex;align-items:center;gap:10px}
-  .topbar .title{font-size:15px;font-weight:700;flex:1;line-height:1.2}
-  .topbar .sub{font-size:11px;color:var(--muted);font-weight:400}
-  .topbar .desktop-only-title{display:block}
   .dot{width:8px;height:8px;border-radius:50%;background:var(--danger)}
   .dot.on{background:var(--green)}
   .iconbtn{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer}
-  main{max-width:1080px;margin:0 auto;padding:22px 26px}
+  main{max-width:1800px;margin:0 auto;padding:22px 32px;width:100%}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px;margin-bottom:14px}
   .row{display:flex;gap:10px;flex-wrap:wrap}
   .row > *{flex:1;min-width:130px}
@@ -50,12 +46,23 @@
   button.btn{padding:10px 16px;border-radius:9px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:600;font-size:14px;cursor:pointer}
   button.btn.secondary{background:var(--panel);color:var(--text);border-color:var(--line)}
   button.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
+  button.btn.secondary.active-option{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  body.logged-out .topnav nav button:not([data-screen="settings"]){display:none}
+  body.viewer-mode .admin-only{display:none !important}
+  .no-admin-only{display:none}
+  body.viewer-mode .no-admin-only{display:inline}
+  .role-badge{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+  .role-badge.admin{background:rgba(28,156,107,.15);color:var(--green)}
   button.btn:disabled{opacity:.5;cursor:not-allowed}
   .btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
   th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
-  tr:last-child td{border-bottom:none}
+  tbody tr:last-child td{border-bottom:none}
+  .tablewrap table:not(#dashTable):not(#produceTable):not(#itemsTableEl) tbody tr:nth-child(odd){background:var(--chip)}
+  #dashTable tbody tr.zrow, #produceTable tbody tr.zrow, #itemsTableEl tbody tr.zrow{background:var(--chip)}
+  .dash-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 18px;padding:12px 4px;white-space:normal}
+  .dash-detail-grid .l{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:2px}
   .tablewrap{overflow-x:auto}
   .chip{display:inline-block;padding:3px 9px;border-radius:99px;background:var(--chip);font-size:11px;font-weight:600}
   .chip.warn{background:rgba(214,69,69,.15);color:var(--danger)}
@@ -63,20 +70,21 @@
   .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:13px}
   .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:99px;font-size:13px;box-shadow:var(--shadow);z-index:50;opacity:0;transition:opacity .2s}
   .toast.show{opacity:1}
-  .tabbar{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--panel);border-top:1px solid var(--line);z-index:20;padding-bottom:env(safe-area-inset-bottom)}
-  .tabbar button{flex:1;background:none;border:none;color:var(--muted);font-size:10px;padding:9px 2px 7px;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
-  .tabbar button .ic{font-size:18px}
-  .tabbar button.active{color:var(--accent)}
   .kpis{grid-template-columns:repeat(3,1fr)}
   .card .row.wide2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 
-  /* ---- Mobile: sidebar becomes bottom tab bar ---- */
+  /* ---- Dashboard: left search/filter rail + main table ---- */
+  .dash-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
+  .dash-filters{position:sticky;top:76px}
+  .dash-filters label{margin-top:14px}
+  .dash-filters label:first-child{margin-top:0}
+  .dash-filters button.btn.secondary{width:100%;margin-top:14px}
+
   @media (max-width:820px){
-    .sidebar{display:none}
-    .tabbar{display:flex}
-    body{padding-bottom:76px}
     main{padding:14px;max-width:100%}
     .kpis{grid-template-columns:repeat(3,1fr);gap:8px}
+    .dash-layout{grid-template-columns:1fr}
+    .dash-filters{position:static}
   }
   .screen{display:none}
   .screen.active{display:block}
@@ -96,7 +104,7 @@
   .drop.over{border-color:var(--accent);color:var(--accent)}
   .loglines{font-family:ui-monospace,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px;max-height:220px;overflow:auto;white-space:pre-wrap}
   @media print{
-    .topbar,.tabbar,.no-print{display:none!important}
+    .topnav,.no-print{display:none!important}
     body{padding:0;background:#fff;color:#000}
     .card{box-shadow:none;border:1px solid #ccc}
   }
@@ -106,63 +114,103 @@
 
 <div class="app-shell">
 
-  <aside class="sidebar">
-    <div class="brand">
-      <div class="name">Hon's Wun-Tun House</div>
-      <div class="sub">Inventory Management System</div>
+  <header class="topnav">
+    <div class="row1">
+      <div class="brand">
+        <div class="name">Hon's Wun-Tun House</div>
+        <div class="sub">Inventory Management System</div>
+      </div>
+      <div class="spacer"></div>
+      <div class="connwrap"><span class="dot" id="connDot" title="Connection status"></span><span id="connText">Not connected</span></div>
+      <span class="role-badge" id="roleBadge" style="display:none"></span>
+      <button class="btn secondary" id="logoutBtn" style="display:none;padding:6px 12px;font-size:12px" onclick="doLogout()">Log Out</button>
+      <button class="iconbtn" id="themeBtn" title="Toggle theme">🌙</button>
     </div>
-    <div class="connwrap"><span class="dot" id="connDotSide" title="Connection status"></span><span id="connTextSide">Not connected</span></div>
     <nav>
       <button data-screen="dashboard" class="active" onclick="showScreen('dashboard')"><span class="ic">📊</span>Dashboard</button>
       <button data-screen="inout" onclick="showScreen('inout')"><span class="ic">📦</span>Finished Goods In/Out</button>
       <button data-screen="po" onclick="showScreen('po')"><span class="ic">🧾</span>Orders</button>
       <button data-screen="components" onclick="showScreen('components')"><span class="ic">🧂</span>Components (Sachets)</button>
       <button data-screen="produce" onclick="showScreen('produce')"><span class="ic">🏭</span>Need to Produce</button>
-      <button data-screen="import" onclick="showScreen('import')"><span class="ic">📥</span>CSV Import</button>
+      <button data-screen="items" onclick="showScreen('items')"><span class="ic">📋</span>Manage Items</button>
+      <button data-screen="recipes" onclick="showScreen('recipes')"><span class="ic">🔗</span>Item Recipes</button>
+      <button data-screen="dupes" onclick="showScreen('dupes')"><span class="ic">🔀</span>Duplicated Items</button>
+      <button class="admin-only" data-screen="import" onclick="showScreen('import')"><span class="ic">📥</span>CSV Import</button>
       <button data-screen="settings" onclick="showScreen('settings')"><span class="ic">⚙️</span>Settings</button>
     </nav>
-  </aside>
-
-  <div class="content">
-
-  <div class="topbar">
-    <div class="title" id="screenTitle">Dashboard</div>
-    <span class="dot" id="connDot" title="Connection status"></span>
-    <button class="iconbtn" id="themeBtn" title="Toggle theme">🌙</button>
-  </div>
+  </header>
 
   <main>
 
+  <!-- LOGIN -->
+  <section class="screen active" id="screen-login">
+    <div style="max-width:420px;margin:40px auto 0">
+      <div class="card">
+        <h2 id="loginTitle">Sign In</h2>
+        <p style="color:var(--muted);font-size:13px;margin-top:0">Sign in to view and edit inventory data. New here? Create an account below — you'll start as a read-only viewer until an admin upgrades your access.</p>
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="you@company.com">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="••••••••">
+        <div class="btnrow">
+          <button class="btn" id="loginSubmitBtn" onclick="submitLogin()">Sign In</button>
+          <button class="btn secondary" onclick="toggleLoginMode()" id="loginModeToggle">Create Account Instead</button>
+        </div>
+        <p id="loginStatus" style="font-size:12px;color:var(--muted);margin-top:12px"></p>
+      </div>
+      <div class="card">
+        <h3>⚙ Supabase Connection</h3>
+        <p style="color:var(--muted);font-size:12px;margin-top:0">Only needed once, before anyone can sign in.</p>
+        <label>Project URL</label>
+        <input id="loginCfgUrl" placeholder="https://xxxx.supabase.co">
+        <label>anon public key</label>
+        <input id="loginCfgKey" placeholder="eyJ...">
+        <div class="btnrow"><button class="btn secondary" onclick="saveConfigFromLogin()">Save Connection</button></div>
+      </div>
+    </div>
+  </section>
+
   <!-- DASHBOARD -->
-  <section class="screen active" id="screen-dashboard">
+  <section class="screen" id="screen-dashboard">
     <h2>Inventory Dashboard</h2>
-    <div class="kpis">
-      <div class="kpi"><div class="n" id="kpiTotal">–</div><div class="l">Total Items</div></div>
-      <div class="kpi"><div class="n" id="kpiLow" style="color:var(--danger)">–</div><div class="l">Need to Produce</div></div>
-      <div class="kpi"><div class="n" id="kpiPending">–</div><div class="l">Pending Orders</div></div>
-    </div>
-    <div class="card">
-      <div class="row" style="align-items:center">
-        <h3 style="flex:2">Stock Alert List</h3>
-        <button class="btn secondary no-print" onclick="refreshDashboard()">↻ Refresh</button>
+    <div class="dash-layout">
+      <div class="card dash-filters">
+        <label>Search</label>
+        <input id="dashSearch" placeholder="Search by item # or Item name" oninput="renderDashboardTable()">
+        <label>Filter by Line</label>
+        <select id="dashFilterLine" onchange="renderDashboardTable()"><option value="">All Lines</option></select>
+        <label>Filter by Customer</label>
+        <select id="dashFilterCustomer" onchange="renderDashboardTable()"><option value="">All Customers</option></select>
+        <button class="btn secondary" onclick="clearDashboardFilters()">Clear Filters</button>
       </div>
-      <div class="filterbar">
-        <input id="dashSearch" placeholder="Search item # / name..." oninput="renderDashboardTable()">
+      <div>
+        <div class="kpis">
+          <div class="kpi"><div class="n" id="kpiTotal">–</div><div class="l">Total Items</div></div>
+          <div class="kpi"><div class="n" id="kpiLow" style="color:var(--danger)">–</div><div class="l">Need to Produce</div></div>
+          <div class="kpi"><div class="n" id="kpiPending">–</div><div class="l">Pending Orders</div></div>
+        </div>
+        <div class="card">
+          <div class="row" style="align-items:center">
+            <h3 style="flex:2">Stock Alert List</h3>
+            <button class="btn secondary no-print" onclick="refreshDashboard()">↻ Refresh</button>
+          </div>
+          <div class="tablewrap"><table id="dashTable"><thead><tr>
+            <th>Item #</th><th>Item Name</th><th>Item C.Name</th><th>Remark</th>
+            <th>Act. Inventory Qty</th><th>Pending Qty</th><th>A.P. InventoryQty</th><th>Stock Alarm</th>
+          </tr></thead><tbody></tbody></table></div>
+          <div class="empty" id="dashEmpty" style="display:none">No data yet. Please confirm Supabase is connected and data has been imported.</div>
+        </div>
+        <div class="btnrow no-print">
+          <button class="btn secondary" onclick="printSection('Inventory Report')">🖨 Print Inventory Report</button>
+        </div>
       </div>
-      <div class="tablewrap"><table id="dashTable"><thead><tr>
-        <th>Item #</th><th>Item Name</th><th>Customer</th><th>Line</th><th>Available Qty</th><th>Status</th>
-      </tr></thead><tbody></tbody></table></div>
-      <div class="empty" id="dashEmpty" style="display:none">No data yet. Please confirm Supabase is connected and data has been imported.</div>
-    </div>
-    <div class="btnrow no-print">
-      <button class="btn secondary" onclick="printSection('Inventory Report')">🖨 Print Inventory Report</button>
     </div>
   </section>
 
   <!-- IN/OUT -->
   <section class="screen" id="screen-inout">
     <h2>Finished Goods In/Out Entry</h2>
-    <div class="card">
+    <div class="card admin-only">
       <label>Date</label>
       <input type="date" id="ioDate">
       <label>Item</label>
@@ -171,9 +219,13 @@
         <div class="suggest" id="ioSuggest" style="display:none"></div>
       </div>
       <input type="hidden" id="ioItemNo"><input type="hidden" id="ioItemName">
-      <div class="row">
-        <div><label>In Qty</label><input type="number" id="ioIn" step="any" placeholder="0"></div>
-        <div><label>Out Qty</label><input type="number" id="ioOut" step="any" placeholder="0"></div>
+      <label>In Qty (production)</label>
+      <input type="number" id="ioIn" step="any" placeholder="0">
+      <label>Options:</label>
+      <div class="btnrow" style="margin-top:2px">
+        <button type="button" class="btn secondary" id="optPD" onclick="applyLotPrefix('P.D.:','optPD')">Production Date</button>
+        <button type="button" class="btn secondary" id="optExp" onclick="applyLotPrefix('Exp.:','optExp')">Expired Date</button>
+        <button type="button" class="btn secondary" id="optLot" onclick="applyLotPrefix('Lot.:','optLot')">Julian Date</button>
       </div>
       <label>Lot / Note</label>
       <input id="ioLot" placeholder="e.g. P.D.:20260713">
@@ -192,9 +244,17 @@
   <!-- PO -->
   <section class="screen" id="screen-po">
     <h2>Orders / Pending Shipment Management</h2>
-    <div class="card">
-      <label>Ship Date</label>
-      <input type="date" id="poShipDate">
+    <div class="card admin-only">
+      <h3>New Order</h3>
+      <div class="row">
+        <div><label>Ship Date</label><input type="date" id="poShipDate"></div>
+        <div><label>PO#</label><input id="poNo"></div>
+      </div>
+      <div class="row">
+        <div><label>Customer</label><input id="poCust"></div>
+        <div><label>Customer#</label><input id="poCustNo"></div>
+      </div>
+      <div class="section-title" style="margin-top:16px">Items in this order</div>
       <label>Item</label>
       <div class="search">
         <input id="poItemSearch" placeholder="Search by item # or name..." oninput="searchItems('poItemSearch','poSuggest','poItemNo','poItemName')" autocomplete="off">
@@ -203,22 +263,19 @@
       <input type="hidden" id="poItemNo"><input type="hidden" id="poItemName">
       <div class="row">
         <div><label>Qty</label><input type="number" id="poQty" step="any"></div>
-        <div><label>Customer#</label><input id="poCustNo"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn secondary" style="width:100%" onclick="addPODraftLine()">＋ Add Item to Order</button></div>
       </div>
-      <div class="row">
-        <div><label>Customer</label><input id="poCust"></div>
-        <div><label>PO#</label><input id="poNo"></div>
-      </div>
-      <div class="btnrow"><button class="btn" onclick="submitPO()">＋ Add Order</button></div>
+      <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Qty</th><th></th></tr></thead>
+      <tbody id="poDraftLines"></tbody></table></div>
+      <div class="empty" id="poDraftEmpty">No items added yet</div>
+      <div class="btnrow"><button class="btn" onclick="submitPOOrder()">✔ Create Order</button></div>
     </div>
     <div class="section-title">Pending Orders</div>
     <div class="card">
       <div class="filterbar">
         <input id="poSearch" placeholder="Search item # / PO# / customer..." oninput="renderPOTable()">
       </div>
-      <div class="tablewrap"><table><thead><tr>
-        <th>Ship Date</th><th>Item #</th><th>Item Name</th><th>Qty</th><th>Customer</th><th>PO#</th>
-      </tr></thead><tbody id="poList"></tbody></table></div>
+      <div id="poGroups"></div>
       <div class="empty" id="poEmpty" style="display:none">No matching orders</div>
     </div>
     <div class="btnrow no-print"><button class="btn secondary" onclick="printSection('Pending Orders')">🖨 Print Order List</button></div>
@@ -227,14 +284,20 @@
   <!-- COMPONENTS -->
   <section class="screen" id="screen-components">
     <h2>Components (Sachets)</h2>
-    <div class="card">
+    <div class="card admin-only">
       <label>Date</label>
       <input type="date" id="compDate">
       <label>Sachet Name</label>
       <select id="compSachet"><option value="">Select sachet...</option></select>
-      <label>Qty (positive = in, negative = out)</label>
-      <input type="number" id="compQty" step="any">
+      <label>In Qty</label>
+      <input type="number" id="compIn" step="any" placeholder="0">
       <div class="btnrow"><button class="btn" onclick="submitComponent()">＋ Add Record</button></div>
+    </div>
+    <div class="section-title">Recent Sachet Records</div>
+    <div class="card">
+      <div class="tablewrap"><table><thead><tr><th>Date</th><th>Sachet</th><th>In</th><th>Out</th><th></th></tr></thead>
+      <tbody id="compRecent"></tbody></table></div>
+      <div class="empty" id="compRecentEmpty" style="display:none">No records yet</div>
     </div>
     <div class="section-title">Live Sachet Inventory</div>
     <div class="card">
@@ -249,13 +312,136 @@
     <h2>Need to Produce</h2>
     <p style="color:var(--muted);font-size:13px;margin-top:0">Items where available inventory is already negative, or won't be enough for upcoming shipments. Click a row to see the shortfall by ship date.</p>
     <div class="card">
-      <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Available Qty</th><th>Customer</th><th>Line</th></tr></thead>
+      <div class="tablewrap"><table id="produceTable"><thead><tr><th>Item #</th><th>Item Name</th><th>Available Qty</th><th>Customer</th><th>Line</th></tr></thead>
       <tbody id="produceList"></tbody></table></div>
       <div class="empty" id="produceEmpty" style="display:none">Nothing needs production right now 🎉</div>
     </div>
   </section>
 
-  <!-- IMPORT -->
+  <!-- MANAGE ITEMS -->
+  <section class="screen" id="screen-items">
+    <h2>Manage Items</h2>
+    <div class="card admin-only">
+      <h3 id="itemFormTitle">Add New Item</h3>
+      <input type="hidden" id="itemEditId">
+      <div class="row">
+        <div><label>Item #</label><input id="itemNo" placeholder="e.g. 01055"></div>
+        <div><label>Item Name</label><input id="itemName"></div>
+      </div>
+      <div class="row">
+        <div><label>Chinese Name</label><input id="itemCname"></div>
+        <div><label>Customer</label><input id="itemCustomer"></div>
+      </div>
+      <div class="row">
+        <div><label>Line</label><input id="itemLine"></div>
+        <div><label>Storage</label><input id="itemStorage"></div>
+      </div>
+      <div class="row">
+        <div><label>Weight / Pack</label><input type="number" step="any" id="itemWeight"></div>
+        <div><label>Unit of Weight</label><input id="itemUnitW" placeholder="g / lb / kg"></div>
+      </div>
+      <div class="row">
+        <div><label>Unit</label><input id="itemUnit" placeholder="bag / tray"></div>
+        <div><label>Pieces</label><input type="number" step="any" id="itemPieces"></div>
+      </div>
+      <div class="row">
+        <div><label>Unit / Case</label><input id="itemUnitCase"></div>
+        <div><label>Box</label><input id="itemBox"></div>
+      </div>
+      <div class="row">
+        <div><label>F. SL Day</label><input id="itemFSl" placeholder="Frozen shelf-life day"></div>
+        <div><label>R. SL Day</label><input type="number" step="any" id="itemRSl" placeholder="Refrigerated shelf-life day"></div>
+      </div>
+      <div class="row">
+        <div><label>Stock Level (reorder point)</label><input type="number" step="any" id="itemStockLevel"></div>
+        <div><label># M/C Running</label><input type="number" step="any" id="itemMcRunning"></div>
+      </div>
+      <div class="row">
+        <div><label>Cycle</label><input id="itemCycle"></div>
+        <div><label>Bags per Cycle</label><input type="number" step="any" id="itemBagsCycle"></div>
+      </div>
+      <label>Remark</label>
+      <input id="itemRemark" placeholder="e.g. Discontinued Item">
+      <div class="btnrow">
+        <button class="btn" onclick="submitItem()">＋ Save Item</button>
+        <button class="btn secondary" onclick="resetItemForm()">Clear / Cancel Edit</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="filterbar">
+        <input id="itemsSearch" placeholder="Search item # / name..." oninput="renderItemsTable()">
+      </div>
+      <div class="tablewrap"><table id="itemsTableEl"><thead><tr>
+        <th>Item #</th><th>Item Name</th><th>Customer</th><th>Line</th><th>Stock Level</th><th># M/C</th><th>Remark</th><th></th>
+      </tr></thead><tbody id="itemsTable"></tbody></table></div>
+      <div class="empty" id="itemsEmpty" style="display:none">No items found</div>
+    </div>
+  </section>
+
+  <!-- ITEM RECIPES (BOM) -->
+  <section class="screen" id="screen-recipes">
+    <h2>Item Recipes (Sachet BOM)</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Define which sachets are consumed, and how many per unit, when a finished-goods item is produced.</p>
+    <div class="card admin-only">
+      <label>Item</label>
+      <div class="search">
+        <input id="recItemSearch" placeholder="Search by item # or name..." oninput="searchItems('recItemSearch','recSuggest','recItemNo','recItemName')" autocomplete="off">
+        <div class="suggest" id="recSuggest" style="display:none"></div>
+      </div>
+      <input type="hidden" id="recItemNo"><input type="hidden" id="recItemName">
+      <label>Sachet</label>
+      <select id="recSachet"><option value="">Select sachet...</option></select>
+      <label>Pcs per Case/Unit</label>
+      <input type="number" id="recPcs" step="any" placeholder="e.g. 6">
+      <div class="btnrow"><button class="btn" onclick="submitRecipe()">＋ Add to Recipe</button></div>
+    </div>
+    <div class="card">
+      <div class="filterbar">
+        <input id="recSearch" placeholder="Search item # / sachet..." oninput="renderRecipeTable()">
+      </div>
+      <div class="tablewrap"><table><thead><tr>
+        <th>Item #</th><th>Item Name</th><th>Sachet</th><th>Pcs/Unit</th><th></th>
+      </tr></thead><tbody id="recipeTable"></tbody></table></div>
+      <div class="empty" id="recipeEmpty" style="display:none">No recipes defined yet</div>
+    </div>
+  </section>
+
+  <!-- DUPLICATED ITEMS -->
+  <section class="screen" id="screen-dupes">
+    <h2>Duplicated Items (Alias Mapping)</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Used by CSV import: when a wrong/alias item # + name is seen, it gets corrected to the real item below.</p>
+    <div class="card admin-only">
+      <h3 id="dupeFormTitle">Add Mapping</h3>
+      <input type="hidden" id="dupeEditId">
+      <div class="row">
+        <div class="search">
+          <label>Wrong Item #</label>
+          <input id="dupeItemNo" placeholder="e.g. 01345" autocomplete="off" oninput="searchWrongItem()">
+          <div class="suggest" id="dupeItemNoSuggest" style="display:none"></div>
+        </div>
+        <div><label>Wrong Item Name</label><input id="dupeItemName"></div>
+      </div>
+      <label>Correct Item</label>
+      <div class="search">
+        <input id="dupeCorrectSearch" placeholder="Search by item # or name..." oninput="searchItems('dupeCorrectSearch','dupeCorrectSuggest','dupeCorrectNo','dupeCorrectName')" autocomplete="off">
+        <div class="suggest" id="dupeCorrectSuggest" style="display:none"></div>
+      </div>
+      <input type="hidden" id="dupeCorrectNo"><input type="hidden" id="dupeCorrectName">
+      <div class="btnrow">
+        <button class="btn" onclick="submitDupe()">＋ Save Mapping</button>
+        <button class="btn secondary" onclick="resetDupeForm()">Clear / Cancel Edit</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="filterbar">
+        <input id="dupesSearch" placeholder="Search wrong / correct item #..." oninput="renderDupesTable()">
+      </div>
+      <div class="tablewrap"><table><thead><tr>
+        <th>Wrong Item #</th><th>Wrong Item Name</th><th>Correct Item #</th><th>Correct Item Name</th><th></th>
+      </tr></thead><tbody id="dupesTable"></tbody></table></div>
+      <div class="empty" id="dupesEmpty" style="display:none">No mappings defined yet</div>
+    </div>
+  </section>
   <section class="screen" id="screen-import">
     <h2>CSV Import</h2>
     <div class="card">
@@ -304,20 +490,9 @@
 
 </main>
 
-  </div><!-- /.content -->
 </div><!-- /.app-shell -->
 
 <div class="toast" id="toast"></div>
-
-<div class="tabbar no-print">
-  <button data-screen="dashboard" class="active" onclick="showScreen('dashboard')"><span class="ic">📊</span>Dashboard</button>
-  <button data-screen="inout" onclick="showScreen('inout')"><span class="ic">📦</span>In/Out</button>
-  <button data-screen="po" onclick="showScreen('po')"><span class="ic">🧾</span>Orders</button>
-  <button data-screen="components" onclick="showScreen('components')"><span class="ic">🧂</span>Sachets</button>
-  <button data-screen="produce" onclick="showScreen('produce')"><span class="ic">🏭</span>Produce</button>
-  <button data-screen="import" onclick="showScreen('import')"><span class="ic">📥</span>Import</button>
-  <button data-screen="settings" onclick="showScreen('settings')"><span class="ic">⚙️</span>Settings</button>
-</div>
 
 <script>
 /* ============================================================
@@ -328,6 +503,7 @@ let ITEMS = [];         // erp_items cache
 let ITEMS_BY_NO = {};
 let DUPES = [];         // erp_duplicated_items cache
 let RECIPE = [];        // erp_item_sachet_recipe cache
+let SACHETS = [];        // erp_sachets cache
 let connected = false;
 
 /* ============================================================
@@ -360,13 +536,25 @@ function toast(msg){
   window.__toastTimer = setTimeout(()=>t.classList.remove('show'), 2600);
 }
 
+let SESSION = null;       // {access_token, refresh_token, expires_at, user:{id,email}}
+let CURRENT_USER = null;  // {id, email, role}
+let LOGIN_MODE = 'signin';
+
+function authHeaders(){
+  const token = SESSION?.access_token || CFG.key;
+  return { 'apikey': CFG.key, 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+}
+async function ensureFreshSession(){
+  if(!SESSION) return;
+  const now = Math.floor(Date.now()/1000);
+  if(SESSION.expires_at && now > SESSION.expires_at - 60){
+    try{ await refreshSession(); }catch(e){ /* will surface as a 401 on the next request */ }
+  }
+}
 async function sb(path, opts={}){
   if(!CFG.url || !CFG.key) throw new Error('Supabase connection not configured yet');
-  const headers = Object.assign({
-    'apikey': CFG.key,
-    'Authorization': 'Bearer ' + CFG.key,
-    'Content-Type': 'application/json'
-  }, opts.headers||{});
+  await ensureFreshSession();
+  const headers = Object.assign(authHeaders(), opts.headers||{});
   const res = await fetch(CFG.url.replace(/\/$/,'') + '/rest/v1/' + path, Object.assign({}, opts, {headers}));
   if(!res.ok){
     const t = await res.text();
@@ -377,6 +565,125 @@ async function sb(path, opts={}){
 }
 const sbGet = (path) => sb(path);
 const sbInsert = (table, rows) => sb(table, {method:'POST', headers:{Prefer:'return=representation'}, body: JSON.stringify(rows)});
+const sbUpdate = (table, id, patch) => sb(`${table}?id=eq.${id}`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify(patch)});
+const sbDelete = (table, id) => sb(`${table}?id=eq.${id}`, {method:'DELETE'});
+async function deleteRow(table, id, refreshFn){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!confirm('Delete this record? This cannot be undone.')) return;
+  try{
+    await sbDelete(table, id);
+    toast('Deleted');
+    if(refreshFn) await refreshFn();
+  }catch(e){ toast('Delete failed: ' + e.message); }
+}
+
+/* ============================================================
+   Auth: Supabase email/password login, session persisted via
+   Store, silent token refresh before it expires.
+   ============================================================ */
+async function authFetch(path, body){
+  const res = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/' + path, {
+    method: 'POST',
+    headers: {'apikey': CFG.key, 'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data.error_description || data.msg || data.error || ('Auth error ' + res.status));
+  return data;
+}
+function applySession(data){
+  SESSION = {
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+    expires_at: Math.floor(Date.now()/1000) + (data.expires_in || 3600),
+    user: { id: data.user.id, email: data.user.email }
+  };
+  Store.set('auth-session', JSON.stringify(SESSION));
+}
+async function refreshSession(){
+  if(!SESSION?.refresh_token) throw new Error('No refresh token');
+  const data = await authFetch('token?grant_type=refresh_token', {refresh_token: SESSION.refresh_token});
+  applySession(data);
+}
+async function restoreSession(){
+  try{
+    const v = await Store.get('auth-session');
+    if(!v) return false;
+    SESSION = JSON.parse(v);
+    const now = Math.floor(Date.now()/1000);
+    if(!SESSION.expires_at || now > SESSION.expires_at - 60) await refreshSession();
+    return true;
+  }catch(e){ SESSION = null; return false; }
+}
+function toggleLoginMode(){
+  LOGIN_MODE = LOGIN_MODE === 'signin' ? 'signup' : 'signin';
+  document.getElementById('loginTitle').textContent = LOGIN_MODE==='signin' ? 'Sign In' : 'Create Account';
+  document.getElementById('loginSubmitBtn').textContent = LOGIN_MODE==='signin' ? 'Sign In' : 'Create Account';
+  document.getElementById('loginModeToggle').textContent = LOGIN_MODE==='signin' ? 'Create Account Instead' : 'Back to Sign In';
+  document.getElementById('loginStatus').textContent = '';
+}
+async function submitLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const statusEl = document.getElementById('loginStatus');
+  if(!CFG.url || !CFG.key){ statusEl.textContent = 'Set up the Supabase connection below first.'; return; }
+  if(!email || !password){ statusEl.textContent = 'Please enter email and password.'; return; }
+  statusEl.textContent = LOGIN_MODE==='signup' ? 'Creating account...' : 'Signing in...';
+  try{
+    if(LOGIN_MODE === 'signup'){
+      const data = await authFetch('signup', {email, password});
+      if(data.access_token){
+        applySession(data);
+        await afterLogin();
+      } else {
+        statusEl.textContent = '✅ Account created. Check your email to confirm, then sign in.';
+        toggleLoginMode();
+      }
+    } else {
+      const data = await authFetch('token?grant_type=password', {email, password});
+      applySession(data);
+      await afterLogin();
+    }
+  }catch(e){ statusEl.textContent = '❌ ' + e.message; }
+}
+async function doLogout(){
+  SESSION = null; CURRENT_USER = null;
+  await Store.set('auth-session', '');
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('roleBadge').style.display = 'none';
+  document.body.classList.add('logged-out');
+  document.body.classList.remove('viewer-mode');
+  document.getElementById('connDot').classList.remove('on');
+  document.getElementById('connText').textContent = 'Not connected';
+  connected = false;
+  showScreen('login');
+  toast('Logged out');
+}
+async function fetchProfile(){
+  try{
+    const rows = await sbGet(`erp_profiles?select=id,email,role&id=eq.${SESSION.user.id}`);
+    CURRENT_USER = (rows && rows[0]) || {id:SESSION.user.id, email:SESSION.user.email, role:'viewer'};
+  }catch(e){
+    CURRENT_USER = {id:SESSION.user.id, email:SESSION.user.email, role:'viewer'};
+  }
+  const badge = document.getElementById('roleBadge');
+  badge.style.display = '';
+  badge.textContent = CURRENT_USER.email + ' · ' + CURRENT_USER.role;
+  badge.classList.toggle('admin', CURRENT_USER.role === 'admin');
+  document.body.classList.toggle('viewer-mode', CURRENT_USER.role !== 'admin');
+}
+function isAdmin(){ return !!(CURRENT_USER && CURRENT_USER.role === 'admin'); }
+async function afterLogin(){
+  document.body.classList.remove('logged-out');
+  document.getElementById('logoutBtn').style.display = '';
+  await fetchProfile();
+  connected = true;
+  document.getElementById('connDot').classList.add('on');
+  document.getElementById('connText').textContent = 'Connected';
+  await loadCaches();
+  await refreshAll();
+  showScreen('dashboard');
+}
 
 /* ============================================================
    Config persistence (artifact storage, personal scope)
@@ -388,37 +695,45 @@ async function loadConfig(){
   }catch(e){ /* not set yet */ }
   document.getElementById('cfgUrl').value = CFG.url || '';
   document.getElementById('cfgKey').value = CFG.key || '';
-  if(CFG.url && CFG.key) await testConnection(true);
+  document.getElementById('loginCfgUrl').value = CFG.url || '';
+  document.getElementById('loginCfgKey').value = CFG.key || '';
+  if(CFG.url && CFG.key){
+    const restored = await restoreSession();
+    if(restored){
+      try{ await afterLogin(); return; }catch(e){ /* fall through to login screen */ }
+    }
+  }
+  document.body.classList.add('logged-out');
+  showScreen('login');
 }
 async function saveConfig(){
   CFG.url = document.getElementById('cfgUrl').value.trim();
   CFG.key = document.getElementById('cfgKey').value.trim();
+  document.getElementById('loginCfgUrl').value = CFG.url;
+  document.getElementById('loginCfgKey').value = CFG.key;
   try{
     await Store.set('supabase-config', JSON.stringify(CFG));
     toast('Settings saved');
   }catch(e){ toast('Save failed: ' + e.message); }
-  await testConnection();
+  if(!SESSION) showScreen('login');
 }
-async function testConnection(silent){
+async function saveConfigFromLogin(){
+  CFG.url = document.getElementById('loginCfgUrl').value.trim();
+  CFG.key = document.getElementById('loginCfgKey').value.trim();
+  document.getElementById('cfgUrl').value = CFG.url;
+  document.getElementById('cfgKey').value = CFG.key;
+  try{ await Store.set('supabase-config', JSON.stringify(CFG)); toast('Connection saved'); }
+  catch(e){ toast('Save failed: ' + e.message); }
+}
+async function testConnection(){
   const statusEl = document.getElementById('cfgStatus');
+  const url = document.getElementById('cfgUrl').value.trim();
+  const key = document.getElementById('cfgKey').value.trim();
+  if(!url || !key){ statusEl.textContent = 'Enter URL and key first.'; return; }
   try{
-    await sbGet('erp_items?select=item_no&limit=1');
-    connected = true;
-    document.getElementById('connDot').classList.add('on');
-    document.getElementById('connDotSide').classList.add('on');
-    document.getElementById('connTextSide').textContent = 'Connected';
-    statusEl.textContent = '✅ Connected';
-    if(!silent) toast('Connected successfully');
-    await loadCaches();
-    await refreshAll();
-  }catch(e){
-    connected = false;
-    document.getElementById('connDot').classList.remove('on');
-    document.getElementById('connDotSide').classList.remove('on');
-    document.getElementById('connTextSide').textContent = 'Not connected';
-    statusEl.textContent = '❌ ' + e.message;
-    if(!silent) toast('Connection failed');
-  }
+    const res = await fetch(url.replace(/\/$/,'') + '/rest/v1/', {headers:{apikey:key}});
+    statusEl.textContent = (res.ok || res.status===401 || res.status===404) ? '✅ Supabase is reachable' : ('⚠ Unexpected response: ' + res.status);
+  }catch(e){ statusEl.textContent = '❌ Could not reach Supabase: ' + e.message; }
 }
 
 /* ============================================================
@@ -439,13 +754,12 @@ document.getElementById('themeBtn').addEventListener('click', toggleTheme);
    ============================================================ */
 const SCREEN_TITLES = {
   dashboard:'Dashboard', inout:'Finished Goods In/Out', po:'Orders', components:'Components (Sachets)',
-  produce:'Need to Produce', import:'CSV Import', settings:'Settings'
+  produce:'Need to Produce', items:'Manage Items', recipes:'Item Recipes', dupes:'Duplicated Items', import:'CSV Import', settings:'Settings'
 };
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
-  document.querySelectorAll('.tabbar button, .sidebar nav button').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
-  document.getElementById('screenTitle').textContent = SCREEN_TITLES[name] || '';
+  document.querySelectorAll('.topnav nav button').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
   window.scrollTo(0,0);
 }
 
@@ -484,17 +798,18 @@ document.addEventListener('click', (e)=>{
    Caches
    ============================================================ */
 async function loadCaches(){
-  ITEMS = await sbGet('erp_items?select=item_no,item_name,customer,line,stock_level,remark&order=item_no.asc&limit=2000');
+  ITEMS = await sbGet('erp_items?select=*&order=item_no.asc&limit=2000');
   ITEMS_BY_NO = {}; ITEMS.forEach(it => ITEMS_BY_NO[it.item_no] = it);
-  DUPES = await sbGet('erp_duplicated_items?select=item_no,item_name,correct_item_no,correct_item_name&limit=5000');
-  RECIPE = await sbGet('erp_item_sachet_recipe?select=item_no,item_name,sachet_name,pcs_per_case&limit=5000');
-  const sachets = await sbGet('erp_sachets?select=sachet_name&order=sachet_name.asc&limit=1000');
-  const sel = document.getElementById('compSachet');
-  sel.innerHTML = '<option value="">Select sachet...</option>' + sachets.map(s=>`<option>${s.sachet_name}</option>`).join('');
+  DUPES = await sbGet('erp_duplicated_items?select=id,item_no,item_name,correct_item_no,correct_item_name&limit=5000');
+  RECIPE = await sbGet('erp_item_sachet_recipe?select=id,item_no,item_name,sachet_name,pcs_per_case&limit=5000');
+  SACHETS = await sbGet('erp_sachets?select=sachet_name&order=sachet_name.asc&limit=1000');
+  const optionsHtml = '<option value="">Select sachet...</option>' + SACHETS.map(s=>`<option>${s.sachet_name}</option>`).join('');
+  document.getElementById('compSachet').innerHTML = optionsHtml;
+  document.getElementById('recSachet').innerHTML = optionsHtml;
 }
 
 async function refreshAll(){
-  await Promise.all([refreshDashboard(), refreshInOut(), refreshPO(), refreshComponents(), refreshProduce()]);
+  await Promise.all([refreshDashboard(), refreshInOut(), refreshPO(), refreshComponents(), refreshProduce(), refreshItemsScreen(), refreshRecipesScreen(), refreshDupesScreen()]);
 }
 
 /* ============================================================
@@ -504,54 +819,120 @@ let DASH_DATA = [];
 async function refreshDashboard(){
   if(!connected) return;
   try{
-    DASH_DATA = await sbGet('erp_inventory_summary?select=item_no,item_name,customer,line,ap_inventory_qty,stock_alarm&order=item_no.asc&limit=3000');
+    DASH_DATA = await sbGet('erp_inventory_summary?select=item_no,item_name,item_cname,customer,line,storage,weight_per_pack,unit,pieces,unit_per_case,f_sl_day,r_sl_day,box,stock_level,machines_running,cycle,bags_per_cycle,remark,act_inventory_qty,pending_qty,ap_inventory_qty,stock_alarm&order=item_no.asc&limit=3000');
     document.getElementById('kpiTotal').textContent = DASH_DATA.length;
     document.getElementById('kpiLow').textContent = DASH_DATA.filter(d=>d.stock_alarm).length;
     const po = await sbGet('erp_pending_order?select=id&ship_date=gte.' + todayStr());
     document.getElementById('kpiPending').textContent = po.length;
+    populateDashboardFilters();
     renderDashboardTable();
   }catch(e){ toast('Failed to load dashboard: ' + e.message); }
 }
+function dedupeCaseInsensitive(values){
+  const seen = new Map(); // lowercase -> first-seen original casing
+  values.forEach(v => { const k = v.toLowerCase(); if(!seen.has(k)) seen.set(k, v); });
+  return [...seen.values()].sort((a,b)=>a.localeCompare(b));
+}
+function populateDashboardFilters(){
+  const lineSel = document.getElementById('dashFilterLine');
+  const custSel = document.getElementById('dashFilterCustomer');
+  const keepLine = lineSel.value, keepCust = custSel.value;
+  const lines = dedupeCaseInsensitive(DASH_DATA.map(r=>r.line).filter(Boolean));
+  const customers = dedupeCaseInsensitive(DASH_DATA.map(r=>r.customer).filter(Boolean));
+  lineSel.innerHTML = '<option value="">All Lines</option>' + lines.map(l=>`<option>${l}</option>`).join('');
+  custSel.innerHTML = '<option value="">All Customers</option>' + customers.map(c=>`<option>${c}</option>`).join('');
+  if(lines.includes(keepLine)) lineSel.value = keepLine;
+  if(customers.includes(keepCust)) custSel.value = keepCust;
+}
+function clearDashboardFilters(){
+  document.getElementById('dashSearch').value = '';
+  document.getElementById('dashFilterLine').value = '';
+  document.getElementById('dashFilterCustomer').value = '';
+  renderDashboardTable();
+}
 function renderDashboardTable(){
   const q = document.getElementById('dashSearch').value.trim().toLowerCase();
+  const lineFilter = document.getElementById('dashFilterLine').value;
+  const custFilter = document.getElementById('dashFilterCustomer').value;
   let rows = DASH_DATA;
   if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.item_name||'').toLowerCase().includes(q));
+  if(lineFilter) rows = rows.filter(r => (r.line||'').toLowerCase() === lineFilter.toLowerCase());
+  if(custFilter) rows = rows.filter(r => (r.customer||'').toLowerCase() === custFilter.toLowerCase());
   rows = rows.filter(r=>r.stock_alarm).concat(rows.filter(r=>!r.stock_alarm)).slice(0,300);
   const tbody = document.querySelector('#dashTable tbody');
-  tbody.innerHTML = rows.map(r => `<tr>
-    <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.customer||''}</td><td>${r.line||''}</td>
-    <td>${fmtNum(r.ap_inventory_qty)}</td>
-    <td>${r.stock_alarm ? `<span class="chip warn">Need to produce</span>` : `<span class="chip ok">OK</span>`}</td>
-  </tr>`).join('');
+  tbody.innerHTML = rows.map((r,i) => {
+    const rowId = 'dash-detail-'+i;
+    const z = (i % 2 === 0) ? ' zrow' : '';
+    return `<tr class="${z}" style="cursor:pointer" onclick="toggleDashDetail('${rowId}')">
+      <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.item_cname||''}</td><td>${r.remark||''}</td>
+      <td>${fmtNum(r.act_inventory_qty)}</td><td>${fmtNum(r.pending_qty)}</td><td>${fmtNum(r.ap_inventory_qty)}</td>
+      <td>${r.stock_alarm ? `<span class="chip warn">Need to produce</span>` : `<span class="chip ok">OK</span>`}</td>
+    </tr>
+    <tr id="${rowId}" class="dash-detail-row${z}" style="display:none">
+      <td colspan="8">
+        <div class="dash-detail-grid">
+          <div><span class="l">Customer</span>${r.customer||'–'}</div>
+          <div><span class="l">Line</span>${r.line||'–'}</div>
+          <div><span class="l">Storage</span>${r.storage||'–'}</div>
+          <div><span class="l">Weight/Pack</span>${fmtNum(r.weight_per_pack)}</div>
+          <div><span class="l">Unit</span>${r.unit||'–'}</div>
+          <div><span class="l">Pieces</span>${fmtNum(r.pieces)}</div>
+          <div><span class="l">Unit/Case</span>${r.unit_per_case||'–'}</div>
+          <div><span class="l">F.SL Day</span>${r.f_sl_day||'–'}</div>
+          <div><span class="l">R.SL Day</span>${fmtNum(r.r_sl_day)}</div>
+          <div><span class="l">Box</span>${r.box||'–'}</div>
+          <div><span class="l">Stock Level</span>${fmtNum(r.stock_level)}</div>
+          <div><span class="l"># M/C Running</span>${fmtNum(r.machines_running)}</div>
+          <div><span class="l">Cycle</span>${r.cycle||'–'}</div>
+          <div><span class="l">Bags/Cycle</span>${fmtNum(r.bags_per_cycle)}</div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
   document.getElementById('dashEmpty').style.display = rows.length ? 'none' : 'block';
+}
+function toggleDashDetail(rowId){
+  const el = document.getElementById(rowId);
+  el.style.display = el.style.display === 'table-row' ? 'none' : 'table-row';
 }
 
 /* ============================================================
    IN/OUT
    ============================================================ */
+const LOT_PREFIXES = ['P.D.:','Exp.:','Lot.:'];
+function applyLotPrefix(prefix, btnId){
+  const el = document.getElementById('ioLot');
+  let val = el.value || '';
+  for(const p of LOT_PREFIXES){ if(val.startsWith(p)){ val = val.slice(p.length); break; } }
+  el.value = prefix + val;
+  el.focus();
+  el.setSelectionRange(el.value.length, el.value.length);
+  ['optPD','optExp','optLot'].forEach(id => document.getElementById(id).classList.toggle('active-option', id===btnId));
+}
 async function submitInOut(){
+  if(!isAdmin()){ toast('Admins only'); return; }
   const itemNo = document.getElementById('ioItemNo').value;
   if(!itemNo){ toast('Please select an item first'); return; }
   const inQty = parseFloat(document.getElementById('ioIn').value)||0;
-  const outQty = parseFloat(document.getElementById('ioOut').value)||0;
-  if(inQty===0 && outQty===0){ toast('Please enter an In or Out quantity'); return; }
+  if(inQty===0){ toast('Please enter an In quantity'); return; }
   const entryDate = document.getElementById('ioDate').value || todayStr();
   try{
     await sbInsert('erp_inout', [{
       entry_date: entryDate,
       item_no: itemNo,
       item_name: document.getElementById('ioItemName').value,
-      in_qty: inQty, out_qty: outQty,
+      in_qty: inQty, out_qty: 0,
       lot: document.getElementById('ioLot').value || null
     }]);
-    // Any item with a sachet recipe auto-deducts components on Out.Qty
-    if(outQty > 0 && itemHasRecipe(itemNo)){
-      await deductComponentsForItem(itemNo, entryDate, outQty);
+    // Any item with a sachet recipe auto-deducts components when PRODUCED (In Qty)
+    if(itemHasRecipe(itemNo)){
+      await deductComponentsForItem(itemNo, entryDate, inQty);
       toast('In/out record added — sachet deduction applied');
     } else {
       toast('In/out record added');
     }
-    ['ioItemSearch','ioItemNo','ioItemName','ioIn','ioOut','ioLot'].forEach(id=>document.getElementById(id).value='');
+    ['ioItemSearch','ioItemNo','ioItemName','ioIn','ioLot'].forEach(id=>document.getElementById(id).value='');
+    ['optPD','optExp','optLot'].forEach(id => document.getElementById(id).classList.remove('active-option'));
     await refreshInOut(); await refreshDashboard(); await refreshComponents();
   }catch(e){ toast('Add failed: ' + e.message); }
 }
@@ -569,32 +950,56 @@ async function refreshInOut(){
 }
 
 /* ============================================================
-   PO
+   PO — build a multi-item order as a draft, then submit all
+   lines together; list groups lines by PO# (or a synthetic key
+   when PO# is blank) so an "order" can contain several items.
    ============================================================ */
 let PO_DATA = [];
-async function submitPO(){
+let PO_DRAFT = []; // [{item_no, item_name, qty}]
+
+function addPODraftLine(){
   const itemNo = document.getElementById('poItemNo').value;
   if(!itemNo){ toast('Please select an item first'); return; }
   const qty = parseFloat(document.getElementById('poQty').value)||0;
   if(!qty){ toast('Please enter a quantity'); return; }
+  PO_DRAFT.push({ item_no: itemNo, item_name: document.getElementById('poItemName').value, qty });
+  ['poItemSearch','poItemNo','poItemName','poQty'].forEach(id=>document.getElementById(id).value='');
+  renderPODraft();
+}
+function removePODraftLine(idx){
+  PO_DRAFT.splice(idx,1);
+  renderPODraft();
+}
+function renderPODraft(){
+  document.getElementById('poDraftLines').innerHTML = PO_DRAFT.map((l,i)=>`<tr>
+    <td>${l.item_no}</td><td>${l.item_name||''}</td><td>${fmtNum(l.qty)}</td>
+    <td><button class="iconbtn" style="width:28px;height:28px;font-size:12px" onclick="removePODraftLine(${i})">✕</button></td>
+  </tr>`).join('');
+  document.getElementById('poDraftEmpty').style.display = PO_DRAFT.length ? 'none' : 'block';
+}
+async function submitPOOrder(){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!PO_DRAFT.length){ toast('Add at least one item to the order first'); return; }
+  const shipDate = document.getElementById('poShipDate').value || todayStr();
+  const customer = document.getElementById('poCust').value || null;
+  const customerNo = document.getElementById('poCustNo').value || null;
+  const poNo = document.getElementById('poNo').value || null;
+  const rows = PO_DRAFT.map(l => ({
+    ship_date: shipDate, item_no: l.item_no, item_name: l.item_name, qty: l.qty,
+    customer, customer_no: customerNo, po_no: poNo
+  }));
   try{
-    await sbInsert('erp_pending_order', [{
-      ship_date: document.getElementById('poShipDate').value || todayStr(),
-      item_no: itemNo, item_name: document.getElementById('poItemName').value,
-      qty: qty,
-      customer: document.getElementById('poCust').value || null,
-      customer_no: document.getElementById('poCustNo').value || null,
-      po_no: document.getElementById('poNo').value || null
-    }]);
-    toast('Order added');
-    ['poItemSearch','poItemNo','poItemName','poQty','poCust','poCustNo','poNo'].forEach(id=>document.getElementById(id).value='');
+    await sbInsert('erp_pending_order', rows);
+    toast('Order created (' + rows.length + ' item(s))');
+    PO_DRAFT = []; renderPODraft();
+    ['poShipDate','poNo','poCust','poCustNo'].forEach(id=>document.getElementById(id).value='');
     await refreshPO(); await refreshDashboard(); await refreshProduce();
-  }catch(e){ toast('Add failed: ' + e.message); }
+  }catch(e){ toast('Create order failed: ' + e.message); }
 }
 async function refreshPO(){
   if(!connected) return;
   try{
-    PO_DATA = await sbGet('erp_pending_order?select=ship_date,item_no,item_name,qty,customer,po_no&order=ship_date.asc&limit=1000');
+    PO_DATA = await sbGet('erp_pending_order?select=id,ship_date,item_no,item_name,qty,customer,customer_no,po_no,status&ship_date=gte.' + todayStr() + '&order=ship_date.asc&limit=2000');
     renderPOTable();
   }catch(e){ toast('Failed to load orders: ' + e.message); }
 }
@@ -602,28 +1007,170 @@ function renderPOTable(){
   const q = document.getElementById('poSearch').value.trim().toLowerCase();
   let rows = PO_DATA;
   if(q) rows = rows.filter(r => [r.item_no,r.po_no,r.customer].join(' ').toLowerCase().includes(q));
-  rows = rows.slice(0,300);
-  document.getElementById('poList').innerHTML = rows.map(r=>`<tr>
-    <td>${r.ship_date}</td><td>${r.item_no}</td><td>${r.item_name||''}</td>
-    <td>${fmtNum(r.qty)}</td><td>${r.customer||''}</td><td>${r.po_no||''}</td>
-  </tr>`).join('');
-  document.getElementById('poEmpty').style.display = rows.length ? 'none' : 'block';
+  // group by PO# (fall back to a synthetic per-row key when PO# is blank)
+  const groups = {};
+  rows.forEach(r => {
+    const key = r.po_no ? ('PO:'+r.po_no) : ('ROW:'+r.id);
+    (groups[key] = groups[key] || []).push(r);
+  });
+  const keys = Object.keys(groups).slice(0,150);
+  document.getElementById('poGroups').innerHTML = keys.map((key,i) => {
+    const lines = groups[key];
+    const h = lines[0];
+    const total = lines.reduce((s,l)=>s+ (parseFloat(l.qty)||0), 0);
+    const gid = 'pog'+i;
+    const shippedCount = lines.filter(l=>l.status==='Shipped').length;
+    const orderStatus = shippedCount===0 ? 'Pending' : (shippedCount===lines.length ? 'Shipped' : 'Partially Shipped');
+    const statusChip = orderStatus==='Shipped' ? `<span class="chip ok">Shipped</span>`
+      : orderStatus==='Partially Shipped' ? `<span class="chip warn">Partially Shipped</span>`
+      : `<span class="chip">Pending</span>`;
+    return `<div class="card" style="margin-bottom:10px">
+      <div class="row" style="align-items:center;margin-bottom:6px">
+        <div style="flex:2">
+          <strong>${h.po_no ? 'PO# ' + h.po_no : '(no PO#)'}</strong>
+          ${h.customer ? `<span class="chip" style="margin-left:6px">${h.customer}</span>` : ''}
+          <span style="margin-left:6px">${statusChip}</span>
+        </div>
+        <span class="no-admin-only" style="font-size:13px">${h.ship_date}</span>
+        <input class="admin-only" type="date" value="${h.ship_date}" style="width:150px" onchange="updatePOShipDate('${key.replace(/'/g,"\\'")}', this.value)">
+        ${shippedCount < lines.length ? `<button class="btn secondary no-print admin-only" style="padding:6px 10px;font-size:12px" onclick="shipWholeOrder('${key.replace(/'/g,"\\'")}')">✔ Ship Entire Order</button>` : ''}
+        <button class="iconbtn no-print admin-only" style="width:28px;height:28px;font-size:12px" title="Delete whole order" onclick="deletePOOrder('${key.replace(/'/g,"\\'")}')">🗑</button>
+      </div>
+      <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Qty</th><th>Status</th><th class="no-print"></th></tr></thead>
+      <tbody>${lines.map(l=>`<tr>
+        <td>${l.item_no}</td><td>${l.item_name||''}</td>
+        <td><input type="number" step="any" value="${l.qty}" style="width:90px" ${(l.status==='Shipped' || !isAdmin())?'disabled':''} onchange="updatePOQty(${l.id}, this.value)"></td>
+        <td>${l.status==='Shipped' ? `<span class="chip ok">Shipped</span>` : `<span class="chip">Pending</span>`}</td>
+        <td class="no-print" style="white-space:nowrap">
+          ${l.status!=='Shipped' ? `<button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" title="Mark shipped → erp_inout" onclick="shipPOLine(${l.id})">📤</button>` : ''}
+          <button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_pending_order', ${l.id}, async()=>{await refreshPO(); await refreshDashboard(); await refreshProduce();})">✕</button>
+        </td>
+      </tr>`).join('')}</tbody></table></div>
+      <div style="font-size:12px;color:var(--muted);margin:4px 0 10px">Total qty: ${fmtNum(total)}</div>
+      <div class="row no-print admin-only" style="align-items:flex-end;border-top:1px dashed var(--line);padding-top:10px">
+        <div class="search" style="flex:2;min-width:180px">
+          <label>Add item to this order</label>
+          <input id="${gid}_search" placeholder="Search item # or name..." autocomplete="off"
+                 oninput="searchItems('${gid}_search','${gid}_suggest','${gid}_no','${gid}_name')">
+          <div class="suggest" id="${gid}_suggest" style="display:none"></div>
+        </div>
+        <input type="hidden" id="${gid}_no"><input type="hidden" id="${gid}_name">
+        <div style="max-width:110px"><label>Qty</label><input type="number" step="any" id="${gid}_qty"></div>
+        <button class="btn secondary" onclick="addItemToOrder('${gid}','${key.replace(/'/g,"\\'")}')">＋ Add</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('poEmpty').style.display = keys.length ? 'none' : 'block';
+}
+async function addItemToOrder(gid, key){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const itemNo = document.getElementById(gid+'_no').value;
+  const itemName = document.getElementById(gid+'_name').value;
+  const qty = parseFloat(document.getElementById(gid+'_qty').value)||0;
+  if(!itemNo){ toast('Please select an item first'); return; }
+  if(!qty){ toast('Please enter a quantity'); return; }
+  const groups = {};
+  PO_DATA.forEach(r => { const k = r.po_no ? ('PO:'+r.po_no) : ('ROW:'+r.id); (groups[k]=groups[k]||[]).push(r); });
+  const h = (groups[key]||[])[0];
+  if(!h){ toast('Order not found'); return; }
+  try{
+    await sbInsert('erp_pending_order', [{
+      ship_date: h.ship_date, item_no: itemNo, item_name: itemName, qty,
+      customer: h.customer, customer_no: h.customer_no, po_no: h.po_no
+    }]);
+    toast('Item added to order');
+    await refreshPO(); await refreshDashboard(); await refreshProduce();
+  }catch(e){ toast('Add failed: ' + e.message); }
+}
+async function updatePOShipDate(key, newDate){
+  const groups = {};
+  PO_DATA.forEach(r => { const k = r.po_no ? ('PO:'+r.po_no) : ('ROW:'+r.id); (groups[k]=groups[k]||[]).push(r); });
+  const lines = groups[key] || [];
+  if(!lines.length) return;
+  try{
+    for(const l of lines){ await sbUpdate('erp_pending_order', l.id, {ship_date: newDate}); }
+    toast('Ship date updated');
+    await refreshPO(); await refreshProduce();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+async function updatePOQty(id, value){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const qty = parseFloat(value)||0;
+  try{
+    await sbUpdate('erp_pending_order', id, {qty});
+    toast('Qty updated');
+    await refreshPO(); await refreshDashboard(); await refreshProduce();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+// Mark one order line as shipped: writes an Out.Qty record into erp_inout
+// and flips the line's status so it stops counting as pending demand.
+async function shipPOLine(id){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const line = PO_DATA.find(l => l.id === id);
+  if(!line) return;
+  if(line.status === 'Shipped'){ toast('Already shipped'); return; }
+  if(!confirm(`Ship ${fmtNum(line.qty)} of ${line.item_no} now? This creates an Out.Qty record in Finished Goods In/Out.`)) return;
+  try{
+    await sbInsert('erp_inout', [{
+      entry_date: todayStr(), item_no: line.item_no, item_name: line.item_name,
+      in_qty: 0, out_qty: line.qty,
+      lot: line.po_no ? ('PO#'+line.po_no) : null
+    }]);
+    await sbUpdate('erp_pending_order', id, {status: 'Shipped'});
+    toast('Shipped — Out.Qty recorded');
+    await refreshPO(); await refreshInOut(); await refreshDashboard(); await refreshProduce();
+  }catch(e){ toast('Ship failed: ' + e.message); }
+}
+async function shipWholeOrder(key){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const groups = {};
+  PO_DATA.forEach(r => { const k = r.po_no ? ('PO:'+r.po_no) : ('ROW:'+r.id); (groups[k]=groups[k]||[]).push(r); });
+  const lines = (groups[key]||[]).filter(l => l.status !== 'Shipped');
+  if(!lines.length){ toast('Nothing left to ship on this order'); return; }
+  if(!confirm(`Ship all ${lines.length} remaining item line(s) on this order?`)) return;
+  try{
+    const rows = lines.map(l => ({
+      entry_date: todayStr(), item_no: l.item_no, item_name: l.item_name,
+      in_qty: 0, out_qty: l.qty, lot: l.po_no ? ('PO#'+l.po_no) : null
+    }));
+    await sbInsert('erp_inout', rows);
+    for(const l of lines){ await sbUpdate('erp_pending_order', l.id, {status: 'Shipped'}); }
+    toast('Order shipped — Out.Qty recorded');
+    await refreshPO(); await refreshInOut(); await refreshDashboard(); await refreshProduce();
+  }catch(e){ toast('Ship failed: ' + e.message); }
+}
+async function deletePOOrder(key){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const lines = (function(){
+    const groups = {};
+    PO_DATA.forEach(r => { const k = r.po_no ? ('PO:'+r.po_no) : ('ROW:'+r.id); (groups[k]=groups[k]||[]).push(r); });
+    return groups[key] || [];
+  })();
+  if(!lines.length) return;
+  if(!confirm(`Delete this whole order (${lines.length} item line(s))? This cannot be undone.`)) return;
+  try{
+    for(const l of lines){ await sbDelete('erp_pending_order', l.id); }
+    toast('Order deleted');
+    await refreshPO(); await refreshDashboard(); await refreshProduce();
+  }catch(e){ toast('Delete failed: ' + e.message); }
 }
 
 /* ============================================================
    COMPONENTS
    ============================================================ */
 async function submitComponent(){
+  if(!isAdmin()){ toast('Admins only'); return; }
   const sachet = document.getElementById('compSachet').value;
-  const qty = parseFloat(document.getElementById('compQty').value);
-  if(!sachet || !qty){ toast('Please select a sachet and enter a quantity'); return; }
+  const inQty = parseFloat(document.getElementById('compIn').value)||0;
+  if(!sachet){ toast('Please select a sachet'); return; }
+  if(inQty===0){ toast('Please enter an In quantity'); return; }
   try{
     await sbInsert('erp_components_inout', [{
       entry_date: document.getElementById('compDate').value || todayStr(),
-      sachet_name: sachet, qty: qty
+      sachet_name: sachet, in_qty: inQty, out_qty: 0
     }]);
     toast('Sachet record added');
-    document.getElementById('compQty').value='';
+    document.getElementById('compIn').value='';
     await refreshComponents();
   }catch(e){ toast('Add failed: ' + e.message); }
 }
@@ -636,20 +1183,29 @@ async function refreshComponents(){
       <td>${r.sachet_name}</td><td>${fmtNum(r.inventory_qty)}</td>
     </tr>`).join('');
     document.getElementById('sachetEmpty').style.display = rows.length ? 'none' : 'block';
+
+    const recent = await sbGet('erp_components_inout?select=id,entry_date,sachet_name,in_qty,out_qty&order=id.desc&limit=30');
+    document.getElementById('compRecent').innerHTML = recent.map(r=>`<tr>
+      <td>${r.entry_date}</td><td>${r.sachet_name}</td><td>${fmtNum(r.in_qty)}</td><td>${fmtNum(r.out_qty)}</td>
+      <td class="no-print"><button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_components_inout',${r.id},refreshComponents)">✕</button></td>
+    </tr>`).join('');
+    document.getElementById('compRecentEmpty').style.display = recent.length ? 'none' : 'block';
   }catch(e){ toast('Failed to load sachet inventory: ' + e.message); }
 }
 // Auto-deduction: any item that has recipe rows in erp_item_sachet_recipe
-// triggers a sachet deduction proportional to the qty sold/shipped out.
+// triggers a sachet deduction proportional to the qty PRODUCED (In Qty),
+// since making a finished-goods kit is what consumes the sachets.
 function itemHasRecipe(itemNo){
   return RECIPE.some(r => r.item_no === itemNo);
 }
-async function deductComponentsForItem(itemNo, entryDate, saleQty){
+async function deductComponentsForItem(itemNo, entryDate, producedQty){
   const recipeRows = RECIPE.filter(r => r.item_no === itemNo);
   if(!recipeRows.length) return;
   const inserts = recipeRows.map(r => ({
     entry_date: entryDate,
     sachet_name: r.sachet_name,
-    qty: (saleQty * (r.pcs_per_case||0)) * -1
+    in_qty: 0,
+    out_qty: producedQty * (r.pcs_per_case||0)
   }));
   await sbInsert('erp_components_inout', inserts);
 }
@@ -668,20 +1224,246 @@ async function refreshProduce(){
     }
     document.getElementById('produceEmpty').style.display = 'none';
     const itemNos = negatives.map(n=>n.item_no);
-    const pending = await sbGet('erp_pending_order?select=item_no,ship_date,qty&ship_date=gte.' + todayStr() + '&order=ship_date.asc&limit=3000');
+    const pending = await sbGet('erp_pending_order?select=item_no,ship_date,qty,customer,po_no&ship_date=gte.' + todayStr() + '&order=ship_date.asc&limit=3000');
     const byItem = {};
     pending.forEach(p=>{ (byItem[p.item_no] = byItem[p.item_no]||[]).push(p); });
     document.getElementById('produceList').innerHTML = negatives.map((r,i)=>{
       const rowId = 'prod-detail-'+i;
-      const detail = (byItem[r.item_no]||[]).map(p=>`${p.ship_date}: ${fmtNum(p.qty)}`).join('<br>') || '(no pending orders scheduled)';
-      return `<tr style="cursor:pointer" onclick="document.getElementById('${rowId}').style.display = document.getElementById('${rowId}').style.display==='table-row'?'none':'table-row'">
+      const z = (i % 2 === 0) ? ' zrow' : '';
+      const lines = byItem[r.item_no] || [];
+      const detail = lines.length
+        ? `<table style="width:100%"><thead><tr><th>Ship Date</th><th>Customer</th><th>PO#</th><th>Qty</th></tr></thead><tbody>${
+            lines.map(p=>`<tr><td>${p.ship_date}</td><td>${p.customer||'–'}</td><td>${p.po_no||'–'}</td><td>${fmtNum(p.qty)}</td></tr>`).join('')
+          }</tbody></table>`
+        : '(no pending orders scheduled)';
+      return `<tr class="${z}" style="cursor:pointer" onclick="document.getElementById('${rowId}').style.display = document.getElementById('${rowId}').style.display==='table-row'?'none':'table-row'">
         <td>${r.item_no}</td><td>${r.item_name||''}</td>
         <td><span class="chip warn">${fmtNum(r.ap_inventory_qty)}</span></td>
         <td>${r.customer||''}</td><td>${r.line||''}</td>
       </tr>
-      <tr id="${rowId}" style="display:none"><td colspan="5" style="background:var(--chip);font-size:12px">${detail}</td></tr>`;
+      <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="5" style="font-size:12px">${detail}</td></tr>`;
     }).join('');
   }catch(e){ toast('Failed to load Need-to-Produce data: ' + e.message); }
+}
+
+/* ============================================================
+   MANAGE ITEMS (erp_items CRUD)
+   ============================================================ */
+const ITEM_FIELDS = ['itemNo','itemName','itemCname','weightPerPack','unitOfWeight','unit','pieces','unitPerCase','customer','line','storage','fSlDay','rSlDay','box','stockLevel','machinesRunning','cycle','bagsPerCycle','remark'];
+const ITEM_DB_COLS = {itemNo:'item_no',itemName:'item_name',itemCname:'item_cname',weightPerPack:'weight_per_pack',unitOfWeight:'unit_of_weight',unit:'unit',pieces:'pieces',unitPerCase:'unit_per_case',customer:'customer',line:'line',storage:'storage',fSlDay:'f_sl_day',rSlDay:'r_sl_day',box:'box',stockLevel:'stock_level',machinesRunning:'machines_running',cycle:'cycle',bagsPerCycle:'bags_per_cycle',remark:'remark'};
+const ITEM_INPUT_IDS = {itemNo:'itemNo',itemName:'itemName',itemCname:'itemCname',weightPerPack:'itemWeight',unitOfWeight:'itemUnitW',unit:'itemUnit',pieces:'itemPieces',unitPerCase:'itemUnitCase',customer:'itemCustomer',line:'itemLine',storage:'itemStorage',fSlDay:'itemFSl',rSlDay:'itemRSl',box:'itemBox',stockLevel:'itemStockLevel',machinesRunning:'itemMcRunning',cycle:'itemCycle',bagsPerCycle:'itemBagsCycle',remark:'itemRemark'};
+const NUMERIC_ITEM_FIELDS = ['weightPerPack','pieces','rSlDay','stockLevel','machinesRunning','bagsPerCycle'];
+
+function resetItemForm(){
+  document.getElementById('itemEditId').value = '';
+  document.getElementById('itemFormTitle').textContent = 'Add New Item';
+  ITEM_FIELDS.forEach(f => { const el = document.getElementById(ITEM_INPUT_IDS[f]); if(el) el.value=''; });
+}
+function editItem(id){
+  const it = ITEMS.find(i => i.id === id);
+  if(!it) return;
+  document.getElementById('itemEditId').value = id;
+  document.getElementById('itemFormTitle').textContent = 'Edit Item #' + it.item_no;
+  ITEM_FIELDS.forEach(f => {
+    const el = document.getElementById(ITEM_INPUT_IDS[f]);
+    if(el) el.value = it[ITEM_DB_COLS[f]] ?? '';
+  });
+  showScreen('items'); window.scrollTo(0,0);
+}
+async function submitItem(){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const itemNo = document.getElementById('itemNo').value.trim();
+  const itemName = document.getElementById('itemName').value.trim();
+  if(!itemNo || !itemName){ toast('Item # and Item Name are required'); return; }
+  const editId = document.getElementById('itemEditId').value;
+  const patch = {};
+  ITEM_FIELDS.forEach(f => {
+    const el = document.getElementById(ITEM_INPUT_IDS[f]);
+    if(!el) return;
+    let v = el.value.trim();
+    if(NUMERIC_ITEM_FIELDS.includes(f)) v = v === '' ? null : parseFloat(v);
+    else v = v === '' ? null : v;
+    patch[ITEM_DB_COLS[f]] = v;
+  });
+  try{
+    if(editId){
+      await sbUpdate('erp_items', editId, patch);
+      toast('Item updated');
+    } else {
+      await sbInsert('erp_items', [patch]);
+      toast('Item added');
+    }
+    resetItemForm();
+    await loadCaches(); await refreshItemsScreen(); await refreshDashboard();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteItem(id){
+  await deleteRow('erp_items', id, async()=>{ await loadCaches(); await refreshItemsScreen(); await refreshDashboard(); });
+}
+async function refreshItemsScreen(){
+  if(!connected) return;
+  renderItemsTable();
+}
+function renderItemsTable(){
+  const q = (document.getElementById('itemsSearch')?.value || '').trim().toLowerCase();
+  let rows = ITEMS;
+  if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.item_name||'').toLowerCase().includes(q));
+  rows = rows.slice(0,400);
+  document.getElementById('itemsTable').innerHTML = rows.map((r,i)=>{
+    const rowId = 'item-detail-'+i;
+    const z = (i % 2 === 0) ? ' zrow' : '';
+    return `<tr class="${z}" style="cursor:pointer" onclick="toggleItemDetail('${rowId}')">
+      <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.customer||''}</td><td>${r.line||''}</td>
+      <td>${fmtNum(r.stock_level)}</td><td>${fmtNum(r.machines_running)}</td><td>${r.remark||''}</td>
+      <td class="no-print" style="white-space:nowrap">
+        <button class="iconbtn admin-only" onclick="event.stopPropagation(); editItem(${r.id})" style="width:28px;height:28px;font-size:12px">✎</button>
+        <button class="iconbtn admin-only" onclick="event.stopPropagation(); deleteItem(${r.id})" style="width:28px;height:28px;font-size:12px">✕</button>
+      </td>
+    </tr>
+    <tr id="${rowId}" class="${z.trim()}" style="display:none">
+      <td colspan="8">
+        <div class="dash-detail-grid">
+          <div><span class="l">Item C.Name</span>${r.item_cname||'–'}</div>
+          <div><span class="l">Storage</span>${r.storage||'–'}</div>
+          <div><span class="l">Weight/Pack</span>${fmtNum(r.weight_per_pack)}</div>
+          <div><span class="l">Unit of Weight</span>${r.unit_of_weight||'–'}</div>
+          <div><span class="l">Unit</span>${r.unit||'–'}</div>
+          <div><span class="l">Pieces</span>${fmtNum(r.pieces)}</div>
+          <div><span class="l">Unit/Case</span>${r.unit_per_case||'–'}</div>
+          <div><span class="l">F.SL Day</span>${r.f_sl_day||'–'}</div>
+          <div><span class="l">R.SL Day</span>${fmtNum(r.r_sl_day)}</div>
+          <div><span class="l">Box</span>${r.box||'–'}</div>
+          <div><span class="l">Cycle</span>${r.cycle||'–'}</div>
+          <div><span class="l">Bags/Cycle</span>${fmtNum(r.bags_per_cycle)}</div>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('itemsEmpty').style.display = rows.length ? 'none' : 'block';
+}
+function toggleItemDetail(rowId){
+  const el = document.getElementById(rowId);
+  el.style.display = el.style.display === 'table-row' ? 'none' : 'table-row';
+}
+
+/* ============================================================
+   ITEM RECIPES (erp_item_sachet_recipe CRUD)
+   ============================================================ */
+async function submitRecipe(){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const itemNo = document.getElementById('recItemNo').value;
+  const itemName = document.getElementById('recItemName').value;
+  const sachet = document.getElementById('recSachet').value;
+  const pcs = parseFloat(document.getElementById('recPcs').value);
+  if(!itemNo){ toast('Please select an item first'); return; }
+  if(!sachet){ toast('Please select a sachet'); return; }
+  if(!pcs){ toast('Please enter pcs per unit'); return; }
+  try{
+    await sbInsert('erp_item_sachet_recipe', [{ item_no: itemNo, item_name: itemName, sachet_name: sachet, pcs_per_case: pcs }]);
+    toast('Recipe row added');
+    ['recItemSearch','recItemNo','recItemName','recSachet','recPcs'].forEach(id=>document.getElementById(id).value='');
+    await loadCaches(); await refreshRecipesScreen();
+  }catch(e){ toast('Add failed: ' + e.message); }
+}
+async function deleteRecipe(id){
+  await deleteRow('erp_item_sachet_recipe', id, async()=>{ await loadCaches(); await refreshRecipesScreen(); });
+}
+async function refreshRecipesScreen(){
+  if(!connected) return;
+  renderRecipeTable();
+}
+function renderRecipeTable(){
+  const q = (document.getElementById('recSearch')?.value || '').trim().toLowerCase();
+  let rows = RECIPE;
+  if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.sachet_name||'').toLowerCase().includes(q));
+  document.getElementById('recipeTable').innerHTML = rows.map(r=>`<tr>
+    <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.sachet_name}</td><td>${fmtNum(r.pcs_per_case)}</td>
+    <td class="no-print"><button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" onclick="deleteRecipe(${r.id})">✕</button></td>
+  </tr>`).join('');
+  document.getElementById('recipeEmpty').style.display = rows.length ? 'none' : 'block';
+}
+
+/* ============================================================
+   DUPLICATED ITEMS (erp_duplicated_items CRUD)
+   ============================================================ */
+function searchWrongItem(){
+  const q = document.getElementById('dupeItemNo').value.trim().toLowerCase();
+  const box = document.getElementById('dupeItemNoSuggest');
+  if(!q){ box.style.display='none'; return; }
+  const matches = ITEMS.filter(it =>
+    (it.item_no||'').toLowerCase().includes(q) || (it.item_name||'').toLowerCase().includes(q)
+  ).slice(0,20);
+  if(!matches.length){ box.style.display='none'; return; }
+  box.innerHTML = matches.map(it =>
+    `<div onclick="pickWrongItem('${it.item_no.replace(/'/g,"\\'")}')"><strong>${it.item_no}</strong> — ${it.item_name}</div>`
+  ).join('');
+  box.style.display = 'block';
+}
+function pickWrongItem(itemNo){
+  const it = ITEMS_BY_NO[itemNo];
+  if(!it) return;
+  document.getElementById('dupeItemNo').value = it.item_no;
+  document.getElementById('dupeItemName').value = it.item_name;
+  document.getElementById('dupeItemNoSuggest').style.display = 'none';
+}
+function resetDupeForm(){
+  document.getElementById('dupeEditId').value = '';
+  document.getElementById('dupeFormTitle').textContent = 'Add Mapping';
+  ['dupeItemNo','dupeItemName','dupeCorrectSearch','dupeCorrectNo','dupeCorrectName'].forEach(id=>document.getElementById(id).value='');
+}
+function editDupe(id){
+  const d = DUPES.find(x => x.id === id);
+  if(!d) return;
+  document.getElementById('dupeEditId').value = id;
+  document.getElementById('dupeFormTitle').textContent = 'Edit Mapping';
+  document.getElementById('dupeItemNo').value = d.item_no || '';
+  document.getElementById('dupeItemName').value = d.item_name || '';
+  document.getElementById('dupeCorrectNo').value = d.correct_item_no || '';
+  document.getElementById('dupeCorrectName').value = d.correct_item_name || '';
+  document.getElementById('dupeCorrectSearch').value = d.correct_item_no ? (d.correct_item_no + ' — ' + (d.correct_item_name||'')) : '';
+  showScreen('dupes'); window.scrollTo(0,0);
+}
+async function submitDupe(){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const itemNo = document.getElementById('dupeItemNo').value.trim();
+  const itemName = document.getElementById('dupeItemName').value.trim();
+  const correctNo = document.getElementById('dupeCorrectNo').value.trim();
+  const correctName = document.getElementById('dupeCorrectName').value.trim();
+  if(!itemNo){ toast('Wrong Item # is required'); return; }
+  if(!correctNo){ toast('Please select the correct item'); return; }
+  const editId = document.getElementById('dupeEditId').value;
+  const patch = { item_no: itemNo, item_name: itemName || null, correct_item_no: correctNo, correct_item_name: correctName || null };
+  try{
+    if(editId){
+      await sbUpdate('erp_duplicated_items', editId, patch);
+      toast('Mapping updated');
+    } else {
+      await sbInsert('erp_duplicated_items', [patch]);
+      toast('Mapping added');
+    }
+    resetDupeForm();
+    await loadCaches(); await refreshDupesScreen();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteDupe(id){
+  await deleteRow('erp_duplicated_items', id, async()=>{ await loadCaches(); await refreshDupesScreen(); });
+}
+async function refreshDupesScreen(){
+  if(!connected) return;
+  renderDupesTable();
+}
+function renderDupesTable(){
+  const q = (document.getElementById('dupesSearch')?.value || '').trim().toLowerCase();
+  let rows = DUPES;
+  if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.correct_item_no||'').toLowerCase().includes(q));
+  document.getElementById('dupesTable').innerHTML = rows.map(r=>`<tr>
+    <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.correct_item_no}</td><td>${r.correct_item_name||''}</td>
+    <td class="no-print" style="white-space:nowrap">
+      <button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" onclick="editDupe(${r.id})">✎</button>
+      <button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" onclick="deleteDupe(${r.id})">✕</button>
+    </td>
+  </tr>`).join('');
+  document.getElementById('dupesEmpty').style.display = rows.length ? 'none' : 'block';
 }
 
 /* ============================================================
@@ -718,13 +1500,34 @@ function lookupDupe(itemNo, itemName){
   const hit = DUPES.find(d => d.item_no === itemNo && d.item_name === itemName);
   return hit ? {item_no: hit.correct_item_no, item_name: hit.correct_item_name} : {item_no: itemNo, item_name: itemName};
 }
+async function sha256Hex(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+// Returns true and logs a message if this exact file was already imported before.
+async function alreadyImported(fileType, hash){
+  const existing = await sbGet(`erp_import_log?select=id,imported_at&file_type=eq.${fileType}&file_hash=eq.${hash}&limit=1`);
+  if(existing && existing.length){
+    logImport(`⚠ This exact file was already imported on ${new Date(existing[0].imported_at).toLocaleString()} — skipping to avoid duplicate rows.`);
+    toast('This file was already imported before');
+    return true;
+  }
+  return false;
+}
+async function logImportRun(fileType, fileName, hash, rowCount){
+  try{ await sbInsert('erp_import_log', [{file_type: fileType, file_name: fileName, file_hash: hash, row_count: rowCount}]); }
+  catch(e){ /* non-fatal — worst case a legitimate re-check happens next time */ }
+}
 
 /* ---- invoice.csv -> erp_pending_order ---- */
 async function handleInvoiceFile(file){
+  if(!isAdmin()){ toast('Admins only'); return; }
   if(!file) return;
   const text = await file.text();
   const rows = parseCSV(text);
   if(!rows.length){ logImport('invoice.csv: file is empty'); return; }
+  const fileHash = await sha256Hex(text);
+  if(await alreadyImported('invoice', fileHash)) return;
   const poCheckValue = String(rows[0][24] ?? '').trim(); // col 25 (1-indexed) -> index 24
   // check already imported
   try{
@@ -755,18 +1558,22 @@ async function handleInvoiceFile(file){
   if(!out.length){ logImport('invoice.csv: no rows to import'); return; }
   try{
     await sbInsert('erp_pending_order', out);
+    await logImportRun('invoice', file.name, fileHash, out.length);
     logImport(`✅ invoice.csv import complete: added ${out.length} order(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}`);
     toast('Import completed successfully!');
     await refreshPO(); await refreshDashboard(); await refreshProduce();
   }catch(e){ logImport('❌ Import failed: ' + e.message); }
 }
 
-/* ---- itemsalessummary.csv -> erp_inout (+ sachet recipe deduction for any item that has one) ---- */
+/* ---- itemsalessummary.csv -> erp_inout (Out.Qty / sales records; no sachet deduction here — deduction only happens on In Qty / production) ---- */
 async function handleSalesFile(file){
+  if(!isAdmin()){ toast('Admins only'); return; }
   if(!file) return;
   const text = await file.text();
   const rows = parseCSV(text);
   if(!rows.length){ logImport('itemsalessummary.csv: file is empty'); return; }
+  const fileHash = await sha256Hex(text);
+  if(await alreadyImported('itemsalessummary', fileHash)) return;
 
   // de-dup on col18 + col26 (index 17, 25)
   const seen = new Set(); const clean = [];
@@ -777,7 +1584,6 @@ async function handleSalesFile(file){
   }
 
   const out = [];
-  const compTriggers = []; // {itemNo, entryDate, qty} for any item found in erp_item_sachet_recipe
   let skipped = 0;
   for(const r of clean){
     const qtyRaw = parseFloat(r[25]); // col26 -> index25
@@ -815,16 +1621,14 @@ async function handleSalesFile(file){
     const entryDate = parseDateLoose(parts[1] || dateField);
 
     out.push({ entry_date: entryDate, item_no: itemNo, item_name: itemName, in_qty: 0, out_qty: qty, lot: null });
-
-    if(itemHasRecipe(itemNo)){ compTriggers.push({itemNo, entryDate, qty: qtyRaw}); }
   }
   if(!out.length){ logImport('itemsalessummary.csv: no rows to import'); return; }
   try{
     await sbInsert('erp_inout', out);
-    for(const t of compTriggers){ await deductComponentsForItem(t.itemNo, t.entryDate, t.qty); }
-    logImport(`✅ itemsalessummary.csv import complete: added ${out.length} out-qty record(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}${compTriggers.length?`, triggered sachet deduction for ${compTriggers.length} row(s)`:''}`);
+    await logImportRun('itemsalessummary', file.name, fileHash, out.length);
+    logImport(`✅ itemsalessummary.csv import complete: added ${out.length} out-qty record(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}`);
     toast('Import completed successfully!');
-    await refreshInOut(); await refreshDashboard(); await refreshComponents(); await refreshProduce();
+    await refreshInOut(); await refreshDashboard(); await refreshProduce();
   }catch(e){ logImport('❌ Import failed: ' + e.message); }
 }
 
