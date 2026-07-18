@@ -28,6 +28,10 @@
   .topnav .spacer{flex:1}
   .topnav .connwrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
   .topnav nav{display:flex;gap:4px;padding:0 14px 10px;overflow-x:auto}
+  .module-switcher{display:flex;gap:6px;padding:6px 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg)}
+  .module-switcher button{flex:0 0 auto;padding:9px 16px;border:none;background:none;border-radius:8px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer}
+  .module-switcher button:hover{background:var(--chip);color:var(--text)}
+  .module-switcher button.active{background:var(--accent);color:var(--accent-ink)}
   .topnav nav button{flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:8px 13px;border:none;background:none;border-radius:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
   .topnav nav button .ic{font-size:15px}
   .topnav nav button:hover{background:var(--chip);color:var(--text)}
@@ -47,20 +51,39 @@
   button.btn.secondary{background:var(--panel);color:var(--text);border-color:var(--line)}
   button.btn.danger{background:var(--danger);border-color:var(--danger);color:#fff}
   button.btn.secondary.active-option{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
-  body.logged-out .topnav nav button:not([data-screen="settings"]){display:none}
-  body.viewer-mode .admin-only{display:none !important}
-  .no-admin-only{display:none}
-  body.viewer-mode .no-admin-only{display:inline}
+  body.logged-out .topnav nav button:not([data-screen="settings"]){display:none !important}
+  body.logged-out #subNav{display:flex !important}
+  body.logged-out .topnav nav button[data-screen="settings"]{display:inline-flex !important}
+  body.logged-out .module-switcher{display:none}
+  body.no-write .can-write{display:none !important}
+  body.no-admin .admin-only{display:none !important}
+  .no-can-write{display:none}
+  body.no-write .no-can-write{display:inline}
   .role-badge{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
   .role-badge.admin{background:rgba(28,156,107,.15);color:var(--green)}
+  .role-badge.editor{background:rgba(47,111,237,.15);color:var(--accent)}
+  .tier-chip{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
+  .tier-sufficient{background:rgba(28,156,107,.15);color:var(--green)}
+  .tier-watch{background:rgba(47,111,237,.15);color:var(--accent)}
+  .tier-caution{background:rgba(201,138,18,.18);color:var(--amber)}
+  .tier-urgent{background:rgba(214,69,69,.18);color:var(--danger)}
+  .tier-oos{background:var(--danger);color:#fff}
+  .pyramid-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px}
+  .pyramid-row .lbl{width:80px;flex:0 0 80px;color:var(--muted);text-align:right}
+  .pyramid-row .bar-wrap{flex:1;background:var(--chip);border-radius:6px;overflow:hidden;height:20px}
+  .pyramid-row .bar{height:100%;display:flex;align-items:center;padding-left:8px;color:#fff;font-weight:700;font-size:11px;white-space:nowrap;border-radius:6px}
+  .heat-cell{text-align:center;font-weight:700;border-radius:6px}
+  .kpis4{grid-template-columns:repeat(4,1fr)}
+  @media (max-width:600px){ .kpis4{grid-template-columns:repeat(2,1fr)} }
   button.btn:disabled{opacity:.5;cursor:not-allowed}
   .btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
   th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
   tbody tr:last-child td{border-bottom:none}
-  .tablewrap table:not(#dashTable):not(#produceTable):not(#itemsTableEl) tbody tr:nth-child(odd){background:var(--chip)}
-  #dashTable tbody tr.zrow, #produceTable tbody tr.zrow, #itemsTableEl tbody tr.zrow{background:var(--chip)}
+  .tablewrap table:not(#dashTable):not(#produceTable):not(#itemsTableEl):not(#ioRecentTable):not(#compRecentTable):not(#histTable):not(#flourLedgerTableEl) tbody tr:nth-child(odd){background:var(--chip)}
+  #dashTable tbody tr.zrow, #produceTable tbody tr.zrow, #itemsTableEl tbody tr.zrow,
+  #ioRecentTable tbody tr.zrow, #compRecentTable tbody tr.zrow, #histTable tbody tr.zrow, #flourLedgerTableEl tbody tr.zrow{background:var(--chip)}
   .dash-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 18px;padding:12px 4px;white-space:normal}
   .dash-detail-grid .l{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:2px}
   .tablewrap{overflow-x:auto}
@@ -71,7 +94,8 @@
   .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:99px;font-size:13px;box-shadow:var(--shadow);z-index:50;opacity:0;transition:opacity .2s}
   .toast.show{opacity:1}
   .kpis{grid-template-columns:repeat(3,1fr)}
-  .card .row.wide2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .row.wide2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px}
+  @media (max-width:820px){ .row.wide2{grid-template-columns:1fr} }
 
   /* ---- Dashboard: left search/filter rail + main table ---- */
   .dash-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
@@ -126,17 +150,35 @@
       <button class="btn secondary" id="logoutBtn" style="display:none;padding:6px 12px;font-size:12px" onclick="doLogout()">Log Out</button>
       <button class="iconbtn" id="themeBtn" title="Toggle theme">🌙</button>
     </div>
-    <nav>
-      <button data-screen="dashboard" class="active" onclick="showScreen('dashboard')"><span class="ic">📊</span>Dashboard</button>
-      <button data-screen="inout" onclick="showScreen('inout')"><span class="ic">📦</span>Finished Goods In/Out</button>
-      <button data-screen="po" onclick="showScreen('po')"><span class="ic">🧾</span>Orders</button>
-      <button data-screen="components" onclick="showScreen('components')"><span class="ic">🧂</span>Components (Sachets)</button>
-      <button data-screen="produce" onclick="showScreen('produce')"><span class="ic">🏭</span>Need to Produce</button>
-      <button data-screen="items" onclick="showScreen('items')"><span class="ic">📋</span>Manage Items</button>
-      <button data-screen="recipes" onclick="showScreen('recipes')"><span class="ic">🔗</span>Item Recipes</button>
-      <button data-screen="dupes" onclick="showScreen('dupes')"><span class="ic">🔀</span>Duplicated Items</button>
-      <button class="admin-only" data-screen="import" onclick="showScreen('import')"><span class="ic">📥</span>CSV Import</button>
-      <button data-screen="settings" onclick="showScreen('settings')"><span class="ic">⚙️</span>Settings</button>
+    <div class="module-switcher">
+      <button data-module="inventory" class="active" onclick="switchModule('inventory')">📦 Inventory</button>
+      <button data-module="schedule" onclick="switchModule('schedule')">📅 Production Schedule</button>
+      <button data-module="flour" onclick="switchModule('flour')">🌾 Flour Usage</button>
+      <button data-module="maintenance" onclick="switchModule('maintenance')">🔧 Maintenance</button>
+    </div>
+    <nav id="subNav" data-module="inventory">
+      <button data-screen="dashboard" data-module="inventory" class="active" onclick="showScreen('dashboard')"><span class="ic">📊</span>Dashboard</button>
+      <button data-screen="inout" data-module="inventory" onclick="showScreen('inout')"><span class="ic">📦</span>Finished Goods In/Out</button>
+      <button data-screen="po" data-module="inventory" onclick="showScreen('po')"><span class="ic">🧾</span>Orders</button>
+      <button data-screen="components" data-module="inventory" onclick="showScreen('components')"><span class="ic">🧂</span>Components (Sachets)</button>
+      <button data-screen="produce" data-module="inventory" onclick="showScreen('produce')"><span class="ic">🏭</span>Need to Produce</button>
+      <button data-screen="items" data-module="inventory" onclick="showScreen('items')"><span class="ic">📋</span>Manage Items</button>
+      <button data-screen="recipes" data-module="inventory" onclick="showScreen('recipes')"><span class="ic">🔗</span>Item Recipes</button>
+      <button data-screen="dupes" data-module="inventory" onclick="showScreen('dupes')"><span class="ic">🔀</span>Duplicated Items</button>
+      <button class="can-write" data-screen="import" data-module="inventory" onclick="showScreen('import')"><span class="ic">📥</span>CSV Import</button>
+      <button data-screen="history" data-module="inventory" onclick="showScreen('history')"><span class="ic">📜</span>Transaction History</button>
+      <button class="can-write" data-screen="backup" data-module="maintenance" onclick="showScreen('backup')"><span class="ic">💾</span>Data Backup</button>
+      <button class="admin-only" data-screen="users" data-module="maintenance" onclick="showScreen('users')"><span class="ic">👤</span>Manage Users</button>
+      <button data-screen="account" data-module="maintenance" onclick="showScreen('account')"><span class="ic">🙋</span>My Account</button>
+      <button data-screen="settings" data-module="maintenance" onclick="showScreen('settings')"><span class="ic">⚙️</span>Settings</button>
+      <button data-screen="schedule-create" data-module="schedule" class="active" onclick="showScreen('schedule-create')"><span class="ic">➕</span>Create</button>
+      <button data-screen="schedule-preview" data-module="schedule" onclick="showScreen('schedule-preview')"><span class="ic">👁</span>Preview</button>
+      <button data-screen="schedule-confirm" data-module="schedule" onclick="showScreen('schedule-confirm')"><span class="ic">✔</span>Confirm Completion</button>
+      <button class="can-write" data-screen="schedule-products" data-module="schedule" onclick="showScreen('schedule-products')"><span class="ic">🏷️</span>Products</button>
+      <button data-screen="flour-ingredients" data-module="flour" class="active" onclick="showScreen('flour-ingredients')"><span class="ic">🌾</span>Ingredients</button>
+      <button data-screen="flour-usage-report" data-module="flour" onclick="showScreen('flour-usage-report')"><span class="ic">📊</span>Usage Report</button>
+      <button data-screen="flour-recipes" data-module="flour" onclick="showScreen('flour-recipes')"><span class="ic">🔗</span>Recipes</button>
+      <button data-screen="flour-ledger" data-module="flour" onclick="showScreen('flour-ledger')"><span class="ic">📜</span>Ledger</button>
     </nav>
   </header>
 
@@ -158,7 +200,7 @@
         </div>
         <p id="loginStatus" style="font-size:12px;color:var(--muted);margin-top:12px"></p>
       </div>
-      <div class="card">
+      <div class="card" id="loginConnCard" style="display:none">
         <h3>⚙ Supabase Connection</h3>
         <p style="color:var(--muted);font-size:12px;margin-top:0">Only needed once, before anyone can sign in.</p>
         <label>Project URL</label>
@@ -181,14 +223,57 @@
         <select id="dashFilterLine" onchange="renderDashboardTable()"><option value="">All Lines</option></select>
         <label>Filter by Customer</label>
         <select id="dashFilterCustomer" onchange="renderDashboardTable()"><option value="">All Customers</option></select>
+        <label>Warning Threshold</label>
+        <select id="dashThreshold" onchange="renderDashboardTable()">
+          <option value="7">7 days</option>
+          <option value="15">15 days</option>
+          <option value="30">30 days</option>
+        </select>
+        <label>Sort By</label>
+        <select id="dashSortField" onchange="renderDashboardTable()">
+          <option value="item_no">Item #</option>
+          <option value="warning_level">Warning Level</option>
+          <option value="days_of_supply">Days of Supply</option>
+          <option value="act_inventory_qty">Act. Inventory Qty</option>
+          <option value="ap_inventory_qty">A.P. InventoryQty</option>
+        </select>
+        <label>Direction</label>
+        <select id="dashSortDir" onchange="renderDashboardTable()">
+          <option value="asc">Low → High / A → Z</option>
+          <option value="desc">High → Low / Z → A</option>
+        </select>
         <button class="btn secondary" onclick="clearDashboardFilters()">Clear Filters</button>
       </div>
       <div>
-        <div class="kpis">
-          <div class="kpi"><div class="n" id="kpiTotal">–</div><div class="l">Total Items</div></div>
-          <div class="kpi"><div class="n" id="kpiLow" style="color:var(--danger)">–</div><div class="l">Need to Produce</div></div>
-          <div class="kpi"><div class="n" id="kpiPending">–</div><div class="l">Pending Orders</div></div>
+        <div class="kpis kpis4">
+          <div class="kpi"><div class="n" id="kpiTotal">–</div><div class="l">Total SKUs</div></div>
+          <div class="kpi"><div class="n" id="kpiHealthy" style="color:var(--green)">–</div><div class="l">Healthy (Sufficient)</div></div>
+          <div class="kpi"><div class="n" id="kpiLow" style="color:var(--danger)">–</div><div class="l">Urgent / Out of Stock</div></div>
+          <div class="kpi"><div class="n" id="kpiWarnRate" style="color:var(--amber)">–</div><div class="l">Overall Warning Rate</div></div>
         </div>
+
+        <div class="row wide2" style="align-items:stretch;gap:14px">
+          <div class="card">
+            <h3>⏱ Stockout Countdown Ranking</h3>
+            <p style="color:var(--muted);font-size:12px;margin-top:0">Items closest to running out, soonest first.</p>
+            <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Days Left</th><th>Level</th></tr></thead>
+            <tbody id="countdownTable"></tbody></table></div>
+            <div class="empty" id="countdownEmpty" style="display:none">Nothing urgent right now 🎉</div>
+          </div>
+          <div class="card">
+            <h3>📊 5-Level Warning Distribution</h3>
+            <p style="color:var(--muted);font-size:12px;margin-top:0">SKU count per warning level.</p>
+            <div id="pyramidChart"></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🔥 Line × Warning Level Heat Matrix</h3>
+          <p style="color:var(--muted);font-size:12px;margin-top:0">Each cell = SKU count for that Line + level; darker = more SKUs.</p>
+          <div class="tablewrap"><table id="heatMatrixTable"><thead><tr><th>Line</th><th>Sufficient</th><th>Watch</th><th>Caution</th><th>Urgent</th><th>Out of Stock</th></tr></thead>
+          <tbody id="heatMatrixBody"></tbody></table></div>
+        </div>
+
         <div class="card">
           <div class="row" style="align-items:center">
             <h3 style="flex:2">Stock Alert List</h3>
@@ -196,7 +281,8 @@
           </div>
           <div class="tablewrap"><table id="dashTable"><thead><tr>
             <th>Item #</th><th>Item Name</th><th>Item C.Name</th><th>Remark</th>
-            <th>Act. Inventory Qty</th><th>Pending Qty</th><th>A.P. InventoryQty</th><th>Stock Alarm</th>
+            <th>Act. Inventory Qty</th><th>Pending Qty</th><th>A.P. InventoryQty</th>
+            <th>Days of Supply</th><th>Warning Level</th><th>Suggested Action</th>
           </tr></thead><tbody></tbody></table></div>
           <div class="empty" id="dashEmpty" style="display:none">No data yet. Please confirm Supabase is connected and data has been imported.</div>
         </div>
@@ -207,10 +293,271 @@
     </div>
   </section>
 
+  <!-- FLOUR USAGE: INGREDIENTS -->
+  <section class="screen active" id="screen-flour-ingredients">
+    <h2>Flour Usage — Ingredients</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Manage the ingredient master list and receive stock. Ingredients get deducted automatically when a Production Run is confirmed.</p>
+
+    <div class="card can-write">
+      <h3>Receive Ingredient Stock</h3>
+      <div class="row">
+        <div><label>Ingredient</label>
+          <select id="flourReceiveIngredient"><option value="">Select ingredient...</option></select>
+        </div>
+        <div><label>Date</label><input type="date" id="flourReceiveDate"></div>
+      </div>
+      <label>Qty Received</label>
+      <input type="number" id="flourReceiveQty" step="any">
+      <div class="btnrow"><button class="btn" onclick="submitFlourReceive()">＋ Receive Stock</button></div>
+    </div>
+
+    <div class="card can-write">
+      <h3 id="flourIngFormTitle">Add New Ingredient</h3>
+      <input type="hidden" id="flourIngEditId">
+      <div class="row">
+        <div><label>Name</label><input id="flourIngName"></div>
+        <div>
+          <label>Supplier</label>
+          <select id="flourIngSupplier" onchange="onFlourSupplierChange()"><option value="">Select supplier...</option><option value="__new__">＋ Add new supplier...</option></select>
+          <input id="flourIngSupplierNew" placeholder="New supplier name" style="display:none;margin-top:6px">
+        </div>
+      </div>
+      <label>Unit</label>
+      <input id="flourIngUnit" placeholder="bags / cases">
+      <div class="btnrow">
+        <button class="btn secondary" onclick="submitFlourIngredient()">＋ Save Ingredient</button>
+        <button class="btn secondary" onclick="resetFlourIngredientForm()">Clear / Cancel Edit</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Ingredient Stock</h3>
+      <div class="filterbar">
+        <input id="flourIngSearch" placeholder="Search ingredient / supplier..." oninput="renderFlourIngredientTable()">
+        <select id="flourIngFilterSupplier" onchange="renderFlourIngredientTable()"><option value="">All Suppliers</option></select>
+        <select id="flourIngSortField" onchange="renderFlourIngredientTable()">
+          <option value="name">Sort: Ingredient</option>
+          <option value="supplier">Sort: Supplier</option>
+          <option value="inventory_qty">Sort: Stock</option>
+        </select>
+        <select id="flourIngSortDir" onchange="renderFlourIngredientTable()">
+          <option value="asc">Low → High / A → Z</option>
+          <option value="desc">High → Low / Z → A</option>
+        </select>
+        <button class="btn secondary" onclick="clearFlourIngredientFilters()">Clear</button>
+      </div>
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Supplier</th><th>Unit</th><th>Stock</th><th class="no-print"></th></tr></thead>
+      <tbody id="flourIngTable"></tbody></table></div>
+      <div class="empty" id="flourIngEmpty" style="display:none">No ingredients yet</div>
+    </div>
+  </section>
+
+  <!-- FLOUR USAGE: USAGE REPORT -->
+  <section class="screen" id="screen-flour-usage-report">
+    <h2>Flour Usage — Usage Report</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Total received (In) and consumed (Out/Usage) per ingredient over a date range.</p>
+    <div class="card">
+      <div class="row">
+        <div><label>From Date</label><input type="date" id="flourUsageFrom"></div>
+        <div><label>To Date</label><input type="date" id="flourUsageTo"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn" onclick="runFlourUsageReport()">🔍 Search</button></div>
+      </div>
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Supplier</th><th>Unit</th><th>In (Received)</th><th>Out (Usage)</th></tr></thead>
+      <tbody id="flourUsageReportTable"></tbody></table></div>
+      <div class="empty" id="flourUsageReportEmpty">Pick a date range and click Search.</div>
+    </div>
+  </section>
+
+  <!-- FLOUR USAGE: RECIPES -->
+  <section class="screen" id="screen-flour-recipes">
+    <h2>Flour Usage — Product Recipes</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Flour ingredients consumed per batch/mix of each Product.</p>
+    <div class="card can-write">
+      <h3 id="flourRecFormTitle">Add Recipe (multiple ingredients)</h3>
+      <input type="hidden" id="flourRecEditId">
+      <label>Product</label>
+      <select id="flourRecProduct"></select>
+      <label>Ingredient</label>
+      <select id="flourRecIngredient"><option value="">Select ingredient...</option></select>
+      <label>Qty per Batch</label>
+      <input type="number" id="flourRecQty" step="any">
+      <div class="btnrow" id="flourRecDraftAddRow">
+        <button class="btn secondary" onclick="addFlourRecipeDraftLine()">＋ Add Ingredient to Draft</button>
+      </div>
+      <div id="flourRecDraftLines" style="margin-top:10px"></div>
+      <div class="btnrow">
+        <button class="btn" id="flourRecSubmitBtn" onclick="saveFlourRecipeDraft()">✔ Save Recipe</button>
+        <button class="btn secondary" onclick="resetFlourRecipeForm()">Clear / Cancel Edit</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="filterbar">
+        <input id="flourRecSearch" placeholder="Search product / ingredient..." oninput="renderFlourRecipeTable()">
+      </div>
+      <div class="tablewrap"><table><thead><tr><th>Product</th><th>Ingredient</th><th>Qty/Batch</th><th class="no-print"></th></tr></thead>
+      <tbody id="flourRecTable"></tbody></table></div>
+      <div class="empty" id="flourRecEmpty" style="display:none">No recipes defined yet</div>
+    </div>
+  </section>
+
+  <!-- FLOUR USAGE: LEDGER -->
+  <section class="screen" id="screen-flour-ledger">
+    <h2>Flour Usage — Ledger</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Every receiving and usage record, most recent first.</p>
+    <div class="card">
+      <div class="tablewrap"><table id="flourLedgerTableEl"><thead><tr><th>Date</th><th>Ingredient</th><th>In</th><th>Out</th><th>Note</th><th></th></tr></thead>
+      <tbody id="flourLedgerTable"></tbody></table></div>
+      <div class="empty" id="flourLedgerEmpty" style="display:none">No records yet</div>
+      <div class="row no-print" style="align-items:center;justify-content:center;gap:14px;margin-top:10px">
+        <button class="btn secondary" id="flourLedgerPrevBtn" onclick="flourLedgerPrevPage()" style="flex:0 0 auto">‹ Prev</button>
+        <span id="flourLedgerPageLabel" style="font-size:12px;color:var(--muted)">Page 1 / 1</span>
+        <button class="btn secondary" id="flourLedgerNextBtn" onclick="flourLedgerNextPage()" style="flex:0 0 auto">Next ›</button>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- DAILY PRODUCTION SCHEDULE: CREATE -->
+  <section class="screen active" id="screen-schedule-create">
+    <h2>Daily Production Schedule — Create</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Start a new Production Run: how many mixes of a Product (e.g. "10 mixes of Sunning Special"). Add the specific packed item(s) afterwards on the Preview tab.</p>
+
+    <div class="card can-write">
+      <h3>New Production Run</h3>
+      <div class="row">
+        <div><label>Run Date</label><input type="date" id="runDate" onchange="renderRunsList()"></div>
+        <div><label>Product</label>
+          <select id="runProduct" onchange="onRunProductChange()"><option value="">Select product...</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Line (auto-filled)</label><input id="runLine" disabled></div>
+        <div><label>Planned Mixes/Batches</label><input type="number" id="runMixes" step="any"></div>
+      </div>
+      <label>Remark</label>
+      <textarea id="runRemark" rows="2" placeholder="Notes for this run..."></textarea>
+      <div class="btnrow"><button class="btn" onclick="submitProductionRun()">➕ Create</button></div>
+    </div>
+
+    <div class="card can-write">
+      <div class="row" style="align-items:center">
+        <h3 style="flex:2">Items to Pack (add here)</h3>
+        <button class="btn secondary" onclick="clearItemsToPackView()">💾 Save</button>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Search any date to view, add, edit, or delete its Runs and packed items. Save just clears this view — nothing is deleted.</p>
+      <div class="row">
+        <div style="max-width:220px"><label>Search Date</label><input type="date" id="itemsPackDate" onchange="renderRunsList()"></div>
+        <div style="display:flex;align-items:flex-end"><button class="btn secondary" onclick="renderRunsList()">🔍 Search</button></div>
+      </div>
+      <div id="runsList"></div>
+      <div class="empty" id="runsEmpty" style="display:none">No production runs for this date yet</div>
+    </div>
+
+    <div class="dash-layout">
+      <div class="card dash-filters">
+        <label>Search</label>
+        <input id="schedSearch" placeholder="Search by item # or Item name" oninput="renderSchedNeedList()">
+        <label>Filter by Line</label>
+        <select id="schedFilterLine" onchange="renderSchedNeedList()"><option value="">All Lines</option></select>
+        <label>Filter by Customer</label>
+        <select id="schedFilterCustomer" onchange="renderSchedNeedList()"><option value="">All Customers</option></select>
+        <label>Warning Threshold</label>
+        <select id="schedThreshold" onchange="renderSchedNeedList()">
+          <option value="7">7 days</option>
+          <option value="15">15 days</option>
+          <option value="30">30 days</option>
+        </select>
+        <label>Sort By</label>
+        <select id="schedSortField" onchange="renderSchedNeedList()">
+          <option value="days_of_supply">Days of Supply</option>
+          <option value="item_no">Item #</option>
+          <option value="warning_level">Warning Level</option>
+        </select>
+        <label>Direction</label>
+        <select id="schedSortDir" onchange="renderSchedNeedList()">
+          <option value="asc">Low → High / A → Z</option>
+          <option value="desc">High → Low / Z → A</option>
+        </select>
+        <button class="btn secondary" onclick="clearSchedFilters()">Clear Filters</button>
+      </div>
+      <div>
+        <div class="card">
+          <h3>Items Needing Production</h3>
+          <p style="color:var(--muted);font-size:12px;margin-top:0">For reference when deciding which product/items to run.</p>
+          <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Days Left</th><th>Level</th><th>Line</th></tr></thead>
+          <tbody id="schedNeedTable"></tbody></table></div>
+          <div class="empty" id="schedNeedEmpty" style="display:none">Nothing urgent right now 🎉</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DAILY PRODUCTION SCHEDULE: PREVIEW -->
+  <section class="screen" id="screen-schedule-preview">
+    <h2>Daily Production Schedule — Preview</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Read-only overview for the selected date — grouped by line, in the same read-out format as the plant floor sheet. To add items or edit, use Create; to mark things done, use Confirm Completion.</p>
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <h3 style="flex:2">Line Summary</h3>
+        <input type="date" id="previewViewDate" onchange="renderPreviewSummary()" style="max-width:160px">
+      </div>
+      <div id="lineSummaryTable"></div>
+      <div class="empty" id="lineSummaryEmpty" style="display:none">No runs for this date</div>
+    </div>
+  </section>
+
+  <!-- DAILY PRODUCTION SCHEDULE: CONFIRM COMPLETION -->
+  <section class="screen" id="screen-schedule-confirm">
+    <h2>Daily Production Schedule — Confirm Completion</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Only Runs need confirming — confirming a run's mixes automatically confirms every packed item under it (adds Finished Goods stock + deducts flour) in one step. You can still edit mixes, cases, and add/remove items here first.</p>
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <h3 style="flex:2">Awaiting Confirmation</h3>
+        <input type="date" id="confirmViewDate" onchange="renderConfirmRunCards()" style="max-width:160px">
+      </div>
+      <div id="confirmRunsList"></div>
+      <div class="empty" id="confirmEmpty" style="display:none">Nothing left to confirm for this date 🎉</div>
+    </div>
+  </section>
+
+  <!-- DAILY PRODUCTION SCHEDULE: PRODUCTS -->
+  <section class="screen" id="screen-schedule-products">
+    <h2>Manage Products</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">The master list of mixes/doughs used when starting a Production Run — separate from finished-goods items.</p>
+    <div class="card can-write">
+      <h3 id="prodFormTitle">Add New Product</h3>
+      <input type="hidden" id="prodEditId">
+      <div class="row">
+        <div><label>Product Name</label><input id="prodName" placeholder="e.g. Sunning Special"></div>
+        <div><label>Line</label><input id="prodLine" placeholder="e.g. Line 1"></div>
+      </div>
+      <div class="row">
+        <div><label>Yield</label><input type="number" step="any" id="prodYield" placeholder="e.g. 0.901"></div>
+        <div><label>Weight/mix (kg)</label><input type="number" step="any" id="prodWeightKg" placeholder="e.g. 192.54"></div>
+        <div><label>Mixing time (min/mix)</label><input type="number" step="any" id="prodMixMin" placeholder="e.g. 17.31"></div>
+      </div>
+      <label>Remark</label>
+      <input id="prodRemark">
+      <div class="btnrow">
+        <button class="btn" id="prodSubmitBtn" onclick="submitProduct()">＋ Save Product</button>
+        <button class="btn secondary" onclick="resetProductForm()">Clear / Cancel Edit</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="filterbar">
+        <input id="prodSearch" placeholder="Search product / line..." oninput="renderProductsTable()">
+      </div>
+      <div class="tablewrap"><table><thead><tr>
+        <th>Product</th><th>Line</th><th>Yield</th><th>Weight/mix (kg)</th><th>Mixing (min/mix)</th><th>Remark</th><th></th>
+      </tr></thead><tbody id="productsTable"></tbody></table></div>
+      <div class="empty" id="productsEmpty" style="display:none">No products yet</div>
+    </div>
+  </section>
+
   <!-- IN/OUT -->
   <section class="screen" id="screen-inout">
     <h2>Finished Goods In/Out Entry</h2>
-    <div class="card admin-only">
+    <div class="card can-write">
       <label>Date</label>
       <input type="date" id="ioDate">
       <label>Item</label>
@@ -235,16 +582,21 @@
     </div>
     <div class="section-title">Recent Records</div>
     <div class="card">
-      <div class="tablewrap"><table><thead><tr><th>Date</th><th>Item #</th><th>Item Name</th><th>In</th><th>Out</th><th>Lot</th></tr></thead>
+      <div class="tablewrap"><table id="ioRecentTable"><thead><tr><th>Date</th><th>Item #</th><th>Item Name</th><th>In</th><th>Out</th><th>Lot</th></tr></thead>
       <tbody id="ioRecent"></tbody></table></div>
       <div class="empty" id="ioEmpty" style="display:none">No records yet</div>
+      <div class="row no-print" style="align-items:center;justify-content:center;gap:14px;margin-top:10px">
+        <button class="btn secondary" id="ioPrevBtn" onclick="ioPrevPage()" style="flex:0 0 auto">‹ Prev</button>
+        <span id="ioPageLabel" style="font-size:12px;color:var(--muted)">Page 1 / 1</span>
+        <button class="btn secondary" id="ioNextBtn" onclick="ioNextPage()" style="flex:0 0 auto">Next ›</button>
+      </div>
     </div>
   </section>
 
   <!-- PO -->
   <section class="screen" id="screen-po">
     <h2>Orders / Pending Shipment Management</h2>
-    <div class="card admin-only">
+    <div class="card can-write">
       <h3>New Order</h3>
       <div class="row">
         <div><label>Ship Date</label><input type="date" id="poShipDate"></div>
@@ -284,7 +636,7 @@
   <!-- COMPONENTS -->
   <section class="screen" id="screen-components">
     <h2>Components (Sachets)</h2>
-    <div class="card admin-only">
+    <div class="card can-write">
       <label>Date</label>
       <input type="date" id="compDate">
       <label>Sachet Name</label>
@@ -293,17 +645,27 @@
       <input type="number" id="compIn" step="any" placeholder="0">
       <div class="btnrow"><button class="btn" onclick="submitComponent()">＋ Add Record</button></div>
     </div>
-    <div class="section-title">Recent Sachet Records</div>
-    <div class="card">
-      <div class="tablewrap"><table><thead><tr><th>Date</th><th>Sachet</th><th>In</th><th>Out</th><th></th></tr></thead>
-      <tbody id="compRecent"></tbody></table></div>
-      <div class="empty" id="compRecentEmpty" style="display:none">No records yet</div>
-    </div>
     <div class="section-title">Live Sachet Inventory</div>
     <div class="card">
       <div class="tablewrap"><table><thead><tr><th>Sachet Name</th><th>Inventory Qty</th></tr></thead>
       <tbody id="sachetTable"></tbody></table></div>
       <div class="empty" id="sachetEmpty" style="display:none">No data yet</div>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleCompRecent()">
+        <h3 style="margin:0">Recent Sachet Records</h3>
+        <span id="compRecentToggleIcon" style="font-size:13px;color:var(--muted)">▸ Click to expand</span>
+      </div>
+      <div id="compRecentBody" style="display:none;padding:0 16px 16px">
+        <div class="tablewrap"><table id="compRecentTable"><thead><tr><th>Date</th><th>Sachet</th><th>In</th><th>Out</th><th></th></tr></thead>
+        <tbody id="compRecent"></tbody></table></div>
+        <div class="empty" id="compRecentEmpty" style="display:none">No records yet</div>
+        <div class="row no-print" style="align-items:center;justify-content:center;gap:14px;margin-top:10px">
+          <button class="btn secondary" id="compPrevBtn" onclick="compPrevPage()" style="flex:0 0 auto">‹ Prev</button>
+          <span id="compPageLabel" style="font-size:12px;color:var(--muted)">Page 1 / 1</span>
+          <button class="btn secondary" id="compNextBtn" onclick="compNextPage()" style="flex:0 0 auto">Next ›</button>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -311,17 +673,30 @@
   <section class="screen" id="screen-produce">
     <h2>Need to Produce</h2>
     <p style="color:var(--muted);font-size:13px;margin-top:0">Items where available inventory is already negative, or won't be enough for upcoming shipments. Click a row to see the shortfall by ship date.</p>
-    <div class="card">
-      <div class="tablewrap"><table id="produceTable"><thead><tr><th>Item #</th><th>Item Name</th><th>Available Qty</th><th>Customer</th><th>Line</th></tr></thead>
-      <tbody id="produceList"></tbody></table></div>
-      <div class="empty" id="produceEmpty" style="display:none">Nothing needs production right now 🎉</div>
+    <div class="dash-layout">
+      <div class="card dash-filters">
+        <label>Search</label>
+        <input id="produceSearch" placeholder="Search by item # or Item name" oninput="renderProduceList()">
+        <label>Filter by Line</label>
+        <select id="produceFilterLine" onchange="renderProduceList()"><option value="">All Lines</option></select>
+        <label>Filter by Customer</label>
+        <select id="produceFilterCustomer" onchange="renderProduceList()"><option value="">All Customers</option></select>
+        <button class="btn secondary" onclick="clearProduceFilters()">Clear Filters</button>
+      </div>
+      <div>
+        <div class="card">
+          <div class="tablewrap"><table id="produceTable"><thead><tr><th>Item #</th><th>Item Name</th><th>Available Qty</th><th>Customer</th><th>Line</th></tr></thead>
+          <tbody id="produceList"></tbody></table></div>
+          <div class="empty" id="produceEmpty" style="display:none">Nothing needs production right now 🎉</div>
+        </div>
+      </div>
     </div>
   </section>
 
   <!-- MANAGE ITEMS -->
   <section class="screen" id="screen-items">
     <h2>Manage Items</h2>
-    <div class="card admin-only">
+    <div class="card can-write">
       <h3 id="itemFormTitle">Add New Item</h3>
       <input type="hidden" id="itemEditId">
       <div class="row">
@@ -367,14 +742,24 @@
         <button class="btn secondary" onclick="resetItemForm()">Clear / Cancel Edit</button>
       </div>
     </div>
-    <div class="card">
-      <div class="filterbar">
-        <input id="itemsSearch" placeholder="Search item # / name..." oninput="renderItemsTable()">
+    <div class="dash-layout">
+      <div class="card dash-filters">
+        <label>Search</label>
+        <input id="itemsSearch" placeholder="Search by item # or Item name" oninput="renderItemsTable()">
+        <label>Filter by Line</label>
+        <select id="itemsFilterLine" onchange="renderItemsTable()"><option value="">All Lines</option></select>
+        <label>Filter by Customer</label>
+        <select id="itemsFilterCustomer" onchange="renderItemsTable()"><option value="">All Customers</option></select>
+        <button class="btn secondary" onclick="clearItemsFilters()">Clear Filters</button>
       </div>
-      <div class="tablewrap"><table id="itemsTableEl"><thead><tr>
-        <th>Item #</th><th>Item Name</th><th>Customer</th><th>Line</th><th>Stock Level</th><th># M/C</th><th>Remark</th><th></th>
-      </tr></thead><tbody id="itemsTable"></tbody></table></div>
-      <div class="empty" id="itemsEmpty" style="display:none">No items found</div>
+      <div>
+        <div class="card">
+          <div class="tablewrap"><table id="itemsTableEl"><thead><tr>
+            <th>Item #</th><th>Item Name</th><th>Customer</th><th>Line</th><th>Stock Level</th><th># M/C</th><th>Remark</th><th></th>
+          </tr></thead><tbody id="itemsTable"></tbody></table></div>
+          <div class="empty" id="itemsEmpty" style="display:none">No items found</div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -382,7 +767,9 @@
   <section class="screen" id="screen-recipes">
     <h2>Item Recipes (Sachet BOM)</h2>
     <p style="color:var(--muted);font-size:13px;margin-top:0">Define which sachets are consumed, and how many per unit, when a finished-goods item is produced.</p>
-    <div class="card admin-only">
+    <div class="card can-write">
+      <h3 id="recFormTitle">Add to Recipe</h3>
+      <input type="hidden" id="recEditId">
       <label>Item</label>
       <div class="search">
         <input id="recItemSearch" placeholder="Search by item # or name..." oninput="searchItems('recItemSearch','recSuggest','recItemNo','recItemName')" autocomplete="off">
@@ -393,7 +780,10 @@
       <select id="recSachet"><option value="">Select sachet...</option></select>
       <label>Pcs per Case/Unit</label>
       <input type="number" id="recPcs" step="any" placeholder="e.g. 6">
-      <div class="btnrow"><button class="btn" onclick="submitRecipe()">＋ Add to Recipe</button></div>
+      <div class="btnrow">
+        <button class="btn" id="recSubmitBtn" onclick="submitRecipe()">＋ Add to Recipe</button>
+        <button class="btn secondary" onclick="resetRecipeForm()">Clear / Cancel Edit</button>
+      </div>
     </div>
     <div class="card">
       <div class="filterbar">
@@ -410,7 +800,7 @@
   <section class="screen" id="screen-dupes">
     <h2>Duplicated Items (Alias Mapping)</h2>
     <p style="color:var(--muted);font-size:13px;margin-top:0">Used by CSV import: when a wrong/alias item # + name is seen, it gets corrected to the real item below.</p>
-    <div class="card admin-only">
+    <div class="card can-write">
       <h3 id="dupeFormTitle">Add Mapping</h3>
       <input type="hidden" id="dupeEditId">
       <div class="row">
@@ -442,6 +832,108 @@
       <div class="empty" id="dupesEmpty" style="display:none">No mappings defined yet</div>
     </div>
   </section>
+
+  <!-- TRANSACTION HISTORY -->
+  <section class="screen" id="screen-history">
+    <h2>Transaction History</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Pick one or more items to see their In/Out records side by side.</p>
+    <div class="card">
+      <label>Add item to compare</label>
+      <div class="search">
+        <input id="histItemSearch" placeholder="Search by item # or name..." oninput="searchItems('histItemSearch','histSuggest','histItemNo','histItemName')" autocomplete="off">
+        <div class="suggest" id="histSuggest" style="display:none"></div>
+      </div>
+      <input type="hidden" id="histItemNo"><input type="hidden" id="histItemName">
+      <div class="btnrow"><button class="btn secondary" onclick="addHistoryItem()">＋ Add to Comparison</button></div>
+      <div id="histChips" style="margin-top:10px"></div>
+      <div class="row" style="margin-top:14px">
+        <div><label>From Date</label><input type="date" id="histFrom"></div>
+        <div><label>To Date</label><input type="date" id="histTo"></div>
+        <div><label>Show</label>
+          <select id="histMode">
+            <option value="both">In &amp; Out (both)</option>
+            <option value="in">In only</option>
+            <option value="out">Out only</option>
+          </select>
+        </div>
+      </div>
+      <div class="btnrow">
+        <button class="btn" onclick="runHistorySearch()">🔍 Search</button>
+        <button class="btn secondary" onclick="clearHistorySearch()">Clear</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tablewrap"><table id="histTable"><thead><tr>
+        <th>Date</th><th>Item #</th><th>Item Name</th><th>In</th><th>Out</th><th>Lot</th>
+      </tr></thead><tbody id="histResults"></tbody></table></div>
+      <div class="empty" id="histEmpty">Add items above and click Search to see their In/Out history.</div>
+      <div class="row no-print" style="align-items:center;justify-content:center;gap:14px;margin-top:10px;display:none" id="histPagerWrap">
+        <button class="btn secondary" id="histPrevBtn" onclick="histPrevPage()" style="flex:0 0 auto">‹ Prev</button>
+        <span id="histPageLabel" style="font-size:12px;color:var(--muted)">Page 1 / 1</span>
+        <button class="btn secondary" id="histNextBtn" onclick="histNextPage()" style="flex:0 0 auto">Next ›</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MANAGE USERS (admin only) -->
+  <section class="screen" id="screen-users">
+    <h2>Manage Users</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Change what each signed-up user can do. New sign-ups start as Viewer. People create their own account from the login screen — they just show up here afterward.</p>
+    <div class="card">
+      <h3>Pending Role Requests</h3>
+      <div class="tablewrap"><table><thead><tr>
+        <th>Email</th><th>Requested Role</th><th>Submitted</th><th></th>
+      </tr></thead><tbody id="roleRequestsTable"></tbody></table></div>
+      <div class="empty" id="roleRequestsEmpty" style="display:none">No pending requests</div>
+    </div>
+    <div class="card">
+      <div class="tablewrap"><table><thead><tr>
+        <th>Email</th><th>Joined</th><th>Role</th><th></th>
+      </tr></thead><tbody id="usersTable"></tbody></table></div>
+      <div class="empty" id="usersEmpty" style="display:none">No users yet</div>
+    </div>
+  </section>
+
+  <!-- MY ACCOUNT -->
+  <section class="screen" id="screen-account">
+    <h2>My Account</h2>
+    <div class="card">
+      <h3>Profile</h3>
+      <label>Email</label>
+      <input id="acctEmail" disabled>
+      <label>Current Role</label>
+      <input id="acctRole" disabled>
+      <label>Display Name</label>
+      <input id="acctDisplayName" placeholder="How your name shows up in this app">
+      <div class="btnrow"><button class="btn" onclick="saveMyProfile()">Save Profile</button></div>
+    </div>
+    <div class="card">
+      <h3>Request Access Upgrade</h3>
+      <p style="color:var(--muted);font-size:13px;margin-top:0">Ask an admin to raise you to Editor (can add/edit/delete data). Admin access can only be granted directly by an existing admin.</p>
+      <input type="hidden" id="acctRequestRole" value="editor">
+      <div class="btnrow"><button class="btn secondary" onclick="submitRoleRequest()">Request Editor Access</button></div>
+      <p id="acctRequestStatus" style="font-size:12px;color:var(--muted);margin-top:10px"></p>
+    </div>
+  </section>
+
+  <!-- DATA BACKUP -->
+  <section class="screen" id="screen-backup">
+    <h2>Data Backup</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Download every table as one JSON file — keep it somewhere safe (e.g. a shared drive) in case anything ever needs to be restored.</p>
+    <div class="card">
+      <h3>Full Backup</h3>
+      <p style="color:var(--muted);font-size:12px">Includes items, opening balances, in/out history, orders, duplicated-item mappings, sachets, recipes, sachet in/out history, and the CSV import log.</p>
+      <div class="btnrow">
+        <button class="btn" id="backupBtn" onclick="performBackup()">⬇ Download Full Backup (JSON)</button>
+      </div>
+      <p id="backupStatus" style="font-size:12px;color:var(--muted);margin-top:10px"></p>
+    </div>
+    <div class="card">
+      <h3>Restoring</h3>
+      <p style="color:var(--muted);font-size:13px">This app doesn't restore a backup automatically — that's intentional, to avoid accidentally overwriting live data. If you ever need to restore, open the JSON file and re-insert the rows you need through Supabase's Table Editor, or ask for help turning it back into SQL.</p>
+    </div>
+  </section>
+
   <section class="screen" id="screen-import">
     <h2>CSV Import</h2>
     <div class="card">
@@ -568,7 +1060,7 @@ const sbInsert = (table, rows) => sb(table, {method:'POST', headers:{Prefer:'ret
 const sbUpdate = (table, id, patch) => sb(`${table}?id=eq.${id}`, {method:'PATCH', headers:{Prefer:'return=representation'}, body: JSON.stringify(patch)});
 const sbDelete = (table, id) => sb(`${table}?id=eq.${id}`, {method:'DELETE'});
 async function deleteRow(table, id, refreshFn){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   if(!confirm('Delete this record? This cannot be undone.')) return;
   try{
     await sbDelete(table, id);
@@ -652,7 +1144,7 @@ async function doLogout(){
   document.getElementById('logoutBtn').style.display = 'none';
   document.getElementById('roleBadge').style.display = 'none';
   document.body.classList.add('logged-out');
-  document.body.classList.remove('viewer-mode');
+  document.body.classList.remove('no-write', 'no-admin');
   document.getElementById('connDot').classList.remove('on');
   document.getElementById('connText').textContent = 'Not connected';
   connected = false;
@@ -661,17 +1153,24 @@ async function doLogout(){
 }
 async function fetchProfile(){
   try{
-    const rows = await sbGet(`erp_profiles?select=id,email,role&id=eq.${SESSION.user.id}`);
+    const rows = await sbGet(`erp_profiles?select=id,email,role,display_name&id=eq.${SESSION.user.id}`);
     CURRENT_USER = (rows && rows[0]) || {id:SESSION.user.id, email:SESSION.user.email, role:'viewer'};
   }catch(e){
     CURRENT_USER = {id:SESSION.user.id, email:SESSION.user.email, role:'viewer'};
   }
   const badge = document.getElementById('roleBadge');
   badge.style.display = '';
-  badge.textContent = CURRENT_USER.email + ' · ' + CURRENT_USER.role;
+  badge.textContent = (CURRENT_USER.display_name || CURRENT_USER.email) + ' · ' + CURRENT_USER.role;
   badge.classList.toggle('admin', CURRENT_USER.role === 'admin');
-  document.body.classList.toggle('viewer-mode', CURRENT_USER.role !== 'admin');
+  badge.classList.toggle('editor', CURRENT_USER.role === 'editor');
+  document.body.classList.toggle('no-write', !canWrite());
+  document.body.classList.toggle('no-admin', !isAdmin());
+  document.getElementById('acctEmail').value = CURRENT_USER.email || '';
+  document.getElementById('acctRole').value = CURRENT_USER.role || '';
+  document.getElementById('acctDisplayName').value = CURRENT_USER.display_name || '';
 }
+// editor + admin can add/edit/delete data; only admin can manage other users' roles
+function canWrite(){ return !!(CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'editor')); }
 function isAdmin(){ return !!(CURRENT_USER && CURRENT_USER.role === 'admin'); }
 async function afterLogin(){
   document.body.classList.remove('logged-out');
@@ -697,6 +1196,7 @@ async function loadConfig(){
   document.getElementById('cfgKey').value = CFG.key || '';
   document.getElementById('loginCfgUrl').value = CFG.url || '';
   document.getElementById('loginCfgKey').value = CFG.key || '';
+  document.getElementById('loginConnCard').style.display = (CFG.url && CFG.key) ? 'none' : 'block';
   if(CFG.url && CFG.key){
     const restored = await restoreSession();
     if(restored){
@@ -724,6 +1224,7 @@ async function saveConfigFromLogin(){
   document.getElementById('cfgKey').value = CFG.key;
   try{ await Store.set('supabase-config', JSON.stringify(CFG)); toast('Connection saved'); }
   catch(e){ toast('Save failed: ' + e.message); }
+  if(CFG.url && CFG.key) document.getElementById('loginConnCard').style.display = 'none';
 }
 async function testConnection(){
   const statusEl = document.getElementById('cfgStatus');
@@ -753,20 +1254,59 @@ document.getElementById('themeBtn').addEventListener('click', toggleTheme);
    Nav
    ============================================================ */
 const SCREEN_TITLES = {
-  dashboard:'Dashboard', inout:'Finished Goods In/Out', po:'Orders', components:'Components (Sachets)',
-  produce:'Need to Produce', items:'Manage Items', recipes:'Item Recipes', dupes:'Duplicated Items', import:'CSV Import', settings:'Settings'
+  dashboard:'Dashboard', schedule:'Production Schedule', flour:'Flour Usage', inout:'Finished Goods In/Out', po:'Orders', components:'Components (Sachets)',
+  produce:'Need to Produce', items:'Manage Items', recipes:'Item Recipes', dupes:'Duplicated Items',
+  history:'Transaction History', users:'Manage Users', import:'CSV Import', settings:'Settings', backup:'Data Backup', account:'My Account'
 };
+const SCREEN_MODULE = {}; // populated from data-module attrs once at load
+let CURRENT_MODULE = 'inventory';
+function moduleHasSubNav(mod){
+  return document.querySelectorAll(`#subNav button[data-module="${mod}"]`).length > 1;
+}
+function applySubNavVisibility(mod){
+  const subNav = document.getElementById('subNav');
+  if(moduleHasSubNav(mod)){
+    subNav.style.display = 'flex';
+    subNav.querySelectorAll('button[data-module]').forEach(b => { b.style.display = (b.dataset.module===mod) ? '' : 'none'; });
+  } else {
+    subNav.style.display = 'none';
+  }
+}
+function switchModule(mod){
+  CURRENT_MODULE = mod;
+  document.querySelectorAll('.module-switcher button').forEach(b => b.classList.toggle('active', b.dataset.module === mod));
+  applySubNavVisibility(mod);
+  if(moduleHasSubNav(mod)){
+    const visible = [...document.querySelectorAll(`#subNav button[data-module="${mod}"]`)];
+    const activeBtn = visible.find(b=>b.classList.contains('active')) || visible[0];
+    showScreen(activeBtn.dataset.screen);
+  } else {
+    showScreen(mod);
+  }
+}
 function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
-  document.getElementById('screen-'+name).classList.add('active');
+  const el = document.getElementById('screen-'+name);
+  if(!el) return;
+  el.classList.add('active');
   document.querySelectorAll('.topnav nav button').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
+  // keep the module switcher / subnav filtering in sync every time
+  // (skip for the login screen itself so pre-login Settings access via CSS still works)
+  if(name !== 'login'){
+    const mod = SCREEN_MODULE[name] || name;
+    if(mod !== CURRENT_MODULE){
+      CURRENT_MODULE = mod;
+      document.querySelectorAll('.module-switcher button').forEach(b => b.classList.toggle('active', b.dataset.module === mod));
+    }
+    applySubNavVisibility(mod); // always reapply, even if the module didn't change
+  }
   window.scrollTo(0,0);
 }
 
 /* ============================================================
    Item search / autocomplete (shared by InOut + PO forms)
    ============================================================ */
-function searchItems(inputId, suggestId, hiddenNoId, hiddenNameId){
+function searchItems(inputId, suggestId, hiddenNoId, hiddenNameId, onPickFn){
   const q = document.getElementById(inputId).value.trim().toLowerCase();
   const box = document.getElementById(suggestId);
   document.getElementById(hiddenNoId).value = '';
@@ -777,19 +1317,21 @@ function searchItems(inputId, suggestId, hiddenNoId, hiddenNameId){
   ).slice(0,20);
   if(!matches.length){ box.style.display='none'; return; }
   box.innerHTML = matches.map(it =>
-    `<div onclick="pickItem('${inputId}','${suggestId}','${hiddenNoId}','${hiddenNameId}','${it.item_no.replace(/'/g,"\\'")}')">
+    `<div onclick="pickItem('${inputId}','${suggestId}','${hiddenNoId}','${hiddenNameId}','${it.item_no.replace(/'/g,"\\'")}'${onPickFn?`,'${onPickFn}'`:''})">
       <strong>${it.item_no}</strong> — ${it.item_name}
     </div>`).join('');
   box.style.display = 'block';
 }
-function pickItem(inputId, suggestId, hiddenNoId, hiddenNameId, itemNo){
+function pickItem(inputId, suggestId, hiddenNoId, hiddenNameId, itemNo, onPickFn){
   const it = ITEMS_BY_NO[itemNo];
   if(!it) return;
   document.getElementById(inputId).value = it.item_no + ' — ' + it.item_name;
   document.getElementById(hiddenNoId).value = it.item_no;
   document.getElementById(hiddenNameId).value = it.item_name;
   document.getElementById(suggestId).style.display = 'none';
+  if(onPickFn && typeof window[onPickFn] === 'function') window[onPickFn]();
 }
+document.querySelectorAll('#subNav button[data-screen]').forEach(b => { SCREEN_MODULE[b.dataset.screen] = b.dataset.module; });
 document.addEventListener('click', (e)=>{
   if(!e.target.closest('.search')) document.querySelectorAll('.suggest').forEach(s=>s.style.display='none');
 });
@@ -809,7 +1351,7 @@ async function loadCaches(){
 }
 
 async function refreshAll(){
-  await Promise.all([refreshDashboard(), refreshInOut(), refreshPO(), refreshComponents(), refreshProduce(), refreshItemsScreen(), refreshRecipesScreen(), refreshDupesScreen()]);
+  await Promise.all([refreshDashboard(), refreshInOut(), refreshPO(), refreshComponents(), refreshProduce(), refreshItemsScreen(), refreshRecipesScreen(), refreshDupesScreen(), refreshUsersScreen(), refreshFlourScreen(), refreshScheduleScreen()]);
 }
 
 /* ============================================================
@@ -819,11 +1361,9 @@ let DASH_DATA = [];
 async function refreshDashboard(){
   if(!connected) return;
   try{
-    DASH_DATA = await sbGet('erp_inventory_summary?select=item_no,item_name,item_cname,customer,line,storage,weight_per_pack,unit,pieces,unit_per_case,f_sl_day,r_sl_day,box,stock_level,machines_running,cycle,bags_per_cycle,remark,act_inventory_qty,pending_qty,ap_inventory_qty,stock_alarm&order=item_no.asc&limit=3000');
-    document.getElementById('kpiTotal').textContent = DASH_DATA.length;
-    document.getElementById('kpiLow').textContent = DASH_DATA.filter(d=>d.stock_alarm).length;
+    DASH_DATA = await sbGet('erp_inventory_summary?select=item_no,item_name,item_cname,customer,line,storage,weight_per_pack,unit,pieces,unit_per_case,f_sl_day,r_sl_day,box,stock_level,machines_running,cycle,bags_per_cycle,remark,act_inventory_qty,pending_qty,ap_inventory_qty,stock_alarm,avg_daily_out_7d,avg_daily_out_30d&order=item_no.asc&limit=3000');
     const po = await sbGet('erp_pending_order?select=id&ship_date=gte.' + todayStr());
-    document.getElementById('kpiPending').textContent = po.length;
+    document.getElementById('kpiPending') && (document.getElementById('kpiPending').textContent = po.length);
     populateDashboardFilters();
     renderDashboardTable();
   }catch(e){ toast('Failed to load dashboard: ' + e.message); }
@@ -848,28 +1388,127 @@ function clearDashboardFilters(){
   document.getElementById('dashSearch').value = '';
   document.getElementById('dashFilterLine').value = '';
   document.getElementById('dashFilterCustomer').value = '';
+  document.getElementById('dashThreshold').value = '7';
+  document.getElementById('dashSortField').value = 'item_no';
+  document.getElementById('dashSortDir').value = 'asc';
   renderDashboardTable();
+}
+
+/* ---- 5-level warning classification: Sufficient / Watch / Caution / Urgent / Out of Stock ---- */
+const TIER_META = {
+  sufficient: {label:'Sufficient', cls:'tier-sufficient', color:'#1c9c6b', order:0, action:''},
+  watch:      {label:'Watch',      cls:'tier-watch',      color:'#2f6fed', order:1, action:'Keep watching'},
+  caution:    {label:'Caution',    cls:'tier-caution',    color:'#c98a12', order:2, action:'Plan a restock'},
+  urgent:     {label:'Urgent',     cls:'tier-urgent',      color:'#d64545', order:3, action:'Confirm restock / in-transit now'},
+  oos:        {label:'Out of Stock', cls:'tier-oos',       color:'#8f2d2d', order:4, action:'Produce immediately'}
+};
+function classifyRow(r, thresholdN){
+  const qty = Number(r.act_inventory_qty) || 0;
+  const daily = (r.avg_daily_out_7d > 0) ? Number(r.avg_daily_out_7d) : Number(r.avg_daily_out_30d) || 0;
+  if(qty <= 0) return {tier:'oos', days: 0};
+  if(daily <= 0) return {tier:'sufficient', days: Infinity};
+  const days = qty / daily;
+  if(days <= thresholdN) return {tier:'urgent', days};
+  if(days <= thresholdN*2) return {tier:'caution', days};
+  if(days <= thresholdN*4) return {tier:'watch', days};
+  return {tier:'sufficient', days};
+}
+function isOverstock(r, thresholdN){
+  const qty = Number(r.act_inventory_qty) || 0;
+  const daily = (r.avg_daily_out_7d > 0) ? Number(r.avg_daily_out_7d) : Number(r.avg_daily_out_30d) || 0;
+  const target = Number(r.stock_level) || 0;
+  if(qty <= 0 || target <= 0) return false;
+  const days = daily > 0 ? qty / daily : Infinity;
+  return days > thresholdN * 8 && qty > target * 2;
+}
+function tierChip(tier){
+  const m = TIER_META[tier];
+  return `<span class="tier-chip ${m.cls}">${m.label}</span>`;
 }
 function renderDashboardTable(){
   const q = document.getElementById('dashSearch').value.trim().toLowerCase();
   const lineFilter = document.getElementById('dashFilterLine').value;
   const custFilter = document.getElementById('dashFilterCustomer').value;
-  let rows = DASH_DATA;
+  const sortField = document.getElementById('dashSortField').value;
+  const sortDir = document.getElementById('dashSortDir').value;
+  const thresholdN = parseInt(document.getElementById('dashThreshold').value, 10) || 7;
+
+  // classify every item once against the whole (unfiltered) dataset for accurate KPIs/matrix
+  const classified = DASH_DATA.map(r => {
+    const c = classifyRow(r, thresholdN);
+    return Object.assign({}, r, {_tier: c.tier, _days: c.days, _overstock: isOverstock(r, thresholdN)});
+  });
+
+  // KPIs
+  document.getElementById('kpiTotal').textContent = classified.length;
+  document.getElementById('kpiHealthy').textContent = classified.filter(r=>r._tier==='sufficient').length;
+  const urgentOos = classified.filter(r=>r._tier==='urgent' || r._tier==='oos').length;
+  document.getElementById('kpiLow').textContent = urgentOos;
+  const warnCount = classified.filter(r=>r._tier!=='sufficient').length;
+  document.getElementById('kpiWarnRate').textContent = classified.length ? ((warnCount/classified.length)*100).toFixed(1)+'%' : '0%';
+
+  // Stockout countdown ranking — top 10 most urgent (excludes Sufficient/Watch)
+  const countdown = classified.filter(r => r._tier==='urgent' || r._tier==='oos' || r._tier==='caution')
+    .sort((a,b)=>a._days-b._days).slice(0,10);
+  document.getElementById('countdownTable').innerHTML = countdown.map(r=>`<tr>
+    <td>${r.item_no}</td><td>${r.item_name||''}</td>
+    <td>${r._tier==='oos' ? 'Out of stock' : Math.floor(r._days)+'d'}</td>
+    <td>${tierChip(r._tier)}</td>
+  </tr>`).join('');
+  document.getElementById('countdownEmpty').style.display = countdown.length ? 'none' : 'block';
+
+  // 5-level distribution (pyramid bar list)
+  const order = ['sufficient','watch','caution','urgent','oos'];
+  const maxCount = Math.max(1, ...order.map(t => classified.filter(r=>r._tier===t).length));
+  document.getElementById('pyramidChart').innerHTML = order.map(t=>{
+    const n = classified.filter(r=>r._tier===t).length;
+    const pct = Math.max(6, Math.round((n/maxCount)*100));
+    return `<div class="pyramid-row">
+      <div class="lbl">${TIER_META[t].label}</div>
+      <div class="bar-wrap"><div class="bar" style="width:${pct}%;background:${TIER_META[t].color}">${n}</div></div>
+    </div>`;
+  }).join('');
+
+  // Line x Warning Level heat matrix
+  const lines = dedupeCaseInsensitive(classified.map(r=>r.line).filter(Boolean));
+  const maxCell = Math.max(1, ...lines.flatMap(l => order.map(t => classified.filter(r=>r.line===l && r._tier===t).length)));
+  document.getElementById('heatMatrixBody').innerHTML = lines.map(l => {
+    const cells = order.map(t => {
+      const n = classified.filter(r=>r.line===l && r._tier===t).length;
+      const alpha = n===0 ? 0 : 0.15 + 0.65*(n/maxCell);
+      return `<td class="heat-cell" style="background:${TIER_META[t].color}${n===0?'':'; color:#fff'};opacity:${n===0?1:alpha+0.3}">${n||'–'}</td>`;
+    }).join('');
+    return `<tr><td><strong>${l}</strong></td>${cells}</tr>`;
+  }).join('');
+
+  // Main filtered/sorted table
+  let rows = classified;
   if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.item_name||'').toLowerCase().includes(q));
   if(lineFilter) rows = rows.filter(r => (r.line||'').toLowerCase() === lineFilter.toLowerCase());
   if(custFilter) rows = rows.filter(r => (r.customer||'').toLowerCase() === custFilter.toLowerCase());
-  rows = rows.filter(r=>r.stock_alarm).concat(rows.filter(r=>!r.stock_alarm)).slice(0,300);
+  rows = [...rows].sort((a,b) => {
+    if(sortField === 'item_no'){ const av=a.item_no||'', bv=b.item_no||''; return sortDir==='asc' ? av.localeCompare(bv) : bv.localeCompare(av); }
+    if(sortField === 'warning_level'){ const av=TIER_META[a._tier].order, bv=TIER_META[b._tier].order; return sortDir==='asc' ? av-bv : bv-av; }
+    if(sortField === 'days_of_supply'){ const av=isFinite(a._days)?a._days:999999, bv=isFinite(b._days)?b._days:999999; return sortDir==='asc' ? av-bv : bv-av; }
+    let av = Number(a[sortField])||0, bv = Number(b[sortField])||0;
+    return sortDir === 'asc' ? av - bv : bv - av;
+  }).slice(0,300);
+
   const tbody = document.querySelector('#dashTable tbody');
   tbody.innerHTML = rows.map((r,i) => {
     const rowId = 'dash-detail-'+i;
     const z = (i % 2 === 0) ? ' zrow' : '';
+    const daysLabel = r._tier==='oos' ? 'Out of stock' : (isFinite(r._days) ? Math.floor(r._days)+'d' : '—');
+    const action = r._overstock ? 'Overstocked — pause purchasing / promote' : (TIER_META[r._tier].action || '—');
     return `<tr class="${z}" style="cursor:pointer" onclick="toggleDashDetail('${rowId}')">
       <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.item_cname||''}</td><td>${r.remark||''}</td>
       <td>${fmtNum(r.act_inventory_qty)}</td><td>${fmtNum(r.pending_qty)}</td><td>${fmtNum(r.ap_inventory_qty)}</td>
-      <td>${r.stock_alarm ? `<span class="chip warn">Need to produce</span>` : `<span class="chip ok">OK</span>`}</td>
+      <td>${daysLabel}</td>
+      <td>${tierChip(r._tier)}${r._overstock?' <span class="tier-chip tier-caution">Overstock</span>':''}</td>
+      <td style="white-space:normal;min-width:160px">${action}</td>
     </tr>
     <tr id="${rowId}" class="dash-detail-row${z}" style="display:none">
-      <td colspan="8">
+      <td colspan="10">
         <div class="dash-detail-grid">
           <div><span class="l">Customer</span>${r.customer||'–'}</div>
           <div><span class="l">Line</span>${r.line||'–'}</div>
@@ -885,6 +1524,8 @@ function renderDashboardTable(){
           <div><span class="l"># M/C Running</span>${fmtNum(r.machines_running)}</div>
           <div><span class="l">Cycle</span>${r.cycle||'–'}</div>
           <div><span class="l">Bags/Cycle</span>${fmtNum(r.bags_per_cycle)}</div>
+          <div><span class="l">Avg Daily Out (7d)</span>${fmtNum(r.avg_daily_out_7d)}</div>
+          <div><span class="l">Avg Daily Out (30d)</span>${fmtNum(r.avg_daily_out_30d)}</div>
         </div>
       </td>
     </tr>`;
@@ -910,7 +1551,7 @@ function applyLotPrefix(prefix, btnId){
   ['optPD','optExp','optLot'].forEach(id => document.getElementById(id).classList.toggle('active-option', id===btnId));
 }
 async function submitInOut(){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   const itemNo = document.getElementById('ioItemNo').value;
   if(!itemNo){ toast('Please select an item first'); return; }
   const inQty = parseFloat(document.getElementById('ioIn').value)||0;
@@ -933,21 +1574,68 @@ async function submitInOut(){
     }
     ['ioItemSearch','ioItemNo','ioItemName','ioIn','ioLot'].forEach(id=>document.getElementById(id).value='');
     ['optPD','optExp','optLot'].forEach(id => document.getElementById(id).classList.remove('active-option'));
+    IO_PAGE = 1;
     await refreshInOut(); await refreshDashboard(); await refreshComponents();
   }catch(e){ toast('Add failed: ' + e.message); }
 }
+async function sbGetPaged(path, offset, limit){
+  if(!CFG.url || !CFG.key) throw new Error('Supabase connection not configured yet');
+  await ensureFreshSession();
+  const headers = Object.assign(authHeaders(), {Range: `${offset}-${offset+limit-1}`, Prefer: 'count=exact'});
+  const res = await fetch(CFG.url.replace(/\/$/,'') + '/rest/v1/' + path, {headers});
+  if(!res.ok){
+    const t = await res.text();
+    throw new Error('Supabase error ' + res.status + ': ' + t.slice(0,200));
+  }
+  const rows = await res.json();
+  let total = rows.length;
+  const range = res.headers.get('content-range'); // e.g. "0-19/1234"
+  if(range && range.includes('/')){
+    const totalStr = range.split('/')[1];
+    if(totalStr !== '*') total = parseInt(totalStr, 10);
+  }
+  return {rows, total};
+}
+let IO_PAGE = 1;
+const IO_PAGE_SIZE = 20;
 async function refreshInOut(){
   if(!connected) return;
   document.getElementById('ioDate').value = document.getElementById('ioDate').value || todayStr();
   try{
-    const rows = await sbGet('erp_inout?select=entry_date,item_no,item_name,in_qty,out_qty,lot&order=id.desc&limit=25');
-    document.getElementById('ioRecent').innerHTML = rows.map(r=>`<tr>
-      <td>${r.entry_date}</td><td>${r.item_no}</td><td>${r.item_name||''}</td>
-      <td>${fmtNum(r.in_qty)}</td><td>${fmtNum(r.out_qty)}</td><td>${r.lot||''}</td>
-    </tr>`).join('');
+    const offset = (IO_PAGE - 1) * IO_PAGE_SIZE;
+    const {rows, total} = await sbGetPaged('erp_inout?select=entry_date,item_no,item_name,in_qty,out_qty,lot&order=id.desc', offset, IO_PAGE_SIZE);
+    document.getElementById('ioRecent').innerHTML = rows.map((r,i) => {
+      const rowId = 'io-detail-'+i;
+      const z = (i % 2 === 0) ? ' zrow' : '';
+      return `<tr class="${z}" style="cursor:pointer" onclick="toggleRowDetail('${rowId}')">
+        <td>${r.entry_date}</td><td>${r.item_no}</td><td>${r.item_name||''}</td>
+        <td>${fmtNum(r.in_qty)}</td><td>${fmtNum(r.out_qty)}</td><td>${r.lot||''}</td>
+      </tr>
+      <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="6">
+        <div class="dash-detail-grid">
+          <div><span class="l">Date</span>${r.entry_date}</div>
+          <div><span class="l">Item #</span>${r.item_no}</div>
+          <div><span class="l">Item Name</span>${r.item_name||'–'}</div>
+          <div><span class="l">In Qty</span>${fmtNum(r.in_qty)}</div>
+          <div><span class="l">Out Qty</span>${fmtNum(r.out_qty)}</div>
+          <div><span class="l">Lot / Note</span>${r.lot||'–'}</div>
+        </div>
+      </td></tr>`;
+    }).join('');
     document.getElementById('ioEmpty').style.display = rows.length ? 'none' : 'block';
+    const totalPages = Math.max(1, Math.ceil(total / IO_PAGE_SIZE));
+    if(IO_PAGE > totalPages) IO_PAGE = totalPages;
+    document.getElementById('ioPageLabel').textContent = `Page ${IO_PAGE} / ${totalPages}`;
+    document.getElementById('ioPrevBtn').disabled = IO_PAGE <= 1;
+    document.getElementById('ioNextBtn').disabled = IO_PAGE >= totalPages;
   }catch(e){ toast('Failed to load records: ' + e.message); }
 }
+function toggleRowDetail(rowId){
+  const el = document.getElementById(rowId);
+  el.style.display = el.style.display === 'table-row' ? 'none' : 'table-row';
+}
+function ioPrevPage(){ if(IO_PAGE > 1){ IO_PAGE--; refreshInOut(); } }
+function ioNextPage(){ IO_PAGE++; refreshInOut(); }
 
 /* ============================================================
    PO — build a multi-item order as a draft, then submit all
@@ -978,7 +1666,7 @@ function renderPODraft(){
   document.getElementById('poDraftEmpty').style.display = PO_DRAFT.length ? 'none' : 'block';
 }
 async function submitPOOrder(){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   if(!PO_DRAFT.length){ toast('Add at least one item to the order first'); return; }
   const shipDate = document.getElementById('poShipDate').value || todayStr();
   const customer = document.getElementById('poCust').value || null;
@@ -1031,10 +1719,10 @@ function renderPOTable(){
           ${h.customer ? `<span class="chip" style="margin-left:6px">${h.customer}</span>` : ''}
           <span style="margin-left:6px">${statusChip}</span>
         </div>
-        <span class="no-admin-only" style="font-size:13px">${h.ship_date}</span>
-        <input class="admin-only" type="date" value="${h.ship_date}" style="width:150px" onchange="updatePOShipDate('${key.replace(/'/g,"\\'")}', this.value)">
-        ${shippedCount < lines.length ? `<button class="btn secondary no-print admin-only" style="padding:6px 10px;font-size:12px" onclick="shipWholeOrder('${key.replace(/'/g,"\\'")}')">✔ Ship Entire Order</button>` : ''}
-        <button class="iconbtn no-print admin-only" style="width:28px;height:28px;font-size:12px" title="Delete whole order" onclick="deletePOOrder('${key.replace(/'/g,"\\'")}')">🗑</button>
+        <span class="no-can-write" style="font-size:13px">${h.ship_date}</span>
+        <input class="can-write" type="date" value="${h.ship_date}" style="width:150px" onchange="updatePOShipDate('${key.replace(/'/g,"\\'")}', this.value)">
+        ${shippedCount < lines.length ? `<button class="btn secondary no-print can-write" style="padding:6px 10px;font-size:12px" onclick="shipWholeOrder('${key.replace(/'/g,"\\'")}')">✔ Ship Entire Order</button>` : ''}
+        <button class="iconbtn no-print can-write" style="width:28px;height:28px;font-size:12px" title="Delete whole order" onclick="deletePOOrder('${key.replace(/'/g,"\\'")}')">🗑</button>
       </div>
       <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Qty</th><th>Status</th><th class="no-print"></th></tr></thead>
       <tbody>${lines.map(l=>`<tr>
@@ -1042,12 +1730,12 @@ function renderPOTable(){
         <td><input type="number" step="any" value="${l.qty}" style="width:90px" ${(l.status==='Shipped' || !isAdmin())?'disabled':''} onchange="updatePOQty(${l.id}, this.value)"></td>
         <td>${l.status==='Shipped' ? `<span class="chip ok">Shipped</span>` : `<span class="chip">Pending</span>`}</td>
         <td class="no-print" style="white-space:nowrap">
-          ${l.status!=='Shipped' ? `<button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" title="Mark shipped → erp_inout" onclick="shipPOLine(${l.id})">📤</button>` : ''}
-          <button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_pending_order', ${l.id}, async()=>{await refreshPO(); await refreshDashboard(); await refreshProduce();})">✕</button>
+          ${l.status!=='Shipped' ? `<button class="iconbtn can-write" style="width:28px;height:28px;font-size:12px" title="Mark shipped → erp_inout" onclick="shipPOLine(${l.id})">📤</button>` : ''}
+          <button class="iconbtn can-write" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_pending_order', ${l.id}, async()=>{await refreshPO(); await refreshDashboard(); await refreshProduce();})">✕</button>
         </td>
       </tr>`).join('')}</tbody></table></div>
       <div style="font-size:12px;color:var(--muted);margin:4px 0 10px">Total qty: ${fmtNum(total)}</div>
-      <div class="row no-print admin-only" style="align-items:flex-end;border-top:1px dashed var(--line);padding-top:10px">
+      <div class="row no-print can-write" style="align-items:flex-end;border-top:1px dashed var(--line);padding-top:10px">
         <div class="search" style="flex:2;min-width:180px">
           <label>Add item to this order</label>
           <input id="${gid}_search" placeholder="Search item # or name..." autocomplete="off"
@@ -1063,7 +1751,7 @@ function renderPOTable(){
   document.getElementById('poEmpty').style.display = keys.length ? 'none' : 'block';
 }
 async function addItemToOrder(gid, key){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   const itemNo = document.getElementById(gid+'_no').value;
   const itemName = document.getElementById(gid+'_name').value;
   const qty = parseFloat(document.getElementById(gid+'_qty').value)||0;
@@ -1094,7 +1782,7 @@ async function updatePOShipDate(key, newDate){
   }catch(e){ toast('Update failed: ' + e.message); }
 }
 async function updatePOQty(id, value){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   const qty = parseFloat(value)||0;
   try{
     await sbUpdate('erp_pending_order', id, {qty});
@@ -1105,7 +1793,7 @@ async function updatePOQty(id, value){
 // Mark one order line as shipped: writes an Out.Qty record into erp_inout
 // and flips the line's status so it stops counting as pending demand.
 async function shipPOLine(id){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   const line = PO_DATA.find(l => l.id === id);
   if(!line) return;
   if(line.status === 'Shipped'){ toast('Already shipped'); return; }
@@ -1122,7 +1810,7 @@ async function shipPOLine(id){
   }catch(e){ toast('Ship failed: ' + e.message); }
 }
 async function shipWholeOrder(key){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   const groups = {};
   PO_DATA.forEach(r => { const k = r.po_no ? ('PO:'+r.po_no) : ('ROW:'+r.id); (groups[k]=groups[k]||[]).push(r); });
   const lines = (groups[key]||[]).filter(l => l.status !== 'Shipped');
@@ -1140,7 +1828,7 @@ async function shipWholeOrder(key){
   }catch(e){ toast('Ship failed: ' + e.message); }
 }
 async function deletePOOrder(key){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   const lines = (function(){
     const groups = {};
     PO_DATA.forEach(r => { const k = r.po_no ? ('PO:'+r.po_no) : ('ROW:'+r.id); (groups[k]=groups[k]||[]).push(r); });
@@ -1158,8 +1846,877 @@ async function deletePOOrder(key){
 /* ============================================================
    COMPONENTS
    ============================================================ */
+/* ============================================================
+   FLOUR USAGE — ingredient master/stock, receiving, recipes
+   ============================================================ */
+let FLOUR_INGREDIENTS = [];
+let FLOUR_RECIPE = [];
+let FLOUR_LEDGER_PAGE = 1;
+const FLOUR_LEDGER_PAGE_SIZE = 15;
+
+async function runFlourUsageReport(){
+  const from = document.getElementById('flourUsageFrom').value;
+  const to = document.getElementById('flourUsageTo').value;
+  if(!from || !to){ toast('Please pick both a From and To date'); return; }
+  try{
+    let path = `erp_flour_inout?select=ingredient_id,in_qty,out_qty&entry_date=gte.${from}&entry_date=lte.${to}&limit=20000`;
+    const rows = await sbGet(path);
+    const totals = {};
+    rows.forEach(r => {
+      const id = r.ingredient_id;
+      totals[id] = totals[id] || { in: 0, out: 0 };
+      totals[id].in += parseFloat(r.in_qty) || 0;
+      totals[id].out += parseFloat(r.out_qty) || 0;
+    });
+    const ingredientRows = FLOUR_INGREDIENTS.length ? FLOUR_INGREDIENTS : await sbGet('erp_flour_ingredient_inventory?select=id,name,supplier,unit&order=name.asc&limit=500');
+    const resultRows = ingredientRows
+      .map(ing => ({ ing, t: totals[ing.id] || { in:0, out:0 } }))
+      .filter(r => r.t.in > 0 || r.t.out > 0)
+      .sort((a,b) => a.ing.name.localeCompare(b.ing.name));
+    document.getElementById('flourUsageReportTable').innerHTML = resultRows.map(r => `<tr>
+      <td>${r.ing.name}</td><td>${r.ing.supplier||''}</td><td>${r.ing.unit||''}</td>
+      <td>${fmtNum(r.t.in)}</td><td>${fmtNum(r.t.out)}</td>
+    </tr>`).join('');
+    document.getElementById('flourUsageReportEmpty').style.display = resultRows.length ? 'none' : 'block';
+    document.getElementById('flourUsageReportEmpty').textContent = resultRows.length ? '' : 'No usage or receiving records in that date range.';
+  }catch(e){ toast('Report failed: ' + e.message); }
+}
+async function refreshFlourScreen(){
+  if(!connected) return;
+  document.getElementById('flourReceiveDate').value = document.getElementById('flourReceiveDate').value || todayStr();
+  try{
+    FLOUR_INGREDIENTS = await sbGet('erp_flour_ingredient_inventory?select=id,name,supplier,unit,inventory_qty&order=name.asc&limit=500');
+    const optionsHtml = '<option value="">Select ingredient...</option>' + FLOUR_INGREDIENTS.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
+    document.getElementById('flourReceiveIngredient').innerHTML = optionsHtml;
+    document.getElementById('flourRecIngredient').innerHTML = optionsHtml;
+    populateFlourSupplierOptions();
+    populateFlourIngredientFilters();
+    renderFlourIngredientTable();
+
+    FLOUR_RECIPE = await sbGet('erp_flour_recipe?select=id,product_name,ingredient_id,qty_per_batch&order=product_name.asc&limit=2000');
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,yield_factor,weight_per_mix_kg,mixing_min_per_mix&order=name.asc&limit=1000');
+    document.getElementById('flourRecProduct').innerHTML = buildProductOptionsHtml();
+    renderFlourRecipeTable();
+
+    await renderFlourLedger();
+  }catch(e){ toast('Failed to load Flour Usage data: ' + e.message); }
+}
+function flourIngredientName(id){
+  const ing = FLOUR_INGREDIENTS.find(i => String(i.id) === String(id));
+  return ing ? ing.name : '(unknown)';
+}
+
+/* ---- Ingredient master ---- */
+function populateFlourSupplierOptions(){
+  const suppliers = dedupeCaseInsensitive(FLOUR_INGREDIENTS.map(i=>i.supplier).filter(Boolean));
+  const sel = document.getElementById('flourIngSupplier');
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">Select supplier...</option>' + suppliers.map(s=>`<option>${s}</option>`).join('') + '<option value="__new__">＋ Add new supplier...</option>';
+  if(suppliers.includes(keep)) sel.value = keep;
+}
+function onFlourSupplierChange(){
+  const sel = document.getElementById('flourIngSupplier');
+  const newInput = document.getElementById('flourIngSupplierNew');
+  newInput.style.display = sel.value === '__new__' ? 'block' : 'none';
+  if(sel.value !== '__new__') newInput.value = '';
+}
+function getFlourSupplierValue(){
+  const sel = document.getElementById('flourIngSupplier');
+  if(sel.value === '__new__') return document.getElementById('flourIngSupplierNew').value.trim();
+  return sel.value;
+}
+function resetFlourIngredientForm(){
+  document.getElementById('flourIngEditId').value = '';
+  document.getElementById('flourIngFormTitle').textContent = 'Add New Ingredient';
+  document.getElementById('flourIngName').value = '';
+  document.getElementById('flourIngSupplier').value = '';
+  document.getElementById('flourIngSupplierNew').value = '';
+  document.getElementById('flourIngSupplierNew').style.display = 'none';
+  document.getElementById('flourIngUnit').value = '';
+}
+function editFlourIngredient(id){
+  const ing = FLOUR_INGREDIENTS.find(i => i.id === id);
+  if(!ing) return;
+  document.getElementById('flourIngEditId').value = id;
+  document.getElementById('flourIngFormTitle').textContent = 'Edit Ingredient';
+  document.getElementById('flourIngName').value = ing.name || '';
+  populateFlourSupplierOptions();
+  const sel = document.getElementById('flourIngSupplier');
+  const hasOption = [...sel.options].some(o => o.value === (ing.supplier||''));
+  if(ing.supplier && hasOption){ sel.value = ing.supplier; document.getElementById('flourIngSupplierNew').style.display = 'none'; }
+  else if(ing.supplier){ sel.value = '__new__'; document.getElementById('flourIngSupplierNew').style.display='block'; document.getElementById('flourIngSupplierNew').value = ing.supplier; }
+  else { sel.value = ''; document.getElementById('flourIngSupplierNew').style.display = 'none'; }
+  document.getElementById('flourIngUnit').value = ing.unit || '';
+  showScreen('flour-ingredients'); window.scrollTo(0,0);
+}
+async function submitFlourIngredient(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const name = document.getElementById('flourIngName').value.trim();
+  const supplier = getFlourSupplierValue();
+  const unit = document.getElementById('flourIngUnit').value.trim() || 'bags';
+  const editId = document.getElementById('flourIngEditId').value;
+  if(!name){ toast('Please enter a name'); return; }
+  try{
+    if(editId){
+      await sbUpdate('erp_flour_ingredients', editId, { name, supplier: supplier||null, unit });
+      toast('Ingredient updated');
+    } else {
+      await sbInsert('erp_flour_ingredients', [{ name, supplier: supplier||null, unit }]);
+      toast('Ingredient added');
+    }
+    resetFlourIngredientForm();
+    await refreshFlourScreen();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteFlourIngredient(id){
+  await deleteRow('erp_flour_ingredients', id, refreshFlourScreen);
+}
+function populateFlourIngredientFilters(){
+  const sel = document.getElementById('flourIngFilterSupplier');
+  const keep = sel.value;
+  const suppliers = dedupeCaseInsensitive(FLOUR_INGREDIENTS.map(i=>i.supplier).filter(Boolean));
+  sel.innerHTML = '<option value="">All Suppliers</option>' + suppliers.map(s=>`<option>${s}</option>`).join('');
+  if(suppliers.includes(keep)) sel.value = keep;
+}
+function clearFlourIngredientFilters(){
+  document.getElementById('flourIngSearch').value = '';
+  document.getElementById('flourIngFilterSupplier').value = '';
+  document.getElementById('flourIngSortField').value = 'name';
+  document.getElementById('flourIngSortDir').value = 'asc';
+  renderFlourIngredientTable();
+}
+function renderFlourIngredientTable(){
+  const q = (document.getElementById('flourIngSearch')?.value || '').trim().toLowerCase();
+  const supplierFilter = document.getElementById('flourIngFilterSupplier')?.value || '';
+  const sortField = document.getElementById('flourIngSortField')?.value || 'name';
+  const sortDir = document.getElementById('flourIngSortDir')?.value || 'asc';
+  let rows = FLOUR_INGREDIENTS;
+  if(q) rows = rows.filter(i => (i.name||'').toLowerCase().includes(q) || (i.supplier||'').toLowerCase().includes(q));
+  if(supplierFilter) rows = rows.filter(i => (i.supplier||'').toLowerCase() === supplierFilter.toLowerCase());
+  rows = [...rows].sort((a,b) => {
+    if(sortField === 'inventory_qty'){
+      const av = Number(a.inventory_qty)||0, bv = Number(b.inventory_qty)||0;
+      return sortDir==='asc' ? av-bv : bv-av;
+    }
+    const av = (a[sortField]||'').toString(), bv = (b[sortField]||'').toString();
+    return sortDir==='asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  document.getElementById('flourIngTable').innerHTML = rows.map(i=>`<tr>
+    <td>${i.name}</td><td>${i.supplier||''}</td><td>${i.unit||''}</td><td>${fmtNum(i.inventory_qty)}</td>
+    <td class="no-print" style="white-space:nowrap">
+      <div style="display:flex;gap:6px;flex-wrap:nowrap">
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editFlourIngredient(${i.id})">✎ Edit</button>
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto;color:var(--danger)" onclick="deleteFlourIngredient(${i.id})">✕ Delete</button>
+      </div>
+    </td>
+  </tr>`).join('');
+  document.getElementById('flourIngEmpty').style.display = rows.length ? 'none' : 'block';
+}
+
+/* ---- Receiving stock ---- */
+async function submitFlourReceive(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const ingredientId = document.getElementById('flourReceiveIngredient').value;
+  const qty = parseFloat(document.getElementById('flourReceiveQty').value);
+  const date = document.getElementById('flourReceiveDate').value || todayStr();
+  if(!ingredientId){ toast('Please select an ingredient'); return; }
+  if(!qty){ toast('Please enter a quantity'); return; }
+  try{
+    await sbInsert('erp_flour_inout', [{ entry_date: date, ingredient_id: ingredientId, in_qty: qty, out_qty: 0, note: 'Received' }]);
+    toast('Stock received');
+    document.getElementById('flourReceiveQty').value = '';
+    FLOUR_LEDGER_PAGE = 1;
+    await refreshFlourScreen();
+  }catch(e){ toast('Receive failed: ' + e.message); }
+}
+
+/* ---- Ledger (paginated, own screen) ---- */
+async function renderFlourLedger(){
+  const offset = (FLOUR_LEDGER_PAGE - 1) * FLOUR_LEDGER_PAGE_SIZE;
+  const {rows, total} = await sbGetPaged('erp_flour_inout?select=id,entry_date,ingredient_id,in_qty,out_qty,note&order=id.desc', offset, FLOUR_LEDGER_PAGE_SIZE);
+  document.getElementById('flourLedgerTable').innerHTML = rows.map((r,i) => {
+    const rowId = 'flr-detail-'+i;
+    const z = (i % 2 === 0) ? ' zrow' : '';
+    return `<tr class="${z}" style="cursor:pointer" onclick="toggleRowDetail('${rowId}')">
+      <td>${r.entry_date}</td><td>${flourIngredientName(r.ingredient_id)}</td><td>${fmtNum(r.in_qty)}</td><td>${fmtNum(r.out_qty)}</td><td>${r.note||''}</td>
+      <td class="no-print"><button class="iconbtn can-write" style="width:28px;height:28px;font-size:12px" onclick="event.stopPropagation(); deleteRow('erp_flour_inout',${r.id},refreshFlourScreen)">✕</button></td>
+    </tr>
+    <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="6">
+      <div class="dash-detail-grid">
+        <div><span class="l">Date</span>${r.entry_date}</div>
+        <div><span class="l">Ingredient</span>${flourIngredientName(r.ingredient_id)}</div>
+        <div><span class="l">In</span>${fmtNum(r.in_qty)}</div>
+        <div><span class="l">Out</span>${fmtNum(r.out_qty)}</div>
+        <div><span class="l">Note</span>${r.note||'–'}</div>
+      </div>
+    </td></tr>`;
+  }).join('');
+  document.getElementById('flourLedgerEmpty').style.display = rows.length ? 'none' : 'block';
+  const totalPages = Math.max(1, Math.ceil(total / FLOUR_LEDGER_PAGE_SIZE));
+  if(FLOUR_LEDGER_PAGE > totalPages) FLOUR_LEDGER_PAGE = totalPages;
+  document.getElementById('flourLedgerPageLabel').textContent = `Page ${FLOUR_LEDGER_PAGE} / ${totalPages}`;
+  document.getElementById('flourLedgerPrevBtn').disabled = FLOUR_LEDGER_PAGE <= 1;
+  document.getElementById('flourLedgerNextBtn').disabled = FLOUR_LEDGER_PAGE >= totalPages;
+}
+function flourLedgerPrevPage(){ if(FLOUR_LEDGER_PAGE > 1){ FLOUR_LEDGER_PAGE--; renderFlourLedger(); } }
+function flourLedgerNextPage(){ FLOUR_LEDGER_PAGE++; renderFlourLedger(); }
+
+/* ---- Recipes (flour qty per batch, per item) ---- */
+function buildProductOptionsHtml(){
+  if(!PRODUCTS.length) return '<option value="">Select product...</option>';
+  const byLine = {};
+  PRODUCTS.forEach(p => { const l = p.line || '(No Line)'; (byLine[l]=byLine[l]||[]).push(p); });
+  const lines = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  let html = '<option value="">Select product...</option>';
+  lines.forEach(l => {
+    html += `<optgroup label="${l}">`;
+    byLine[l].sort((a,b)=>a.name.localeCompare(b.name)).forEach(p => {
+      html += `<option value="${p.name.replace(/"/g,'&quot;')}">${l} — ${p.name}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  return html;
+}
+
+let FLOUR_REC_DRAFT = []; // [{ingredient_id, ingredient_name, qty}] for the product currently being added
+function resetFlourRecipeForm(){
+  document.getElementById('flourRecEditId').value = '';
+  document.getElementById('flourRecFormTitle').textContent = 'Add Recipe (multiple ingredients)';
+  document.getElementById('flourRecSubmitBtn').textContent = '✔ Save Recipe';
+  document.getElementById('flourRecDraftAddRow').style.display = '';
+  document.getElementById('flourRecProduct').disabled = false;
+  document.getElementById('flourRecProduct').value = '';
+  document.getElementById('flourRecIngredient').value = '';
+  document.getElementById('flourRecQty').value = '';
+  FLOUR_REC_DRAFT = [];
+  renderFlourRecDraft();
+}
+function renderFlourRecDraft(){
+  document.getElementById('flourRecDraftLines').innerHTML = FLOUR_REC_DRAFT.map((l,i)=>`<div class="chip" style="margin-right:6px;margin-bottom:6px;display:inline-block">
+    ${l.ingredient_name}: ${fmtNum(l.qty)}
+    <span style="cursor:pointer;font-weight:800;margin-left:4px" onclick="removeFlourRecDraftLine(${i})">✕</span>
+  </div>`).join('') || (document.getElementById('flourRecEditId').value ? '' : '<span style="color:var(--muted);font-size:12px">No ingredients added yet</span>');
+}
+function removeFlourRecDraftLine(i){
+  FLOUR_REC_DRAFT.splice(i,1);
+  renderFlourRecDraft();
+}
+function addFlourRecipeDraftLine(){
+  const productName = document.getElementById('flourRecProduct').value;
+  const ingredientId = document.getElementById('flourRecIngredient').value;
+  const qty = parseFloat(document.getElementById('flourRecQty').value);
+  if(!productName){ toast('Please select a product first'); return; }
+  if(!ingredientId){ toast('Please select an ingredient'); return; }
+  if(!qty){ toast('Please enter qty per batch'); return; }
+  if(FLOUR_REC_DRAFT.some(l=>String(l.ingredient_id)===String(ingredientId))){ toast('That ingredient is already in the draft'); return; }
+  FLOUR_REC_DRAFT.push({ ingredient_id: ingredientId, ingredient_name: flourIngredientName(ingredientId), qty });
+  document.getElementById('flourRecIngredient').value = '';
+  document.getElementById('flourRecQty').value = '';
+  document.getElementById('flourRecProduct').disabled = true; // keep all draft lines on the same product
+  renderFlourRecDraft();
+}
+function editFlourRecipe(id){
+  const r = FLOUR_RECIPE.find(x => x.id === id);
+  if(!r) return;
+  FLOUR_REC_DRAFT = [];
+  document.getElementById('flourRecEditId').value = id;
+  document.getElementById('flourRecFormTitle').textContent = 'Edit Recipe Row';
+  document.getElementById('flourRecSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('flourRecDraftAddRow').style.display = 'none';
+  document.getElementById('flourRecDraftLines').innerHTML = '';
+  document.getElementById('flourRecProduct').disabled = false;
+  document.getElementById('flourRecProduct').value = r.product_name;
+  document.getElementById('flourRecIngredient').value = r.ingredient_id;
+  document.getElementById('flourRecQty').value = r.qty_per_batch;
+  showScreen('flour-recipes'); window.scrollTo(0,0);
+}
+async function saveFlourRecipeDraft(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const editId = document.getElementById('flourRecEditId').value;
+  if(editId){
+    const productName = document.getElementById('flourRecProduct').value;
+    const ingredientId = document.getElementById('flourRecIngredient').value;
+    const qty = parseFloat(document.getElementById('flourRecQty').value);
+    if(!productName){ toast('Please select a product'); return; }
+    if(!ingredientId){ toast('Please select an ingredient'); return; }
+    if(!qty){ toast('Please enter qty per batch'); return; }
+    try{
+      await sbUpdate('erp_flour_recipe', editId, { product_name: productName, ingredient_id: ingredientId, qty_per_batch: qty });
+      toast('Recipe row updated');
+      resetFlourRecipeForm();
+      await refreshFlourScreen();
+    }catch(e){ toast('Save failed: ' + e.message); }
+    return;
+  }
+  const productName = document.getElementById('flourRecProduct').value;
+  if(!productName){ toast('Please select a product first'); return; }
+  if(!FLOUR_REC_DRAFT.length){ toast('Add at least one ingredient first'); return; }
+  try{
+    const rows = FLOUR_REC_DRAFT.map(l => ({ product_name: productName, ingredient_id: l.ingredient_id, qty_per_batch: l.qty }));
+    await sbInsert('erp_flour_recipe', rows);
+    toast('Recipe saved (' + rows.length + ' ingredient(s))');
+    resetFlourRecipeForm();
+    await refreshFlourScreen();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteFlourRecipe(id){
+  await deleteRow('erp_flour_recipe', id, refreshFlourScreen);
+}
+function renderFlourRecipeTable(){
+  const q = (document.getElementById('flourRecSearch')?.value || '').trim().toLowerCase();
+  let rows = FLOUR_RECIPE;
+  if(q) rows = rows.filter(r => (r.product_name||'').toLowerCase().includes(q) || flourIngredientName(r.ingredient_id).toLowerCase().includes(q));
+  document.getElementById('flourRecTable').innerHTML = rows.map(r=>`<tr>
+    <td>${r.product_name}</td><td>${flourIngredientName(r.ingredient_id)}</td><td>${fmtNum(r.qty_per_batch)}</td>
+    <td class="no-print" style="white-space:nowrap">
+      <div style="display:flex;gap:6px;flex-wrap:nowrap">
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editFlourRecipe(${r.id})">✎ Edit</button>
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto;color:var(--danger)" onclick="deleteFlourRecipe(${r.id})">✕ Delete</button>
+      </div>
+    </td>
+  </tr>`).join('');
+  document.getElementById('flourRecEmpty').style.display = rows.length ? 'none' : 'block';
+}
+function itemHasFlourRecipe(itemNo){
+  return FLOUR_RECIPE.some(r => r.item_no === itemNo);
+}
+// Called when a Daily Production Schedule entry is confirmed with N batches produced.
+async function deductFlourForProduct(productName, entryDate, mixes){
+  const rows = FLOUR_RECIPE.filter(r => r.product_name === productName);
+  if(!rows.length) return;
+  const inserts = rows.map(r => ({
+    entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: 0,
+    out_qty: mixes * (r.qty_per_batch||0), note: 'Production run confirm: ' + productName
+  }));
+  await sbInsert('erp_flour_inout', inserts);
+}
+
+/* ============================================================
+   DAILY PRODUCTION SCHEDULE — two levels:
+   Level 1 erp_production_runs: "N mixes of <Product>" on a Line.
+     Confirming a run deducts flour (product's recipe x mixes).
+   Level 2 erp_production_run_items: specific item_no(s) packed
+     out of that run. Confirming an item adds Finished Goods
+     In Qty (and triggers the existing sachet-recipe deduction,
+     e.g. item 09510, automatically).
+   Packing hrs assumption (flag for Chris to confirm/adjust):
+   each packing "cycle" takes 1 minute, so:
+     packing_hrs = (cases * pieces_per_case) / (bags_per_cycle * machines * cycles * 60)
+   Production/Expiry date: Cooler storage -> Expired Date = run
+   date + R.SL Day; anything else (Freezer etc.) -> Production
+   Date = run date (per Chris's rule).
+   ============================================================ */
+let SCHED_NEED_DATA = [];
+let PRODUCTS = [];
+async function refreshScheduleScreen(){
+  if(!connected) return;
+  document.getElementById('runDate').value = document.getElementById('runDate').value || todayStr();
+  document.getElementById('itemsPackDate').value = document.getElementById('itemsPackDate').value || todayStr();
+  document.getElementById('previewViewDate').value = document.getElementById('previewViewDate').value || todayStr();
+  document.getElementById('confirmViewDate').value = document.getElementById('confirmViewDate').value || todayStr();
+  try{
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix&order=name.asc&limit=1000');
+    document.getElementById('runProduct').innerHTML = buildProductOptionsHtml();
+    renderProductsTable();
+
+    SCHED_NEED_DATA = await sbGet('erp_inventory_summary?select=item_no,item_name,customer,line,act_inventory_qty,avg_daily_out_7d,avg_daily_out_30d&order=item_no.asc&limit=3000');
+    populateSchedFilters();
+    renderSchedNeedList();
+
+    await renderRunsList();
+    await renderPreviewSummary();
+    await renderConfirmRunCards();
+  }catch(e){ toast('Failed to load schedule data: ' + e.message); }
+}
+function resetProductForm(){
+  document.getElementById('prodEditId').value = '';
+  document.getElementById('prodFormTitle').textContent = 'Add New Product';
+  ['prodName','prodLine','prodYield','prodWeightKg','prodMixMin','prodRemark'].forEach(id=>document.getElementById(id).value='');
+}
+function editProduct(id){
+  const p = PRODUCTS.find(x => x.id === id);
+  if(!p) return;
+  document.getElementById('prodEditId').value = id;
+  document.getElementById('prodFormTitle').textContent = 'Edit Product';
+  document.getElementById('prodName').value = p.name || '';
+  document.getElementById('prodLine').value = p.line || '';
+  document.getElementById('prodYield').value = p.yield_factor ?? '';
+  document.getElementById('prodWeightKg').value = p.weight_per_mix_kg ?? '';
+  document.getElementById('prodMixMin').value = p.mixing_min_per_mix ?? '';
+  document.getElementById('prodRemark').value = p.remark || '';
+  showScreen('schedule-products'); window.scrollTo(0,0);
+}
+async function submitProduct(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const name = document.getElementById('prodName').value.trim();
+  if(!name){ toast('Please enter a product name'); return; }
+  const editId = document.getElementById('prodEditId').value;
+  const patch = {
+    name,
+    line: document.getElementById('prodLine').value.trim() || null,
+    yield_factor: document.getElementById('prodYield').value ? parseFloat(document.getElementById('prodYield').value) : null,
+    weight_per_mix_kg: document.getElementById('prodWeightKg').value ? parseFloat(document.getElementById('prodWeightKg').value) : null,
+    mixing_min_per_mix: document.getElementById('prodMixMin').value ? parseFloat(document.getElementById('prodMixMin').value) : null,
+    remark: document.getElementById('prodRemark').value.trim() || null
+  };
+  try{
+    if(editId){
+      await sbUpdate('erp_products', editId, patch);
+      toast('Product updated');
+    } else {
+      await sbInsert('erp_products', [patch]);
+      toast('Product added');
+    }
+    resetProductForm();
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix&order=name.asc&limit=1000');
+    document.getElementById('runProduct').innerHTML = buildProductOptionsHtml();
+    renderProductsTable();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteProduct(id){
+  await deleteRow('erp_products', id, async()=>{
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix&order=name.asc&limit=1000');
+    document.getElementById('runProduct').innerHTML = buildProductOptionsHtml();
+    renderProductsTable();
+  });
+}
+function renderProductsTable(){
+  const q = (document.getElementById('prodSearch')?.value || '').trim().toLowerCase();
+  let rows = PRODUCTS;
+  if(q) rows = rows.filter(p => (p.name||'').toLowerCase().includes(q) || (p.line||'').toLowerCase().includes(q));
+  document.getElementById('productsTable').innerHTML = rows.map(p => `<tr>
+    <td>${p.name}</td><td>${p.line||''}</td><td>${fmtNum(p.yield_factor)}</td><td>${fmtNum(p.weight_per_mix_kg)}</td><td>${fmtNum(p.mixing_min_per_mix)}</td><td>${p.remark||''}</td>
+    <td class="no-print" style="white-space:nowrap">
+      <div style="display:flex;gap:6px;flex-wrap:nowrap">
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editProduct(${p.id})">✎ Edit</button>
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto;color:var(--danger)" onclick="deleteProduct(${p.id})">✕ Delete</button>
+      </div>
+    </td>
+  </tr>`).join('');
+  document.getElementById('productsEmpty').style.display = rows.length ? 'none' : 'block';
+}
+function onRunProductChange(){
+  const name = document.getElementById('runProduct').value;
+  const p = PRODUCTS.find(x => x.name === name);
+  document.getElementById('runLine').value = p ? (p.line||'') : '';
+}
+async function submitProductionRun(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const productName = document.getElementById('runProduct').value;
+  if(!productName){ toast('Please select a product'); return; }
+  const runDate = document.getElementById('runDate').value || todayStr();
+  const mixes = parseFloat(document.getElementById('runMixes').value) || 0;
+  const line = document.getElementById('runLine').value || null;
+  const remark = document.getElementById('runRemark').value.trim();
+  try{
+    await sbInsert('erp_production_runs', [{ run_date: runDate, line, product_name: productName, planned_mixes: mixes, remark: remark||null }]);
+    toast('Production run started');
+    document.getElementById('runProduct').value = '';
+    document.getElementById('runLine').value = '';
+    document.getElementById('runMixes').value = '';
+    document.getElementById('runRemark').value = '';
+    document.getElementById('itemsPackDate').value = runDate;
+    document.getElementById('previewViewDate').value = runDate;
+    await refreshScheduleScreen();
+  }catch(e){ toast('Start run failed: ' + e.message); }
+}
+async function confirmProductionRun(runId, productName){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const run = RUNS_CACHE.find(r => r.id === runId);
+  const mixesStr = prompt(`Confirmed MIXES/BATCHES produced for "${productName}" (drives flour deduction).`, run ? (run.planned_mixes||'') : '');
+  if(mixesStr === null) return;
+  const mixes = parseFloat(mixesStr) || 0;
+  const today = todayStr();
+  try{
+    if(mixes > 0){ await deductFlourForProduct(productName, today, mixes); }
+    // confirming a run also confirms every packed item under it in one go —
+    // each adds Finished Goods In Qty (and triggers sachet-recipe deduction if applicable)
+    const runItems = await sbGet(`erp_production_run_items?select=id,item_no,item_name,planned_cases,status&run_id=eq.${runId}`);
+    for(const it of runItems){
+      if(it.status === 'Confirmed') continue;
+      const cases = parseFloat(it.planned_cases) || 0;
+      if(cases > 0){
+        await sbInsert('erp_inout', [{ entry_date: today, item_no: it.item_no, item_name: it.item_name, in_qty: cases, out_qty: 0, lot: 'Production run confirm' }]);
+        if(itemHasRecipe(it.item_no)){ await deductComponentsForItem(it.item_no, today, cases); }
+      }
+      await sbUpdate('erp_production_run_items', it.id, { status: 'Confirmed', confirmed_cases: cases, confirmed_at: new Date().toISOString() });
+    }
+    await sbUpdate('erp_production_runs', runId, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_at: new Date().toISOString() });
+    toast('Run confirmed — flour usage and finished-goods stock updated');
+    await refreshScheduleScreen(); await refreshFlourScreen(); await refreshInOut(); await refreshDashboard(); await refreshComponents(); await refreshProduce();
+  }catch(e){ toast('Confirm failed: ' + e.message); }
+}
+async function deleteProductionRun(runId){
+  await deleteRow('erp_production_runs', runId, refreshScheduleScreen);
+}
+
+let RUNS_CACHE = [];
+function toKg(value, unit){
+  const v = parseFloat(value) || 0;
+  const u = (unit||'').toLowerCase();
+  if(u.includes('lb')) return v * 0.453592;
+  if(u === 'g' || u.includes('gram')) return v * 0.001;
+  if(u.includes('kg')) return v;
+  return v; // unknown unit — assume already kg
+}
+function caseWeightKg(item){
+  if(!item) return 0;
+  return toKg(item.weight_per_pack, item.unit_of_weight) * (parseFloat(item.pieces) || 1);
+}
+function getProductInfo(name){
+  return PRODUCTS.find(p => p.name === name);
+}
+function runTotalOutputKg(run){
+  const p = getProductInfo(run.product_name);
+  if(!p || !p.weight_per_mix_kg) return 0;
+  const mixes = run.status === 'Confirmed' ? (run.confirmed_mixes||0) : (run.planned_mixes||0);
+  return mixes * p.weight_per_mix_kg * (p.yield_factor==null?1:p.yield_factor);
+}
+function runUsedKg(items){
+  return items.reduce((sum,it) => sum + (parseFloat(it.planned_cases)||0) * caseWeightKg(ITEMS_BY_NO[it.item_no]), 0);
+}
+
+function itemPackDetail(item, cases){
+  if(!item) return '';
+  const w = item.weight_per_pack ? `${fmtNum(item.weight_per_pack)}${item.unit_of_weight||''}` : '';
+  const pcs = item.pieces ? `x ${fmtNum(item.pieces)} ${item.unit||'pouch'}` : '';
+  const spec = [w, pcs].filter(Boolean).join(' ');
+  const csTxt = cases ? `${fmtNum(cases)} cases` : '';
+  const box = item.box ? ` (${item.box})` : '';
+  return (spec ? `(${spec})` : '') + (csTxt ? `: ${csTxt}` : '') + box;
+}
+function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
+  const statusChip = run.status === 'Confirmed' ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)} mixes)</span>` : `<span class="chip">Planned</span>`;
+  const totalKg = runTotalOutputKg(run);
+  const usedKg = runUsedKg(items);
+  const remainingKg = totalKg - usedKg;
+  const p = getProductInfo(run.product_name);
+  const mixTimeMin = p && p.mixing_min_per_mix ? (run.planned_mixes||0) * p.mixing_min_per_mix : null;
+  const productInfo = p
+    ? `<div style="font-size:12px;color:var(--muted);margin-bottom:4px">📋 Weight/mix: <strong>${fmtNum(p.weight_per_mix_kg)} kg</strong> · Yield: <strong>${fmtNum(p.yield_factor)}</strong>${mixTimeMin!=null?` · Mixing time: <strong>${fmtNum(mixTimeMin)} min</strong> (${fmtNum(p.mixing_min_per_mix)} min/mix)`:''}</div>`
+    : '';
+  const weightInfo = totalKg > 0
+    ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">⚖ Total output: <strong>${fmtNum(totalKg)} kg</strong> · Used: ${fmtNum(usedKg)} kg · Remaining: <strong style="color:${remainingKg<0?'var(--danger)':'var(--text)'}">${fmtNum(remainingKg)} kg</strong></div>`
+    : `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">⚖ No Yield/Weight-per-mix on file for "${run.product_name}" — enter Cases manually below.</div>`;
+  const totalPackingHrs = items.reduce((s,it)=>s+(parseFloat(it.packing_hrs)||0), 0);
+  const packingHrsInfo = items.length ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">🕐 Total packing hours for this run: <strong>${fmtNum(totalPackingHrs)} hrs</strong> across ${items.length} item(s)</div>` : '';
+  const confirmBtn = (showConfirmButton && run.status!=='Confirmed')
+    ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="confirmProductionRun(${run.id}, '${run.product_name.replace(/'/g,"\\'")}')">✔ Confirm Mixes</button>`
+    : '';
+  const mixesCanEdit = itemsEditable && run.status!=='Confirmed' && canWrite();
+  return `<div class="card" style="margin-bottom:12px" data-run-total-kg="${totalKg}" data-run-used-kg="${usedKg}">
+    <div class="row" style="align-items:center;margin-bottom:6px">
+      <div style="flex:2">
+        <span style="display:${mixesCanEdit?'inline-flex':'none'};align-items:center;gap:4px">
+          <input type="number" step="any" value="${run.planned_mixes||0}" style="width:70px" onchange="updateRunMixes(${run.id}, this.value)"> mixes of
+        </span>
+        <strong style="display:${mixesCanEdit?'none':'inline'}">${fmtNum(run.planned_mixes)} mixes of</strong>
+        <strong>${run.product_name}</strong>
+        ${run.line ? `<span class="chip" style="margin-left:6px">${run.line}</span>` : ''}
+        <span style="margin-left:6px">${statusChip}</span>
+      </div>
+      ${confirmBtn}
+      ${itemsEditable ? `<button class="iconbtn can-write" style="width:28px;height:28px;font-size:12px" title="Delete run" onclick="deleteProductionRun(${run.id})">🗑</button>` : ''}
+    </div>
+    ${productInfo}
+    ${weightInfo}
+    ${packingHrsInfo}
+    ${run.remark ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">📝 ${run.remark}</div>` : ''}
+    <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Packing Hrs</th><th>Prod./Exp. Date</th><th>Status</th>${itemsEditable?'<th></th>':''}</tr></thead>
+    <tbody>${items.map(it => {
+      const item = ITEMS_BY_NO[it.item_no];
+      const dateLabel = it.expired_date ? `Exp: ${it.expired_date}` : (it.production_date ? `Prod: ${it.production_date}` : '–');
+      const itStatus = it.status==='Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
+      const rowEditable = itemsEditable && it.status!=='Confirmed';
+      return `<tr>
+        <td>${it.item_no}</td><td>${it.item_name||''}</td>
+        <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, it.planned_cases)}</td>
+        <td>${(rowEditable && canWrite()) ? `<input type="number" step="1" value="${Math.round(it.planned_cases)}" style="width:80px" onchange="updateRunItemCases(${it.id}, this.value)">` : fmtNum(it.planned_cases)}</td>
+        <td>${it.packing_hrs?fmtNum(it.packing_hrs)+'h':'–'}</td><td>${dateLabel}</td><td>${itStatus}</td>
+        ${itemsEditable ? `<td class="no-print can-write" style="white-space:nowrap">
+          <button class="iconbtn" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_production_run_items',${it.id},refreshScheduleScreen)">✕</button>
+        </td>` : ''}
+      </tr>`;
+    }).join('')}</tbody></table></div>
+    ${itemsEditable ? `<div class="row can-write" style="align-items:flex-end;border-top:1px dashed var(--line);padding-top:10px;margin-top:8px">
+      <div class="search" style="flex:2;min-width:180px">
+        <label>Add packed item to this run</label>
+        <input id="${gid}_search" placeholder="Search item # or name..." autocomplete="off"
+               oninput="searchItems('${gid}_search','${gid}_suggest','${gid}_no','${gid}_name','onRunItemPicked_${gid}')">
+        <div class="suggest" id="${gid}_suggest" style="display:none"></div>
+      </div>
+      <input type="hidden" id="${gid}_no"><input type="hidden" id="${gid}_name">
+      <div style="max-width:110px"><label>Cases (auto)</label><input type="number" step="1" id="${gid}_cases" oninput="recalcRunItemPacking('${gid}')"></div>
+      <div style="max-width:90px"><label>Machines</label><input type="number" step="any" id="${gid}_machines" oninput="recalcRunItemPacking('${gid}')"></div>
+      <div style="max-width:80px"><label>Cycles</label><input type="number" step="any" id="${gid}_cycles" oninput="recalcRunItemPacking('${gid}')"></div>
+      <div style="max-width:90px"><label>Bags/Cycle</label><input type="number" step="any" id="${gid}_bpc" oninput="recalcRunItemPacking('${gid}')"></div>
+      <div style="max-width:110px"><label>Packing Hrs</label><input id="${gid}_hrs" disabled></div>
+      <button class="btn secondary" onclick="addRunItem(${run.id}, '${gid}', '${run.run_date}')">＋ Add</button>
+    </div>` : ''}
+  </div>`;
+}
+function registerRunItemPickCallback(gid, run, allItems){
+  const totalKg = runTotalOutputKg(run);
+  const usedKg = runUsedKg(allItems.filter(it => it.run_id === run.id));
+  window['onRunItemPicked_'+gid] = function(){
+    const itemNo = document.getElementById(gid+'_no').value;
+    const item = ITEMS_BY_NO[itemNo];
+    if(!item) return;
+    document.getElementById(gid+'_machines').value = item.machines_running || '';
+    document.getElementById(gid+'_cycles').value = item.cycle || '';
+    document.getElementById(gid+'_bpc').value = item.bags_per_cycle || '';
+    const cwKg = caseWeightKg(item);
+    const remainingKg = totalKg - usedKg;
+    if(cwKg > 0 && remainingKg > 0){
+      document.getElementById(gid+'_cases').value = Math.floor(remainingKg / cwKg);
+    }
+    recalcRunItemPacking(gid);
+  };
+}
+function renderRunCardsGroupedByLine(runs, allItems, containerId, prefix, showConfirmButton, itemsEditable){
+  const cardEntries = runs.map((run,ri) => {
+    const items = allItems.filter(it => it.run_id === run.id);
+    const gid = prefix+ri;
+    return { line: run.line || '(No Line)', html: buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable), run, gid };
+  });
+  const byLine = {};
+  cardEntries.forEach(e => { (byLine[e.line] = byLine[e.line]||[]).push(e); });
+  const lineNames = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  document.getElementById(containerId).innerHTML = lineNames.map(l =>
+    `<div style="font-weight:800;font-size:14px;margin:14px 0 8px">${l}</div>${byLine[l].map(e=>e.html).join('')}`
+  ).join('');
+  if(itemsEditable){ cardEntries.forEach(e => registerRunItemPickCallback(e.gid, e.run, allItems)); }
+}
+async function fetchRunsAndItems(date){
+  const runs = await sbGet(`erp_production_runs?select=id,run_date,line,product_name,planned_mixes,confirmed_mixes,status,remark&run_date=eq.${date}&order=id.asc&limit=200`);
+  const items = runs.length
+    ? await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,machines,cycles,bags_per_cycle,packing_hrs,production_date,expired_date,status,confirmed_cases,remark&run_id=in.(${runs.map(r=>r.id).join(',')})&order=id.asc&limit=1000`)
+    : [];
+  return { runs, items };
+}
+async function renderRunsList(){
+  // Items to Pack card: browse/add/edit/delete any date's runs, independent of the New Run form's date
+  const date = document.getElementById('itemsPackDate').value || todayStr();
+  const { runs, items } = await fetchRunsAndItems(date);
+  RUNS_CACHE = runs;
+  if(!runs.length){
+    document.getElementById('runsList').innerHTML = '';
+    document.getElementById('runsEmpty').style.display = 'block';
+  } else {
+    document.getElementById('runsEmpty').style.display = 'none';
+    renderRunCardsGroupedByLine(runs, items, 'runsList', 'run', false, true);
+  }
+}
+function clearItemsToPackView(){
+  document.getElementById('runsList').innerHTML = '';
+  document.getElementById('runsEmpty').style.display = 'none';
+  toast('View cleared — nothing was deleted');
+}
+async function renderPreviewSummary(){
+  const date = document.getElementById('previewViewDate').value || todayStr();
+  const { runs, items } = await fetchRunsAndItems(date);
+  renderLineSummary(runs, items);
+}
+async function renderConfirmRunCards(){
+  const date = document.getElementById('confirmViewDate').value || todayStr();
+  const { runs, items } = await fetchRunsAndItems(date);
+  const pending = runs.filter(r => r.status !== 'Confirmed');
+  if(!pending.length){
+    document.getElementById('confirmRunsList').innerHTML = '';
+    document.getElementById('confirmEmpty').style.display = 'block';
+    return;
+  }
+  document.getElementById('confirmEmpty').style.display = 'none';
+  renderRunCardsGroupedByLine(pending, items, 'confirmRunsList', 'cf', true, false);
+}
+async function updateRunMixes(runId, value){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const mixes = parseFloat(value) || 0;
+  try{
+    await sbUpdate('erp_production_runs', runId, { planned_mixes: mixes });
+    toast('Mixes updated');
+    await refreshScheduleScreen();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+async function updateRunItemCases(id, value){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const cases = Math.round(parseFloat(value) || 0);
+  try{
+    await sbUpdate('erp_production_run_items', id, { planned_cases: cases });
+    toast('Cases updated');
+    await refreshScheduleScreen();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+function runHeaderNarrative(run){
+  const p = getProductInfo(run.product_name);
+  const mixes = run.status === 'Confirmed' ? (run.confirmed_mixes||0) : (run.planned_mixes||0);
+  let detail = '';
+  if(p){
+    const mixTimeMin = p.mixing_min_per_mix ? mixes * p.mixing_min_per_mix : null;
+    detail = ` (Weight/mix: ${fmtNum(p.weight_per_mix_kg)} kg · Yield: ${fmtNum(p.yield_factor)}${mixTimeMin!=null?` · Mixing time: ${fmtNum(mixTimeMin)} min (${fmtNum(p.mixing_min_per_mix)} min/mix)`:''})`;
+  }
+  return `<strong>${fmtNum(mixes)} mixes of ${run.product_name}${detail}</strong>`;
+}
+function itemNarrative(it){
+  const item = ITEMS_BY_NO[it.item_no];
+  const w = item && item.weight_per_pack ? `${fmtNum(item.weight_per_pack)}${item.unit_of_weight||''}` : '';
+  const pcs = item && item.pieces ? `x ${fmtNum(item.pieces)} ${item.unit||'pouch'}` : '';
+  const box = item && item.box ? ` (${item.box})` : '';
+  const specLine = `Item: ${it.item_no}\t${it.item_name||''}\t${[w,pcs].filter(Boolean).join(' ')} = ${fmtNum(it.planned_cases)} cases${box}`;
+  let packLine = '';
+  if(it.packing_hrs){
+    packLine = `${fmtNum(it.packing_hrs)} packing hrs for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines to pack and ${fmtNum(it.cycles)} cycle (${fmtNum(it.bags_per_cycle)} bags per cycle)`;
+  }
+  return `<div style="margin-bottom:10px">
+    <div style="font-style:italic">${specLine}</div>
+    ${packLine ? `<div style="padding-left:24px;color:var(--danger)">${packLine}</div>` : ''}
+  </div>`;
+}
+function renderLineSummary(runs, items){
+  const el = document.getElementById('lineSummaryTable');
+  if(!el) return;
+  const byLine = {};
+  runs.forEach(run => {
+    const l = run.line || '(No Line)';
+    (byLine[l] = byLine[l] || []).push(run);
+  });
+  const lines = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  if(!lines.length){
+    el.innerHTML = '';
+    document.getElementById('lineSummaryEmpty').style.display = 'block';
+    return;
+  }
+  document.getElementById('lineSummaryEmpty').style.display = 'none';
+  el.innerHTML = lines.map(l => {
+    const runsForLine = byLine[l];
+    const runsHtml = runsForLine.map(run => {
+      const runItems = items.filter(it => it.run_id === run.id);
+      const itemsHtml = runItems.length
+        ? runItems.map(it => `<div style="padding-left:20px">${itemNarrative(it)}</div>`).join('')
+        : `<div style="padding-left:20px;color:var(--muted);font-size:12px">(no items packed yet)</div>`;
+      return `<div style="margin-bottom:14px;font-size:13px;font-family:ui-monospace,monospace">
+        <div>${runHeaderNarrative(run)}</div>
+        ${itemsHtml}
+      </div>`;
+    }).join('');
+    return `<div style="margin-bottom:18px">
+      <div style="font-weight:800;font-size:14px;margin-bottom:6px">${l}:</div>
+      ${runsHtml}
+    </div>`;
+  }).join('');
+}
+function recalcRunItemPacking(gid){
+  const itemNo = document.getElementById(gid+'_no').value;
+  const item = ITEMS_BY_NO[itemNo];
+  const cases = Math.round(parseFloat(document.getElementById(gid+'_cases').value) || 0);
+  const machines = parseFloat(document.getElementById(gid+'_machines').value) || 0;
+  const cycles = parseFloat(document.getElementById(gid+'_cycles').value) || 1;
+  const bagsPerCycle = parseFloat(document.getElementById(gid+'_bpc').value) || 0;
+  const piecesPerCase = item ? (parseFloat(item.pieces) || 1) : 1;
+  let hrs = '';
+  if(cases > 0 && machines > 0 && bagsPerCycle > 0){
+    const totalBags = cases * piecesPerCase;
+    const totalCycles = totalBags / bagsPerCycle;
+    const minutes = totalCycles / (machines * cycles);
+    hrs = (minutes/60).toFixed(2);
+  }
+  document.getElementById(gid+'_hrs').value = hrs ? hrs+' hrs' : '';
+}
+async function addRunItem(runId, gid, runDate){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const itemNo = document.getElementById(gid+'_no').value;
+  const itemName = document.getElementById(gid+'_name').value;
+  const cases = Math.round(parseFloat(document.getElementById(gid+'_cases').value) || 0);
+  if(!itemNo){ toast('Please select an item first'); return; }
+  if(!cases){ toast('Please enter planned cases'); return; }
+  const item = ITEMS_BY_NO[itemNo];
+  const machines = parseFloat(document.getElementById(gid+'_machines').value) || null;
+  const cycles = parseFloat(document.getElementById(gid+'_cycles').value) || null;
+  const bagsPerCycle = parseFloat(document.getElementById(gid+'_bpc').value) || null;
+  const hrsStr = document.getElementById(gid+'_hrs').value;
+  const packingHrs = hrsStr ? parseFloat(hrsStr) : null;
+  const storage = (item?.storage || '').toLowerCase();
+  const base = new Date(runDate + 'T00:00:00');
+  let productionDate = null, expiredDate = null;
+  if(storage.includes('cooler')){
+    const rsl = parseFloat(item?.r_sl_day) || 0;
+    expiredDate = new Date(base.getTime() + rsl*86400000).toISOString().slice(0,10);
+  } else {
+    productionDate = runDate;
+  }
+  try{
+    await sbInsert('erp_production_run_items', [{
+      run_id: runId, item_no: itemNo, item_name: itemName, planned_cases: cases,
+      machines, cycles, bags_per_cycle: bagsPerCycle, packing_hrs: packingHrs,
+      production_date: productionDate, expired_date: expiredDate
+    }]);
+    toast('Item added to run');
+    await refreshScheduleScreen();
+  }catch(e){ toast('Add failed: ' + e.message); }
+}
+
+
+/* ---- Items Needing Production reference list (unchanged logic) ---- */
+function populateSchedFilters(){
+  const lineSel = document.getElementById('schedFilterLine');
+  const custSel = document.getElementById('schedFilterCustomer');
+  const keepLine = lineSel.value, keepCust = custSel.value;
+  const lines = dedupeCaseInsensitive(SCHED_NEED_DATA.map(r=>r.line).filter(Boolean));
+  const customers = dedupeCaseInsensitive(SCHED_NEED_DATA.map(r=>r.customer).filter(Boolean));
+  lineSel.innerHTML = '<option value="">All Lines</option>' + lines.map(l=>`<option>${l}</option>`).join('');
+  custSel.innerHTML = '<option value="">All Customers</option>' + customers.map(c=>`<option>${c}</option>`).join('');
+  if(lines.includes(keepLine)) lineSel.value = keepLine;
+  if(customers.includes(keepCust)) custSel.value = keepCust;
+}
+function clearSchedFilters(){
+  document.getElementById('schedSearch').value = '';
+  document.getElementById('schedFilterLine').value = '';
+  document.getElementById('schedFilterCustomer').value = '';
+  document.getElementById('schedThreshold').value = '7';
+  document.getElementById('schedSortField').value = 'days_of_supply';
+  document.getElementById('schedSortDir').value = 'asc';
+  renderSchedNeedList();
+}
+function renderSchedNeedList(){
+  const q = document.getElementById('schedSearch').value.trim().toLowerCase();
+  const lineFilter = document.getElementById('schedFilterLine').value;
+  const custFilter = document.getElementById('schedFilterCustomer').value;
+  const sortField = document.getElementById('schedSortField').value;
+  const sortDir = document.getElementById('schedSortDir').value;
+  const thresholdN = parseInt(document.getElementById('schedThreshold').value, 10) || 7;
+
+  let rows = SCHED_NEED_DATA.map(r => {
+    const c = classifyRow(r, thresholdN);
+    return Object.assign({}, r, {_tier: c.tier, _days: c.days});
+  }).filter(r => r._tier !== 'sufficient');
+
+  if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.item_name||'').toLowerCase().includes(q));
+  if(lineFilter) rows = rows.filter(r => (r.line||'').toLowerCase() === lineFilter.toLowerCase());
+  if(custFilter) rows = rows.filter(r => (r.customer||'').toLowerCase() === custFilter.toLowerCase());
+  rows = rows.sort((a,b) => {
+    if(sortField === 'item_no'){ const av=a.item_no||'', bv=b.item_no||''; return sortDir==='asc'?av.localeCompare(bv):bv.localeCompare(av); }
+    if(sortField === 'warning_level'){ const av=TIER_META[a._tier].order, bv=TIER_META[b._tier].order; return sortDir==='asc'?av-bv:bv-av; }
+    const av=isFinite(a._days)?a._days:999999, bv=isFinite(b._days)?b._days:999999;
+    return sortDir==='asc'?av-bv:bv-av;
+  }).slice(0,200);
+
+  document.getElementById('schedNeedTable').innerHTML = rows.map(r => `<tr>
+    <td>${r.item_no}</td><td>${r.item_name||''}</td>
+    <td>${r._tier==='oos' ? 'Out of stock' : Math.floor(r._days)+'d'}</td>
+    <td>${tierChip(r._tier)}</td><td>${r.line||''}</td>
+  </tr>`).join('');
+  document.getElementById('schedNeedEmpty').style.display = rows.length ? 'none' : 'block';
+}
+
+function toggleCompRecent(){
+  const body = document.getElementById('compRecentBody');
+  const icon = document.getElementById('compRecentToggleIcon');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▸ Click to expand' : '▾ Click to collapse';
+}
 async function submitComponent(){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   const sachet = document.getElementById('compSachet').value;
   const inQty = parseFloat(document.getElementById('compIn').value)||0;
   if(!sachet){ toast('Please select a sachet'); return; }
@@ -1171,9 +2728,12 @@ async function submitComponent(){
     }]);
     toast('Sachet record added');
     document.getElementById('compIn').value='';
+    COMP_PAGE = 1;
     await refreshComponents();
   }catch(e){ toast('Add failed: ' + e.message); }
 }
+let COMP_PAGE = 1;
+const COMP_PAGE_SIZE = 15;
 async function refreshComponents(){
   if(!connected) return;
   document.getElementById('compDate').value = document.getElementById('compDate').value || todayStr();
@@ -1184,14 +2744,34 @@ async function refreshComponents(){
     </tr>`).join('');
     document.getElementById('sachetEmpty').style.display = rows.length ? 'none' : 'block';
 
-    const recent = await sbGet('erp_components_inout?select=id,entry_date,sachet_name,in_qty,out_qty&order=id.desc&limit=30');
-    document.getElementById('compRecent').innerHTML = recent.map(r=>`<tr>
-      <td>${r.entry_date}</td><td>${r.sachet_name}</td><td>${fmtNum(r.in_qty)}</td><td>${fmtNum(r.out_qty)}</td>
-      <td class="no-print"><button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_components_inout',${r.id},refreshComponents)">✕</button></td>
-    </tr>`).join('');
+    const offset = (COMP_PAGE - 1) * COMP_PAGE_SIZE;
+    const {rows: recent, total} = await sbGetPaged('erp_components_inout?select=id,entry_date,sachet_name,in_qty,out_qty&order=id.desc', offset, COMP_PAGE_SIZE);
+    document.getElementById('compRecent').innerHTML = recent.map((r,i) => {
+      const rowId = 'comp-detail-'+i;
+      const z = (i % 2 === 0) ? ' zrow' : '';
+      return `<tr class="${z}" style="cursor:pointer" onclick="toggleRowDetail('${rowId}')">
+        <td>${r.entry_date}</td><td>${r.sachet_name}</td><td>${fmtNum(r.in_qty)}</td><td>${fmtNum(r.out_qty)}</td>
+        <td class="no-print"><button class="iconbtn can-write" style="width:28px;height:28px;font-size:12px" onclick="event.stopPropagation(); deleteRow('erp_components_inout',${r.id},refreshComponents)">✕</button></td>
+      </tr>
+      <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="5">
+        <div class="dash-detail-grid">
+          <div><span class="l">Date</span>${r.entry_date}</div>
+          <div><span class="l">Sachet</span>${r.sachet_name}</div>
+          <div><span class="l">In Qty</span>${fmtNum(r.in_qty)}</div>
+          <div><span class="l">Out Qty</span>${fmtNum(r.out_qty)}</div>
+        </div>
+      </td></tr>`;
+    }).join('');
     document.getElementById('compRecentEmpty').style.display = recent.length ? 'none' : 'block';
+    const totalPages = Math.max(1, Math.ceil(total / COMP_PAGE_SIZE));
+    if(COMP_PAGE > totalPages) COMP_PAGE = totalPages;
+    document.getElementById('compPageLabel').textContent = `Page ${COMP_PAGE} / ${totalPages}`;
+    document.getElementById('compPrevBtn').disabled = COMP_PAGE <= 1;
+    document.getElementById('compNextBtn').disabled = COMP_PAGE >= totalPages;
   }catch(e){ toast('Failed to load sachet inventory: ' + e.message); }
 }
+function compPrevPage(){ if(COMP_PAGE > 1){ COMP_PAGE--; refreshComponents(); } }
+function compNextPage(){ COMP_PAGE++; refreshComponents(); }
 // Auto-deduction: any item that has recipe rows in erp_item_sachet_recipe
 // triggers a sachet deduction proportional to the qty PRODUCED (In Qty),
 // since making a finished-goods kit is what consumes the sachets.
@@ -1213,37 +2793,69 @@ async function deductComponentsForItem(itemNo, entryDate, producedQty){
 /* ============================================================
    NEED TO PRODUCE
    ============================================================ */
+let PRODUCE_DATA = [];
+let PRODUCE_PENDING_BY_ITEM = {};
 async function refreshProduce(){
   if(!connected) return;
   try{
-    const negatives = await sbGet('erp_inventory_summary?select=item_no,item_name,customer,line,ap_inventory_qty&ap_inventory_qty=lt.0&order=ap_inventory_qty.asc&limit=500');
-    if(!negatives.length){
-      document.getElementById('produceList').innerHTML = '';
-      document.getElementById('produceEmpty').style.display = 'block';
-      return;
+    PRODUCE_DATA = await sbGet('erp_inventory_summary?select=item_no,item_name,customer,line,ap_inventory_qty&ap_inventory_qty=lt.0&order=ap_inventory_qty.asc&limit=500');
+    PRODUCE_PENDING_BY_ITEM = {};
+    if(PRODUCE_DATA.length){
+      const pending = await sbGet('erp_pending_order?select=item_no,ship_date,qty,customer,po_no&ship_date=gte.' + todayStr() + '&order=ship_date.asc&limit=3000');
+      pending.forEach(p=>{ (PRODUCE_PENDING_BY_ITEM[p.item_no] = PRODUCE_PENDING_BY_ITEM[p.item_no]||[]).push(p); });
     }
-    document.getElementById('produceEmpty').style.display = 'none';
-    const itemNos = negatives.map(n=>n.item_no);
-    const pending = await sbGet('erp_pending_order?select=item_no,ship_date,qty,customer,po_no&ship_date=gte.' + todayStr() + '&order=ship_date.asc&limit=3000');
-    const byItem = {};
-    pending.forEach(p=>{ (byItem[p.item_no] = byItem[p.item_no]||[]).push(p); });
-    document.getElementById('produceList').innerHTML = negatives.map((r,i)=>{
-      const rowId = 'prod-detail-'+i;
-      const z = (i % 2 === 0) ? ' zrow' : '';
-      const lines = byItem[r.item_no] || [];
-      const detail = lines.length
-        ? `<table style="width:100%"><thead><tr><th>Ship Date</th><th>Customer</th><th>PO#</th><th>Qty</th></tr></thead><tbody>${
-            lines.map(p=>`<tr><td>${p.ship_date}</td><td>${p.customer||'–'}</td><td>${p.po_no||'–'}</td><td>${fmtNum(p.qty)}</td></tr>`).join('')
-          }</tbody></table>`
-        : '(no pending orders scheduled)';
-      return `<tr class="${z}" style="cursor:pointer" onclick="document.getElementById('${rowId}').style.display = document.getElementById('${rowId}').style.display==='table-row'?'none':'table-row'">
-        <td>${r.item_no}</td><td>${r.item_name||''}</td>
-        <td><span class="chip warn">${fmtNum(r.ap_inventory_qty)}</span></td>
-        <td>${r.customer||''}</td><td>${r.line||''}</td>
-      </tr>
-      <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="5" style="font-size:12px">${detail}</td></tr>`;
-    }).join('');
+    populateProduceFilters();
+    renderProduceList();
   }catch(e){ toast('Failed to load Need-to-Produce data: ' + e.message); }
+}
+function populateProduceFilters(){
+  const lineSel = document.getElementById('produceFilterLine');
+  const custSel = document.getElementById('produceFilterCustomer');
+  const keepLine = lineSel.value, keepCust = custSel.value;
+  const lines = dedupeCaseInsensitive(PRODUCE_DATA.map(r=>r.line).filter(Boolean));
+  const customers = dedupeCaseInsensitive(PRODUCE_DATA.map(r=>r.customer).filter(Boolean));
+  lineSel.innerHTML = '<option value="">All Lines</option>' + lines.map(l=>`<option>${l}</option>`).join('');
+  custSel.innerHTML = '<option value="">All Customers</option>' + customers.map(c=>`<option>${c}</option>`).join('');
+  if(lines.includes(keepLine)) lineSel.value = keepLine;
+  if(customers.includes(keepCust)) custSel.value = keepCust;
+}
+function clearProduceFilters(){
+  document.getElementById('produceSearch').value = '';
+  document.getElementById('produceFilterLine').value = '';
+  document.getElementById('produceFilterCustomer').value = '';
+  renderProduceList();
+}
+function renderProduceList(){
+  const q = document.getElementById('produceSearch').value.trim().toLowerCase();
+  const lineFilter = document.getElementById('produceFilterLine').value;
+  const custFilter = document.getElementById('produceFilterCustomer').value;
+  let rows = PRODUCE_DATA;
+  if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.item_name||'').toLowerCase().includes(q));
+  if(lineFilter) rows = rows.filter(r => (r.line||'').toLowerCase() === lineFilter.toLowerCase());
+  if(custFilter) rows = rows.filter(r => (r.customer||'').toLowerCase() === custFilter.toLowerCase());
+  if(!rows.length){
+    document.getElementById('produceList').innerHTML = '';
+    document.getElementById('produceEmpty').style.display = 'block';
+    document.getElementById('produceEmpty').textContent = PRODUCE_DATA.length ? 'No items match your search/filters.' : 'Nothing needs production right now 🎉';
+    return;
+  }
+  document.getElementById('produceEmpty').style.display = 'none';
+  document.getElementById('produceList').innerHTML = rows.map((r,i)=>{
+    const rowId = 'prod-detail-'+i;
+    const z = (i % 2 === 0) ? ' zrow' : '';
+    const lines = PRODUCE_PENDING_BY_ITEM[r.item_no] || [];
+    const detail = lines.length
+      ? `<table style="width:100%"><thead><tr><th>Ship Date</th><th>Customer</th><th>PO#</th><th>Qty</th></tr></thead><tbody>${
+          lines.map(p=>`<tr><td>${p.ship_date}</td><td>${p.customer||'–'}</td><td>${p.po_no||'–'}</td><td>${fmtNum(p.qty)}</td></tr>`).join('')
+        }</tbody></table>`
+      : '(no pending orders scheduled)';
+    return `<tr class="${z}" style="cursor:pointer" onclick="document.getElementById('${rowId}').style.display = document.getElementById('${rowId}').style.display==='table-row'?'none':'table-row'">
+      <td>${r.item_no}</td><td>${r.item_name||''}</td>
+      <td><span class="chip warn">${fmtNum(r.ap_inventory_qty)}</span></td>
+      <td>${r.customer||''}</td><td>${r.line||''}</td>
+    </tr>
+    <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="5" style="font-size:12px">${detail}</td></tr>`;
+  }).join('');
 }
 
 /* ============================================================
@@ -1271,7 +2883,7 @@ function editItem(id){
   showScreen('items'); window.scrollTo(0,0);
 }
 async function submitItem(){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   const itemNo = document.getElementById('itemNo').value.trim();
   const itemName = document.getElementById('itemName').value.trim();
   if(!itemNo || !itemName){ toast('Item # and Item Name are required'); return; }
@@ -1302,12 +2914,34 @@ async function deleteItem(id){
 }
 async function refreshItemsScreen(){
   if(!connected) return;
+  populateItemsFilters();
+  renderItemsTable();
+}
+function populateItemsFilters(){
+  const lineSel = document.getElementById('itemsFilterLine');
+  const custSel = document.getElementById('itemsFilterCustomer');
+  const keepLine = lineSel.value, keepCust = custSel.value;
+  const lines = dedupeCaseInsensitive(ITEMS.map(r=>r.line).filter(Boolean));
+  const customers = dedupeCaseInsensitive(ITEMS.map(r=>r.customer).filter(Boolean));
+  lineSel.innerHTML = '<option value="">All Lines</option>' + lines.map(l=>`<option>${l}</option>`).join('');
+  custSel.innerHTML = '<option value="">All Customers</option>' + customers.map(c=>`<option>${c}</option>`).join('');
+  if(lines.includes(keepLine)) lineSel.value = keepLine;
+  if(customers.includes(keepCust)) custSel.value = keepCust;
+}
+function clearItemsFilters(){
+  document.getElementById('itemsSearch').value = '';
+  document.getElementById('itemsFilterLine').value = '';
+  document.getElementById('itemsFilterCustomer').value = '';
   renderItemsTable();
 }
 function renderItemsTable(){
   const q = (document.getElementById('itemsSearch')?.value || '').trim().toLowerCase();
+  const lineFilter = document.getElementById('itemsFilterLine')?.value || '';
+  const custFilter = document.getElementById('itemsFilterCustomer')?.value || '';
   let rows = ITEMS;
   if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.item_name||'').toLowerCase().includes(q));
+  if(lineFilter) rows = rows.filter(r => (r.line||'').toLowerCase() === lineFilter.toLowerCase());
+  if(custFilter) rows = rows.filter(r => (r.customer||'').toLowerCase() === custFilter.toLowerCase());
   rows = rows.slice(0,400);
   document.getElementById('itemsTable').innerHTML = rows.map((r,i)=>{
     const rowId = 'item-detail-'+i;
@@ -1316,8 +2950,8 @@ function renderItemsTable(){
       <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.customer||''}</td><td>${r.line||''}</td>
       <td>${fmtNum(r.stock_level)}</td><td>${fmtNum(r.machines_running)}</td><td>${r.remark||''}</td>
       <td class="no-print" style="white-space:nowrap">
-        <button class="iconbtn admin-only" onclick="event.stopPropagation(); editItem(${r.id})" style="width:28px;height:28px;font-size:12px">✎</button>
-        <button class="iconbtn admin-only" onclick="event.stopPropagation(); deleteItem(${r.id})" style="width:28px;height:28px;font-size:12px">✕</button>
+        <button class="iconbtn can-write" onclick="event.stopPropagation(); editItem(${r.id})" style="width:28px;height:28px;font-size:12px">✎</button>
+        <button class="iconbtn can-write" onclick="event.stopPropagation(); deleteItem(${r.id})" style="width:28px;height:28px;font-size:12px">✕</button>
       </td>
     </tr>
     <tr id="${rowId}" class="${z.trim()}" style="display:none">
@@ -1349,21 +2983,46 @@ function toggleItemDetail(rowId){
 /* ============================================================
    ITEM RECIPES (erp_item_sachet_recipe CRUD)
    ============================================================ */
+function resetRecipeForm(){
+  document.getElementById('recEditId').value = '';
+  document.getElementById('recFormTitle').textContent = 'Add to Recipe';
+  document.getElementById('recSubmitBtn').textContent = '＋ Add to Recipe';
+  ['recItemSearch','recItemNo','recItemName','recSachet','recPcs'].forEach(id=>document.getElementById(id).value='');
+}
+function editRecipe(id){
+  const r = RECIPE.find(x => x.id === id);
+  if(!r) return;
+  document.getElementById('recEditId').value = id;
+  document.getElementById('recFormTitle').textContent = 'Edit Recipe Row';
+  document.getElementById('recSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('recItemNo').value = r.item_no;
+  document.getElementById('recItemName').value = r.item_name || '';
+  document.getElementById('recItemSearch').value = r.item_no + ' — ' + (r.item_name||'');
+  document.getElementById('recSachet').value = r.sachet_name;
+  document.getElementById('recPcs').value = r.pcs_per_case;
+  showScreen('recipes'); window.scrollTo(0,0);
+}
 async function submitRecipe(){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   const itemNo = document.getElementById('recItemNo').value;
   const itemName = document.getElementById('recItemName').value;
   const sachet = document.getElementById('recSachet').value;
   const pcs = parseFloat(document.getElementById('recPcs').value);
+  const editId = document.getElementById('recEditId').value;
   if(!itemNo){ toast('Please select an item first'); return; }
   if(!sachet){ toast('Please select a sachet'); return; }
   if(!pcs){ toast('Please enter pcs per unit'); return; }
   try{
-    await sbInsert('erp_item_sachet_recipe', [{ item_no: itemNo, item_name: itemName, sachet_name: sachet, pcs_per_case: pcs }]);
-    toast('Recipe row added');
-    ['recItemSearch','recItemNo','recItemName','recSachet','recPcs'].forEach(id=>document.getElementById(id).value='');
+    if(editId){
+      await sbUpdate('erp_item_sachet_recipe', editId, { item_no: itemNo, item_name: itemName, sachet_name: sachet, pcs_per_case: pcs });
+      toast('Recipe row updated');
+    } else {
+      await sbInsert('erp_item_sachet_recipe', [{ item_no: itemNo, item_name: itemName, sachet_name: sachet, pcs_per_case: pcs }]);
+      toast('Recipe row added');
+    }
+    resetRecipeForm();
     await loadCaches(); await refreshRecipesScreen();
-  }catch(e){ toast('Add failed: ' + e.message); }
+  }catch(e){ toast('Save failed: ' + e.message); }
 }
 async function deleteRecipe(id){
   await deleteRow('erp_item_sachet_recipe', id, async()=>{ await loadCaches(); await refreshRecipesScreen(); });
@@ -1378,7 +3037,12 @@ function renderRecipeTable(){
   if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.sachet_name||'').toLowerCase().includes(q));
   document.getElementById('recipeTable').innerHTML = rows.map(r=>`<tr>
     <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.sachet_name}</td><td>${fmtNum(r.pcs_per_case)}</td>
-    <td class="no-print"><button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" onclick="deleteRecipe(${r.id})">✕</button></td>
+    <td class="no-print" style="white-space:nowrap">
+      <div style="display:flex;gap:6px;flex-wrap:nowrap">
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editRecipe(${r.id})">✎ Edit</button>
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto;color:var(--danger)" onclick="deleteRecipe(${r.id})">✕ Delete</button>
+      </div>
+    </td>
   </tr>`).join('');
   document.getElementById('recipeEmpty').style.display = rows.length ? 'none' : 'block';
 }
@@ -1424,7 +3088,7 @@ function editDupe(id){
   showScreen('dupes'); window.scrollTo(0,0);
 }
 async function submitDupe(){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   const itemNo = document.getElementById('dupeItemNo').value.trim();
   const itemName = document.getElementById('dupeItemName').value.trim();
   const correctNo = document.getElementById('dupeCorrectNo').value.trim();
@@ -1459,11 +3123,198 @@ function renderDupesTable(){
   document.getElementById('dupesTable').innerHTML = rows.map(r=>`<tr>
     <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.correct_item_no}</td><td>${r.correct_item_name||''}</td>
     <td class="no-print" style="white-space:nowrap">
-      <button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" onclick="editDupe(${r.id})">✎</button>
-      <button class="iconbtn admin-only" style="width:28px;height:28px;font-size:12px" onclick="deleteDupe(${r.id})">✕</button>
+      <div style="display:flex;gap:6px;flex-wrap:nowrap">
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editDupe(${r.id})">✎ Edit</button>
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto;color:var(--danger)" onclick="deleteDupe(${r.id})">✕ Delete</button>
+      </div>
     </td>
   </tr>`).join('');
   document.getElementById('dupesEmpty').style.display = rows.length ? 'none' : 'block';
+}
+
+/* ============================================================
+   MANAGE USERS (admin only) — erp_profiles role management
+   ============================================================ */
+let USERS_DATA = [];
+let ROLE_REQUESTS = [];
+async function refreshUsersScreen(){
+  if(!connected || !isAdmin()) return;
+  try{
+    USERS_DATA = await sbGet('erp_profiles?select=id,email,role,display_name,created_at&order=created_at.asc&limit=500');
+    renderUsersTable();
+  }catch(e){ /* table may not exist yet if fix7-schema.sql hasn't been run */ }
+  try{
+    ROLE_REQUESTS = await sbGet('erp_role_requests?select=id,user_id,email,requested_role,created_at&status=eq.pending&order=created_at.asc&limit=200');
+    renderRoleRequestsTable();
+  }catch(e){ /* table may not exist yet if fix10-schema.sql hasn't been run */ }
+}
+function renderRoleRequestsTable(){
+  const tbody = document.getElementById('roleRequestsTable');
+  if(!tbody) return;
+  tbody.innerHTML = ROLE_REQUESTS.map(r => `<tr>
+    <td>${r.email||''}</td>
+    <td><span class="chip">${r.requested_role}</span></td>
+    <td>${r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</td>
+    <td style="white-space:nowrap">
+      <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="resolveRoleRequest(${r.id}, '${r.user_id}', '${r.requested_role}', true)">✔ Approve</button>
+      <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="resolveRoleRequest(${r.id}, '${r.user_id}', '${r.requested_role}', false)">✕ Deny</button>
+    </td>
+  </tr>`).join('');
+  document.getElementById('roleRequestsEmpty').style.display = ROLE_REQUESTS.length ? 'none' : 'block';
+}
+async function resolveRoleRequest(reqId, userId, requestedRole, approve){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  try{
+    if(approve){ await sbUpdate('erp_profiles', userId, {role: requestedRole}); }
+    await sbUpdate('erp_role_requests', reqId, {status: approve?'approved':'denied', resolved_at: new Date().toISOString()});
+    toast(approve ? 'Request approved' : 'Request denied');
+    await refreshUsersScreen();
+    if(userId === CURRENT_USER?.id) await fetchProfile();
+  }catch(e){ toast('Failed: ' + e.message); }
+}
+function renderUsersTable(){
+  const tbody = document.getElementById('usersTable');
+  if(!tbody) return;
+  tbody.innerHTML = USERS_DATA.map(u => `<tr>
+    <td>${u.display_name ? `${u.display_name} <span style="color:var(--muted);font-size:11px">(${u.email})</span>` : (u.email||'')}</td>
+    <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : ''}</td>
+    <td>
+      <select onchange="updateUserRole('${u.id}', this.value)">
+        <option value="viewer" ${u.role==='viewer'?'selected':''}>Viewer</option>
+        <option value="editor" ${u.role==='editor'?'selected':''}>Editor</option>
+        <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+      </select>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Viewer: read only · Editor: can edit data · Admin: can also manage users</div>
+    </td>
+    <td>${u.id === CURRENT_USER?.id ? '<span class="chip">You</span>' : ''}</td>
+  </tr>`).join('');
+  document.getElementById('usersEmpty').style.display = USERS_DATA.length ? 'none' : 'block';
+}
+async function updateUserRole(id, role){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  if(id === CURRENT_USER?.id && role !== 'admin'){
+    if(!confirm('This removes your own admin access. Continue?')) { renderUsersTable(); return; }
+  }
+  try{
+    await sbUpdate('erp_profiles', id, {role});
+    toast('Role updated');
+    await refreshUsersScreen();
+    if(id === CURRENT_USER?.id) await fetchProfile();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+
+/* ============================================================
+   MY ACCOUNT — edit own display name, request a role upgrade
+   ============================================================ */
+async function saveMyProfile(){
+  if(!CURRENT_USER) return;
+  const displayName = document.getElementById('acctDisplayName').value.trim();
+  try{
+    await sbUpdate('erp_profiles', CURRENT_USER.id, {display_name: displayName || null});
+    toast('Profile saved');
+    await fetchProfile();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function submitRoleRequest(){
+  if(!CURRENT_USER) return;
+  const requestedRole = document.getElementById('acctRequestRole').value;
+  const statusEl = document.getElementById('acctRequestStatus');
+  if(requestedRole === CURRENT_USER.role){ statusEl.textContent = "You already have that role."; return; }
+  try{
+    await sbInsert('erp_role_requests', [{ user_id: CURRENT_USER.id, email: CURRENT_USER.email, requested_role: requestedRole }]);
+    statusEl.textContent = `✅ Request for ${requestedRole} sent — an admin will review it.`;
+    toast('Request sent');
+  }catch(e){ statusEl.textContent = '❌ ' + e.message; }
+}
+
+/* ============================================================
+   TRANSACTION HISTORY — compare In/Out records across items
+   ============================================================ */
+let HISTORY_ITEMS = []; // [{item_no, item_name}]
+function addHistoryItem(){
+  const itemNo = document.getElementById('histItemNo').value;
+  const itemName = document.getElementById('histItemName').value;
+  if(!itemNo){ toast('Please select an item first'); return; }
+  if(HISTORY_ITEMS.some(i => i.item_no === itemNo)){ toast('Already added'); return; }
+  HISTORY_ITEMS.push({item_no: itemNo, item_name: itemName});
+  ['histItemSearch','histItemNo','histItemName'].forEach(id=>document.getElementById(id).value='');
+  renderHistChips();
+}
+function removeHistoryItem(itemNo){
+  HISTORY_ITEMS = HISTORY_ITEMS.filter(i => i.item_no !== itemNo);
+  renderHistChips();
+}
+function renderHistChips(){
+  document.getElementById('histChips').innerHTML = HISTORY_ITEMS.map(i =>
+    `<span class="chip" style="margin-right:6px;margin-bottom:6px;display:inline-block">${i.item_no} — ${i.item_name}
+      <span style="cursor:pointer;font-weight:800;margin-left:4px" onclick="removeHistoryItem('${i.item_no.replace(/'/g,"\\'")}')">✕</span>
+    </span>`
+  ).join('') || '<span style="color:var(--muted);font-size:12px">No items added yet</span>';
+}
+let HISTORY_RESULTS = [];
+let HIST_PAGE = 1;
+const HIST_PAGE_SIZE = 20;
+async function runHistorySearch(){
+  if(!HISTORY_ITEMS.length){ toast('Add at least one item first'); return; }
+  const from = document.getElementById('histFrom').value;
+  const to = document.getElementById('histTo').value;
+  const mode = document.getElementById('histMode').value; // 'both' | 'in' | 'out'
+  const itemList = HISTORY_ITEMS.map(i => i.item_no).join(',');
+  let path = `erp_inout?select=entry_date,item_no,item_name,in_qty,out_qty,lot&item_no=in.(${itemList})&order=entry_date.desc&limit=2000`;
+  if(from) path += `&entry_date=gte.${from}`;
+  if(to) path += `&entry_date=lte.${to}`;
+  if(mode === 'in') path += `&in_qty=gt.0`;
+  if(mode === 'out') path += `&out_qty=gt.0`;
+  try{
+    HISTORY_RESULTS = await sbGet(path);
+    HIST_PAGE = 1;
+    renderHistoryResults();
+  }catch(e){ toast('Search failed: ' + e.message); }
+}
+function renderHistoryResults(){
+  const totalPages = Math.max(1, Math.ceil(HISTORY_RESULTS.length / HIST_PAGE_SIZE));
+  if(HIST_PAGE > totalPages) HIST_PAGE = totalPages;
+  const offset = (HIST_PAGE - 1) * HIST_PAGE_SIZE;
+  const pageRows = HISTORY_RESULTS.slice(offset, offset + HIST_PAGE_SIZE);
+  document.getElementById('histResults').innerHTML = pageRows.map((r,i) => {
+    const rowId = 'hist-detail-'+i;
+    const z = (i % 2 === 0) ? ' zrow' : '';
+    return `<tr class="${z}" style="cursor:pointer" onclick="toggleRowDetail('${rowId}')">
+      <td>${r.entry_date}</td><td>${r.item_no}</td><td>${r.item_name||''}</td>
+      <td>${fmtNum(r.in_qty)}</td><td>${fmtNum(r.out_qty)}</td><td>${r.lot||''}</td>
+    </tr>
+    <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="6">
+      <div class="dash-detail-grid">
+        <div><span class="l">Date</span>${r.entry_date}</div>
+        <div><span class="l">Item #</span>${r.item_no}</div>
+        <div><span class="l">Item Name</span>${r.item_name||'–'}</div>
+        <div><span class="l">In Qty</span>${fmtNum(r.in_qty)}</div>
+        <div><span class="l">Out Qty</span>${fmtNum(r.out_qty)}</div>
+        <div><span class="l">Lot / Note</span>${r.lot||'–'}</div>
+      </div>
+    </td></tr>`;
+  }).join('');
+  document.getElementById('histEmpty').style.display = HISTORY_RESULTS.length ? 'none' : 'block';
+  document.getElementById('histEmpty').textContent = HISTORY_RESULTS.length ? '' : 'No In/Out records found for the selected items / date range.';
+  document.getElementById('histPagerWrap').style.display = HISTORY_RESULTS.length ? 'flex' : 'none';
+  document.getElementById('histPageLabel').textContent = `Page ${HIST_PAGE} / ${totalPages}`;
+  document.getElementById('histPrevBtn').disabled = HIST_PAGE <= 1;
+  document.getElementById('histNextBtn').disabled = HIST_PAGE >= totalPages;
+}
+function histPrevPage(){ if(HIST_PAGE > 1){ HIST_PAGE--; renderHistoryResults(); } }
+function histNextPage(){ HIST_PAGE++; renderHistoryResults(); }
+function clearHistorySearch(){
+  HISTORY_ITEMS = [];
+  HISTORY_RESULTS = [];
+  HIST_PAGE = 1;
+  document.getElementById('histFrom').value = '';
+  document.getElementById('histTo').value = '';
+  document.getElementById('histMode').value = 'both';
+  document.getElementById('histResults').innerHTML = '';
+  document.getElementById('histEmpty').style.display = 'block';
+  document.getElementById('histEmpty').textContent = 'Add items above and click Search to see their In/Out history.';
+  document.getElementById('histPagerWrap').style.display = 'none';
+  renderHistChips();
 }
 
 /* ============================================================
@@ -1521,7 +3372,7 @@ async function logImportRun(fileType, fileName, hash, rowCount){
 
 /* ---- invoice.csv -> erp_pending_order ---- */
 async function handleInvoiceFile(file){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   if(!file) return;
   const text = await file.text();
   const rows = parseCSV(text);
@@ -1565,9 +3416,9 @@ async function handleInvoiceFile(file){
   }catch(e){ logImport('❌ Import failed: ' + e.message); }
 }
 
-/* ---- itemsalessummary.csv -> erp_inout (Out.Qty / sales records; no sachet deduction here — deduction only happens on In Qty / production) ---- */
+/* ---- itemsalessummary.csv -> erp_inout (Out.Qty / sales records; item #09510 specifically auto-deducts its sachet components) ---- */
 async function handleSalesFile(file){
-  if(!isAdmin()){ toast('Admins only'); return; }
+  if(!canWrite()){ toast('You have read-only access'); return; }
   if(!file) return;
   const text = await file.text();
   const rows = parseCSV(text);
@@ -1584,6 +3435,7 @@ async function handleSalesFile(file){
   }
 
   const out = [];
+  const compTriggers = []; // {itemNo, entryDate, qty} for any item found in erp_item_sachet_recipe
   let skipped = 0;
   for(const r of clean){
     const qtyRaw = parseFloat(r[25]); // col26 -> index25
@@ -1621,14 +3473,17 @@ async function handleSalesFile(file){
     const entryDate = parseDateLoose(parts[1] || dateField);
 
     out.push({ entry_date: entryDate, item_no: itemNo, item_name: itemName, in_qty: 0, out_qty: qty, lot: null });
+
+    if(itemNo === '09510'){ compTriggers.push({itemNo, entryDate, qty}); }
   }
   if(!out.length){ logImport('itemsalessummary.csv: no rows to import'); return; }
   try{
     await sbInsert('erp_inout', out);
+    for(const t of compTriggers){ await deductComponentsForItem(t.itemNo, t.entryDate, t.qty); }
     await logImportRun('itemsalessummary', file.name, fileHash, out.length);
-    logImport(`✅ itemsalessummary.csv import complete: added ${out.length} out-qty record(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}`);
+    logImport(`✅ itemsalessummary.csv import complete: added ${out.length} out-qty record(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}${compTriggers.length?`, triggered sachet deduction for ${compTriggers.length} row(s)`:''}`);
     toast('Import completed successfully!');
-    await refreshInOut(); await refreshDashboard(); await refreshProduce();
+    await refreshInOut(); await refreshDashboard(); await refreshProduce(); await refreshComponents();
   }catch(e){ logImport('❌ Import failed: ' + e.message); }
 }
 
@@ -1648,6 +3503,38 @@ async function handleSalesFile(file){
 /* ============================================================
    Utils
    ============================================================ */
+/* ============================================================
+   DATA BACKUP — export every table as one downloadable JSON file
+   ============================================================ */
+const BACKUP_TABLES = ['erp_items','erp_opening_balance','erp_inout','erp_pending_order',
+  'erp_duplicated_items','erp_sachets','erp_item_sachet_recipe','erp_components_inout','erp_import_log'];
+async function performBackup(){
+  if(!canWrite()){ toast('Backup requires Editor or Admin access'); return; }
+  const btn = document.getElementById('backupBtn');
+  const statusEl = document.getElementById('backupStatus');
+  btn.disabled = true;
+  const data = { backed_up_at: new Date().toISOString() };
+  try{
+    for(const t of BACKUP_TABLES){
+      statusEl.textContent = `Fetching ${t}...`;
+      data[t] = await sbGet(`${t}?select=*&limit=200000`);
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `inventory-backup-${todayStr()}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    const counts = BACKUP_TABLES.map(t => `${t}: ${data[t].length}`).join(', ');
+    statusEl.textContent = `✅ Backup downloaded — ${counts}`;
+    toast('Backup downloaded');
+  }catch(e){
+    statusEl.textContent = '❌ Backup failed: ' + e.message;
+    toast('Backup failed');
+  }finally{
+    btn.disabled = false;
+  }
+}
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function fmtNum(n){ if(n===null||n===undefined||n==='') return '–'; const v = Number(n); return Number.isInteger(v)?v.toString():v.toFixed(2); }
 function parseDateLoose(v){
@@ -1666,12 +3553,42 @@ function printSection(title){
 /* ============================================================
    Init
    ============================================================ */
+// After clicking an email confirmation link, Supabase redirects back with
+// the session tokens in the URL hash (#access_token=...&refresh_token=...).
+// Pick that up here so the user lands already signed in.
+async function consumeAuthRedirectHash(){
+  if(!location.hash || location.hash.length < 2) return false;
+  const params = new URLSearchParams(location.hash.slice(1));
+  const accessToken = params.get('access_token');
+  const refreshToken = params.get('refresh_token');
+  const expiresIn = params.get('expires_in');
+  if(!accessToken) return false;
+  try{
+    const res = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/user', {
+      headers: {'apikey': CFG.key, 'Authorization': 'Bearer ' + accessToken}
+    });
+    const user = await res.json();
+    if(!res.ok || !user.id) return false;
+    SESSION = {
+      access_token: accessToken, refresh_token: refreshToken,
+      expires_at: Math.floor(Date.now()/1000) + (parseInt(expiresIn,10) || 3600),
+      user: { id: user.id, email: user.email }
+    };
+    await Store.set('auth-session', JSON.stringify(SESSION));
+    history.replaceState(null, '', location.pathname + location.search);
+    return true;
+  }catch(e){ return false; }
+}
 (async function init(){
   try{
     const t = await Store.get('theme');
     applyTheme(t || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
   }catch(e){ applyTheme('light'); }
   await loadConfig();
+  if(!SESSION){
+    const picked = await consumeAuthRedirectHash();
+    if(picked){ try{ await afterLogin(); toast('Email confirmed — signed in'); }catch(e){ showScreen('login'); } }
+  }
 })();
 </script>
 </body>
