@@ -15,6 +15,53 @@
     --accent:#5b8cff; --accent-ink:#0b1020; --green:#33c98d; --amber:#e0a83a; --danger:#ff6b6b;
     --chip:#212a37; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
   }
+  /* ============================================================
+     Color themes — each defines a FULL palette (bg/panel/line/text/
+     chip/accent), not just the accent color, for both light & dark.
+     ============================================================ */
+  [data-color="sunset"]{
+    --bg:#f7f2ea; --panel:#ffffff; --line:#ecdfce; --text:#2a2118; --muted:#8a7a63;
+    --accent:#ff6b35; --accent-ink:#ffffff; --chip:#faf0e3;
+  }
+  [data-theme="dark"][data-color="sunset"]{
+    --bg:#161210; --panel:#211a15; --line:#3a2c22; --text:#f3e9dd; --muted:#b39a80;
+    --accent:#ff8a5c; --accent-ink:#1a0d05; --chip:#2b211b;
+  }
+  [data-color="teal"]{
+    --bg:#eef7f6; --panel:#ffffff; --line:#d3e9e5; --text:#0e2b28; --muted:#5c8481;
+    --accent:#0d9488; --accent-ink:#ffffff; --chip:#e2f3f1;
+  }
+  [data-theme="dark"][data-color="teal"]{
+    --bg:#050e0d; --panel:#0a1b19; --line:#153230; --text:#dff5f2; --muted:#7fa8a3;
+    --accent:#2dd4bf; --accent-ink:#04211d; --chip:#0f2422;
+  }
+  [data-color="blush"]{
+    --bg:#fdf1f0; --panel:#ffffff; --line:#f6dcda; --text:#3a1f21; --muted:#a17d7f;
+    --accent:#e05263; --accent-ink:#ffffff; --chip:#fbe6e5;
+  }
+  [data-theme="dark"][data-color="blush"]{
+    --bg:#170f11; --panel:#221618; --line:#3c2528; --text:#f6e3e4; --muted:#b98e91;
+    --accent:#f2778a; --accent-ink:#210a0d; --chip:#2c1c1e;
+  }
+  [data-color="forest"]{
+    --bg:#f1f6f1; --panel:#ffffff; --line:#dbe9dc; --text:#16281a; --muted:#6b8873;
+    --accent:#2f7a4f; --accent-ink:#ffffff; --chip:#e5f0e6;
+  }
+  [data-theme="dark"][data-color="forest"]{
+    --bg:#0b130d; --panel:#111f14; --line:#213525; --text:#e2f0e4; --muted:#83a68c;
+    --accent:#54b57a; --accent-ink:#06170d; --chip:#16261a;
+  }
+  [data-color="plum"]{
+    --bg:#f5f2fb; --panel:#ffffff; --line:#e4dbf5; --text:#241a38; --muted:#8172a1;
+    --accent:#7c3aed; --accent-ink:#ffffff; --chip:#ece4fa;
+  }
+  [data-theme="dark"][data-color="plum"]{
+    --bg:#120c1e; --panel:#1a1229; --line:#2d2145; --text:#ece4fa; --muted:#a596c4;
+    --accent:#a78bfa; --accent-ink:#160c2e; --chip:#221934;
+  }
+  .color-swatch-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
+  .color-swatch{width:36px;height:36px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
+  .color-swatch.active{border-color:var(--text);box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--text)}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
   h1,h2,h3{margin:0 0 4px}
@@ -81,8 +128,8 @@
   th,td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
   th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
   tbody tr:last-child td{border-bottom:none}
-  .tablewrap table:not(#dashTable):not(#produceTable):not(#itemsTableEl):not(#ioRecentTable):not(#compRecentTable):not(#histTable):not(#flourLedgerTableEl) tbody tr:nth-child(odd){background:var(--chip)}
-  #dashTable tbody tr.zrow, #produceTable tbody tr.zrow, #itemsTableEl tbody tr.zrow,
+  .tablewrap table:not(#dashTable):not(#produceTable):not(#itemsTableEl):not(#ioRecentTable):not(#compRecentTable):not(#histTable):not(#flourLedgerTableEl):not(#schedNeedTableEl) tbody tr:nth-child(odd){background:var(--chip)}
+  #dashTable tbody tr.zrow, #produceTable tbody tr.zrow, #itemsTableEl tbody tr.zrow, #schedNeedTableEl tbody tr.zrow,
   #ioRecentTable tbody tr.zrow, #compRecentTable tbody tr.zrow, #histTable tbody tr.zrow, #flourLedgerTableEl tbody tr.zrow{background:var(--chip)}
   .dash-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 18px;padding:12px 4px;white-space:normal}
   .dash-detail-grid .l{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:2px}
@@ -109,6 +156,23 @@
     .kpis{grid-template-columns:repeat(3,1fr);gap:8px}
     .dash-layout{grid-template-columns:1fr}
     .dash-filters{position:static}
+  }
+  @media (max-width:600px){
+    html,body{overflow-x:hidden;max-width:100vw}
+    .kpis, .kpis4{grid-template-columns:repeat(2,1fr) !important}
+    /* Every multi-column form row (New Run, Add Item, PO, Items, etc.) stacks to
+       one field per line — this is what was causing the crowding/cut-off on phones,
+       since a lot of those fields use a fixed inline max-width for desktop layout. */
+    .row{flex-direction:column}
+    .row > *{width:100% !important;max-width:100% !important;min-width:0 !important}
+    table{font-size:12px}
+    th,td{padding:6px 4px}
+    .module-switcher{overflow-x:auto}
+    .module-switcher button{padding:8px 12px;font-size:12px}
+    .topnav .row1{flex-wrap:wrap;gap:8px;padding:10px 12px 6px}
+    .topnav .brand{flex:1 1 auto}
+    .topnav .connwrap{font-size:11px}
+    .role-badge{font-size:10px;padding:2px 6px}
   }
   .screen{display:none}
   .screen.active{display:block}
@@ -176,6 +240,7 @@
       <button data-screen="schedule-confirm" data-module="schedule" onclick="showScreen('schedule-confirm')"><span class="ic">✔</span>Confirm Completion</button>
       <button class="can-write" data-screen="schedule-products" data-module="schedule" onclick="showScreen('schedule-products')"><span class="ic">🏷️</span>Products</button>
       <button data-screen="flour-ingredients" data-module="flour" class="active" onclick="showScreen('flour-ingredients')"><span class="ic">🌾</span>Ingredients</button>
+      <button data-screen="flour-dashboard" data-module="flour" onclick="showScreen('flour-dashboard')"><span class="ic">📈</span>Dashboard</button>
       <button data-screen="flour-usage-report" data-module="flour" onclick="showScreen('flour-usage-report')"><span class="ic">📊</span>Usage Report</button>
       <button data-screen="flour-recipes" data-module="flour" onclick="showScreen('flour-recipes')"><span class="ic">🔗</span>Recipes</button>
       <button data-screen="flour-ledger" data-module="flour" onclick="showScreen('flour-ledger')"><span class="ic">📜</span>Ledger</button>
@@ -246,10 +311,10 @@
       </div>
       <div>
         <div class="kpis kpis4">
-          <div class="kpi"><div class="n" id="kpiTotal">–</div><div class="l">Total SKUs</div></div>
-          <div class="kpi"><div class="n" id="kpiHealthy" style="color:var(--green)">–</div><div class="l">Healthy (Sufficient)</div></div>
-          <div class="kpi"><div class="n" id="kpiLow" style="color:var(--danger)">–</div><div class="l">Urgent / Out of Stock</div></div>
-          <div class="kpi"><div class="n" id="kpiWarnRate" style="color:var(--amber)">–</div><div class="l">Overall Warning Rate</div></div>
+          <div class="kpi" style="cursor:pointer" onclick="clearDashboardFilters()" title="Click to clear filters"><div class="n" id="kpiTotal">–</div><div class="l">Total SKUs</div></div>
+          <div class="kpi" style="cursor:pointer" onclick="filterDashboardByTiers(['sufficient'])" title="Click to filter"><div class="n" id="kpiHealthy" style="color:var(--green)">–</div><div class="l">Healthy (Sufficient)</div></div>
+          <div class="kpi" style="cursor:pointer" onclick="filterDashboardByTiers(['urgent','oos'])" title="Click to filter"><div class="n" id="kpiLow" style="color:var(--danger)">–</div><div class="l">Urgent / Out of Stock</div></div>
+          <div class="kpi" style="cursor:pointer" onclick="filterDashboardByTiers(['watch','caution','urgent','oos'])" title="Click to filter"><div class="n" id="kpiWarnRate" style="color:var(--amber)">–</div><div class="l">Overall Warning Rate</div></div>
         </div>
 
         <div class="row wide2" style="align-items:stretch;gap:14px">
@@ -278,6 +343,10 @@
           <div class="row" style="align-items:center">
             <h3 style="flex:2">Stock Alert List</h3>
             <button class="btn secondary no-print" onclick="refreshDashboard()">↻ Refresh</button>
+          </div>
+          <div id="dashTierFilterBanner" style="display:none;align-items:center;gap:10px;background:var(--chip);border-radius:9px;padding:8px 12px;margin-bottom:10px;font-size:12px">
+            <span></span>
+            <button class="btn secondary" style="padding:4px 10px;font-size:11px" onclick="DASH_TIER_FILTER=null; renderDashboardTable();">✕ Clear</button>
           </div>
           <div class="tablewrap"><table id="dashTable"><thead><tr>
             <th>Item #</th><th>Item Name</th><th>Item C.Name</th><th>Remark</th>
@@ -324,6 +393,10 @@
       </div>
       <label>Unit</label>
       <input id="flourIngUnit" placeholder="bags / cases">
+      <div class="row">
+        <div><label>Kg per Unit</label><input type="number" step="any" id="flourIngKgPerUnit" placeholder="e.g. 25 (leave blank if unknown)"></div>
+        <div><label>Reorder Level (units)</label><input type="number" step="any" id="flourIngReorderLevel"></div>
+      </div>
       <div class="btnrow">
         <button class="btn secondary" onclick="submitFlourIngredient()">＋ Save Ingredient</button>
         <button class="btn secondary" onclick="resetFlourIngredientForm()">Clear / Cancel Edit</button>
@@ -346,23 +419,60 @@
         </select>
         <button class="btn secondary" onclick="clearFlourIngredientFilters()">Clear</button>
       </div>
-      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Supplier</th><th>Unit</th><th>Stock</th><th class="no-print"></th></tr></thead>
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Supplier</th><th>Stock (Units)</th><th>Kg/Unit</th><th>Stock (Kg)</th><th>Weekly Usage</th><th>Weeks Left</th><th class="no-print"></th></tr></thead>
       <tbody id="flourIngTable"></tbody></table></div>
       <div class="empty" id="flourIngEmpty" style="display:none">No ingredients yet</div>
+    </div>
+  </section>
+
+  <!-- FLOUR USAGE: DASHBOARD -->
+  <section class="screen" id="screen-flour-dashboard">
+    <h2>Flour Usage — Dashboard</h2>
+    <div class="kpis kpis4">
+      <div class="kpi"><div class="n" id="flourKpiTotal">–</div><div class="l">Total Ingredients</div></div>
+      <div class="kpi"><div class="n" id="flourKpiLow" style="color:var(--danger)">–</div><div class="l">Low Stock Warnings</div></div>
+      <div class="kpi"><div class="n" id="flourKpiProducts">–</div><div class="l">Products with Recipes</div></div>
+      <div class="kpi"><div class="n" id="flourKpiSuppliers">–</div><div class="l">Suppliers</div></div>
+    </div>
+    <div class="card">
+      <h3>⚠ Ingredients with Low Stock Warnings</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Flagged if at/below Reorder Level, OR less than 1 week of stock left at the current weekly usage rate.</p>
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Supplier</th><th>Stock</th><th>Reorder Level</th><th>Weekly Usage</th><th>Weeks Left</th><th>Reason</th></tr></thead>
+      <tbody id="flourLowStockTable"></tbody></table></div>
+      <div class="empty" id="flourLowStockEmpty" style="display:none">No ingredients are below their reorder level 🎉</div>
+    </div>
+    <div class="card">
+      <h3>All Ingredient Stock (Kg)</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Only ingredients with a Kg/Unit set can show a kg total.</p>
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Stock (Units)</th><th>Stock (Kg)</th></tr></thead>
+      <tbody id="flourAllStockTable"></tbody></table></div>
     </div>
   </section>
 
   <!-- FLOUR USAGE: USAGE REPORT -->
   <section class="screen" id="screen-flour-usage-report">
     <h2>Flour Usage — Usage Report</h2>
-    <p style="color:var(--muted);font-size:13px;margin-top:0">Total received (In) and consumed (Out/Usage) per ingredient over a date range.</p>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Total consumed (usage) per ingredient over a date range.</p>
     <div class="card">
       <div class="row">
         <div><label>From Date</label><input type="date" id="flourUsageFrom"></div>
         <div><label>To Date</label><input type="date" id="flourUsageTo"></div>
         <div style="display:flex;align-items:flex-end"><button class="btn" onclick="runFlourUsageReport()">🔍 Search</button></div>
       </div>
-      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Supplier</th><th>Unit</th><th>In (Received)</th><th>Out (Usage)</th></tr></thead>
+      <div class="filterbar">
+        <input id="flourUsageSearch" placeholder="Search ingredient / supplier..." oninput="renderFlourUsageReportTable()">
+        <select id="flourUsageFilterSupplier" onchange="renderFlourUsageReportTable()"><option value="">All Suppliers</option></select>
+        <select id="flourUsageSortField" onchange="renderFlourUsageReportTable()">
+          <option value="name">Sort: Ingredient</option>
+          <option value="supplier">Sort: Supplier</option>
+          <option value="out">Sort: Usage</option>
+        </select>
+        <select id="flourUsageSortDir" onchange="renderFlourUsageReportTable()">
+          <option value="asc">Low → High / A → Z</option>
+          <option value="desc">High → Low / Z → A</option>
+        </select>
+      </div>
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Supplier</th><th>Unit</th><th>Usage (Out)</th></tr></thead>
       <tbody id="flourUsageReportTable"></tbody></table></div>
       <div class="empty" id="flourUsageReportEmpty">Pick a date range and click Search.</div>
     </div>
@@ -372,6 +482,14 @@
   <section class="screen" id="screen-flour-recipes">
     <h2>Flour Usage — Product Recipes</h2>
     <p style="color:var(--muted);font-size:13px;margin-top:0">Flour ingredients consumed per batch/mix of each Product.</p>
+
+    <div class="card">
+      <h3>Browse / Edit a Product's Recipe</h3>
+      <label>Product</label>
+      <select id="flourRecBrowseProduct" onchange="renderFlourRecipeBrowse()"></select>
+      <div id="flourRecBrowseBody" style="margin-top:12px"></div>
+    </div>
+
     <div class="card can-write">
       <h3 id="flourRecFormTitle">Add Recipe (multiple ingredients)</h3>
       <input type="hidden" id="flourRecEditId">
@@ -484,7 +602,7 @@
         <div class="card">
           <h3>Items Needing Production</h3>
           <p style="color:var(--muted);font-size:12px;margin-top:0">For reference when deciding which product/items to run.</p>
-          <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Days Left</th><th>Level</th><th>Line</th></tr></thead>
+          <div class="tablewrap"><table id="schedNeedTableEl"><thead><tr><th>Item #</th><th>Item Name</th><th>Days Left</th><th>Level</th><th>Line</th></tr></thead>
           <tbody id="schedNeedTable"></tbody></table></div>
           <div class="empty" id="schedNeedEmpty" style="display:none">Nothing urgent right now 🎉</div>
         </div>
@@ -977,6 +1095,15 @@
         <button class="btn secondary" onclick="applyTheme('light')">☀️ Light</button>
         <button class="btn secondary" onclick="applyTheme('dark')">🌙 Dark</button>
       </div>
+      <label style="margin-top:16px">Color Theme</label>
+      <div class="color-swatch-row">
+        <button class="color-swatch" data-color="" style="background:#2f6fed" onclick="applyColorTheme('')" title="Classic Blue"></button>
+        <button class="color-swatch" data-color="sunset" style="background:#ff6b35" onclick="applyColorTheme('sunset')" title="Sunset Orange"></button>
+        <button class="color-swatch" data-color="teal" style="background:#0d9488" onclick="applyColorTheme('teal')" title="Cyber Teal"></button>
+        <button class="color-swatch" data-color="blush" style="background:#e05263" onclick="applyColorTheme('blush')" title="Blush Coral"></button>
+        <button class="color-swatch" data-color="forest" style="background:#2f7a4f" onclick="applyColorTheme('forest')" title="Forest Green"></button>
+        <button class="color-swatch" data-color="plum" style="background:#7c3aed" onclick="applyColorTheme('plum')" title="Plum Purple"></button>
+      </div>
     </div>
   </section>
 
@@ -1249,6 +1376,11 @@ function toggleTheme(){
   applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 }
 document.getElementById('themeBtn').addEventListener('click', toggleTheme);
+function applyColorTheme(c){
+  if(c){ document.documentElement.dataset.color = c; } else { delete document.documentElement.dataset.color; }
+  document.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', b.dataset.color === c));
+  Store.set('color-theme', c || '');
+}
 
 /* ============================================================
    Nav
@@ -1358,6 +1490,18 @@ async function refreshAll(){
    DASHBOARD
    ============================================================ */
 let DASH_DATA = [];
+let DASH_TIER_FILTER = null; // array of tier keys, or null for no filter
+function filterDashboardByLineTier(line, tier){
+  document.getElementById('dashFilterLine').value = line;
+  DASH_TIER_FILTER = [tier];
+  renderDashboardTable();
+  document.getElementById('dashTable').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function filterDashboardByTiers(tiers){
+  DASH_TIER_FILTER = tiers;
+  renderDashboardTable();
+  document.getElementById('dashTable').scrollIntoView({behavior:'smooth', block:'start'});
+}
 async function refreshDashboard(){
   if(!connected) return;
   try{
@@ -1391,6 +1535,7 @@ function clearDashboardFilters(){
   document.getElementById('dashThreshold').value = '7';
   document.getElementById('dashSortField').value = 'item_no';
   document.getElementById('dashSortDir').value = 'asc';
+  DASH_TIER_FILTER = null;
   renderDashboardTable();
 }
 
@@ -1476,7 +1621,9 @@ function renderDashboardTable(){
     const cells = order.map(t => {
       const n = classified.filter(r=>r.line===l && r._tier===t).length;
       const alpha = n===0 ? 0 : 0.15 + 0.65*(n/maxCell);
-      return `<td class="heat-cell" style="background:${TIER_META[t].color}${n===0?'':'; color:#fff'};opacity:${n===0?1:alpha+0.3}">${n||'–'}</td>`;
+      const onclickAttr = n>0 ? ` onclick="filterDashboardByLineTier('${l.replace(/'/g,"\\'")}','${t}')" title="Click to filter Stock Alert List"` : '';
+      const cursorStyle = n>0 ? 'cursor:pointer;' : '';
+      return `<td class="heat-cell"${onclickAttr} style="${cursorStyle}background:${TIER_META[t].color}${n===0?'':'; color:#fff'};opacity:${n===0?1:alpha+0.3}">${n||'–'}</td>`;
     }).join('');
     return `<tr><td><strong>${l}</strong></td>${cells}</tr>`;
   }).join('');
@@ -1486,6 +1633,16 @@ function renderDashboardTable(){
   if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.item_name||'').toLowerCase().includes(q));
   if(lineFilter) rows = rows.filter(r => (r.line||'').toLowerCase() === lineFilter.toLowerCase());
   if(custFilter) rows = rows.filter(r => (r.customer||'').toLowerCase() === custFilter.toLowerCase());
+  if(DASH_TIER_FILTER) rows = rows.filter(r => DASH_TIER_FILTER.includes(r._tier));
+  const banner = document.getElementById('dashTierFilterBanner');
+  if(banner){
+    if(DASH_TIER_FILTER){
+      banner.style.display = 'flex';
+      banner.querySelector('span').textContent = `Filtered to: ${DASH_TIER_FILTER.map(t=>TIER_META[t].label).join(', ')}`;
+    } else {
+      banner.style.display = 'none';
+    }
+  }
   rows = [...rows].sort((a,b) => {
     if(sortField === 'item_no'){ const av=a.item_no||'', bv=b.item_no||''; return sortDir==='asc' ? av.localeCompare(bv) : bv.localeCompare(av); }
     if(sortField === 'warning_level'){ const av=TIER_META[a._tier].order, bv=TIER_META[b._tier].order; return sortDir==='asc' ? av-bv : bv-av; }
@@ -1850,42 +2007,67 @@ async function deletePOOrder(key){
    FLOUR USAGE — ingredient master/stock, receiving, recipes
    ============================================================ */
 let FLOUR_INGREDIENTS = [];
+let FLOUR_WEEKLY_USAGE = {}; // ingredient_id -> qty used in the last 7 days
 let FLOUR_RECIPE = [];
 let FLOUR_LEDGER_PAGE = 1;
 const FLOUR_LEDGER_PAGE_SIZE = 15;
 
+let FLOUR_USAGE_RESULTS = [];
 async function runFlourUsageReport(){
   const from = document.getElementById('flourUsageFrom').value;
   const to = document.getElementById('flourUsageTo').value;
   if(!from || !to){ toast('Please pick both a From and To date'); return; }
   try{
-    let path = `erp_flour_inout?select=ingredient_id,in_qty,out_qty&entry_date=gte.${from}&entry_date=lte.${to}&limit=20000`;
+    let path = `erp_flour_inout?select=ingredient_id,out_qty&entry_date=gte.${from}&entry_date=lte.${to}&limit=20000`;
     const rows = await sbGet(path);
     const totals = {};
     rows.forEach(r => {
       const id = r.ingredient_id;
-      totals[id] = totals[id] || { in: 0, out: 0 };
-      totals[id].in += parseFloat(r.in_qty) || 0;
-      totals[id].out += parseFloat(r.out_qty) || 0;
+      totals[id] = (totals[id] || 0) + (parseFloat(r.out_qty) || 0);
     });
     const ingredientRows = FLOUR_INGREDIENTS.length ? FLOUR_INGREDIENTS : await sbGet('erp_flour_ingredient_inventory?select=id,name,supplier,unit&order=name.asc&limit=500');
-    const resultRows = ingredientRows
-      .map(ing => ({ ing, t: totals[ing.id] || { in:0, out:0 } }))
-      .filter(r => r.t.in > 0 || r.t.out > 0)
-      .sort((a,b) => a.ing.name.localeCompare(b.ing.name));
-    document.getElementById('flourUsageReportTable').innerHTML = resultRows.map(r => `<tr>
-      <td>${r.ing.name}</td><td>${r.ing.supplier||''}</td><td>${r.ing.unit||''}</td>
-      <td>${fmtNum(r.t.in)}</td><td>${fmtNum(r.t.out)}</td>
-    </tr>`).join('');
-    document.getElementById('flourUsageReportEmpty').style.display = resultRows.length ? 'none' : 'block';
-    document.getElementById('flourUsageReportEmpty').textContent = resultRows.length ? '' : 'No usage or receiving records in that date range.';
+    FLOUR_USAGE_RESULTS = ingredientRows
+      .map(ing => ({ name: ing.name, supplier: ing.supplier, unit: ing.unit, out: totals[ing.id] || 0 }))
+      .filter(r => r.out > 0);
+    populateFlourUsageSupplierFilter();
+    renderFlourUsageReportTable();
   }catch(e){ toast('Report failed: ' + e.message); }
+}
+function populateFlourUsageSupplierFilter(){
+  const sel = document.getElementById('flourUsageFilterSupplier');
+  const keep = sel.value;
+  const suppliers = dedupeCaseInsensitive(FLOUR_USAGE_RESULTS.map(r=>r.supplier).filter(Boolean));
+  sel.innerHTML = '<option value="">All Suppliers</option>' + suppliers.map(s=>`<option>${s}</option>`).join('');
+  if(suppliers.includes(keep)) sel.value = keep;
+}
+function renderFlourUsageReportTable(){
+  const q = (document.getElementById('flourUsageSearch')?.value || '').trim().toLowerCase();
+  const supplierFilter = document.getElementById('flourUsageFilterSupplier')?.value || '';
+  const sortField = document.getElementById('flourUsageSortField')?.value || 'name';
+  const sortDir = document.getElementById('flourUsageSortDir')?.value || 'asc';
+  let rows = FLOUR_USAGE_RESULTS;
+  if(q) rows = rows.filter(r => (r.name||'').toLowerCase().includes(q) || (r.supplier||'').toLowerCase().includes(q));
+  if(supplierFilter) rows = rows.filter(r => (r.supplier||'').toLowerCase() === supplierFilter.toLowerCase());
+  rows = [...rows].sort((a,b) => {
+    if(sortField === 'out'){ const av=a.out||0, bv=b.out||0; return sortDir==='asc'?av-bv:bv-av; }
+    const av=(a[sortField]||'').toString(), bv=(b[sortField]||'').toString();
+    return sortDir==='asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+  });
+  document.getElementById('flourUsageReportTable').innerHTML = rows.map(r => `<tr>
+    <td>${r.name}</td><td>${r.supplier||''}</td><td>${r.unit||''}</td><td>${fmtNum(r.out)}</td>
+  </tr>`).join('');
+  document.getElementById('flourUsageReportEmpty').style.display = rows.length ? 'none' : 'block';
+  document.getElementById('flourUsageReportEmpty').textContent = rows.length ? '' : 'No usage records match.';
 }
 async function refreshFlourScreen(){
   if(!connected) return;
   document.getElementById('flourReceiveDate').value = document.getElementById('flourReceiveDate').value || todayStr();
   try{
-    FLOUR_INGREDIENTS = await sbGet('erp_flour_ingredient_inventory?select=id,name,supplier,unit,inventory_qty&order=name.asc&limit=500');
+    FLOUR_INGREDIENTS = await sbGet('erp_flour_ingredient_inventory?select=id,name,supplier,unit,kg_per_unit,reorder_level,inventory_qty&order=name.asc&limit=500');
+    const weekAgo = new Date(Date.now() - 6*86400000).toISOString().slice(0,10); // last 7 days incl. today
+    const weeklyRows = await sbGet(`erp_flour_inout?select=ingredient_id,out_qty&entry_date=gte.${weekAgo}&limit=20000`);
+    FLOUR_WEEKLY_USAGE = {};
+    weeklyRows.forEach(r => { FLOUR_WEEKLY_USAGE[r.ingredient_id] = (FLOUR_WEEKLY_USAGE[r.ingredient_id]||0) + (parseFloat(r.out_qty)||0); });
     const optionsHtml = '<option value="">Select ingredient...</option>' + FLOUR_INGREDIENTS.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
     document.getElementById('flourReceiveIngredient').innerHTML = optionsHtml;
     document.getElementById('flourRecIngredient').innerHTML = optionsHtml;
@@ -1896,10 +2078,41 @@ async function refreshFlourScreen(){
     FLOUR_RECIPE = await sbGet('erp_flour_recipe?select=id,product_name,ingredient_id,qty_per_batch&order=product_name.asc&limit=2000');
     PRODUCTS = await sbGet('erp_products?select=id,name,line,yield_factor,weight_per_mix_kg,mixing_min_per_mix&order=name.asc&limit=1000');
     document.getElementById('flourRecProduct').innerHTML = buildProductOptionsHtml();
+    renderFlourRecipeBrowseProductOptions();
     renderFlourRecipeTable();
 
     await renderFlourLedger();
+    renderFlourDashboard();
   }catch(e){ toast('Failed to load Flour Usage data: ' + e.message); }
+}
+function renderFlourDashboard(){
+  document.getElementById('flourKpiTotal').textContent = FLOUR_INGREDIENTS.length;
+  const withWarning = FLOUR_INGREDIENTS.map(i => {
+    const weeklyUsage = FLOUR_WEEKLY_USAGE[i.id] || 0;
+    const weeksLeft = weeklyUsage > 0 ? (Number(i.inventory_qty)||0) / weeklyUsage : null;
+    const lowReorder = i.reorder_level!=null && Number(i.inventory_qty) <= i.reorder_level;
+    const lowWeeks = weeksLeft!=null && weeksLeft < 1;
+    return Object.assign({}, i, {weeklyUsage, weeksLeft, lowReorder, lowWeeks});
+  });
+  const lowStock = withWarning.filter(i => i.lowReorder || i.lowWeeks);
+  document.getElementById('flourKpiLow').textContent = lowStock.length;
+  document.getElementById('flourKpiProducts').textContent = new Set(FLOUR_RECIPE.map(r=>r.product_name)).size;
+  document.getElementById('flourKpiSuppliers').textContent = dedupeCaseInsensitive(FLOUR_INGREDIENTS.map(i=>i.supplier).filter(Boolean)).length;
+
+  document.getElementById('flourLowStockTable').innerHTML = lowStock.map(i => `<tr>
+    <td>${i.name}</td><td>${i.supplier||''}</td>
+    <td style="color:var(--danger);font-weight:700">${fmtNum(i.inventory_qty)} ${i.unit||''}</td>
+    <td>${i.reorder_level!=null?fmtNum(i.reorder_level):'–'}</td>
+    <td>${i.weeklyUsage>0?fmtNum(i.weeklyUsage):'–'}</td>
+    <td>${i.weeksLeft!=null?fmtNum(i.weeksLeft):'–'}</td>
+    <td>${[i.lowReorder?'Below reorder level':null, i.lowWeeks?'< 1 week of stock left':null].filter(Boolean).join(', ')}</td>
+  </tr>`).join('');
+  document.getElementById('flourLowStockEmpty').style.display = lowStock.length ? 'none' : 'block';
+
+  document.getElementById('flourAllStockTable').innerHTML = FLOUR_INGREDIENTS.map(i => {
+    const kgTotal = i.kg_per_unit ? (Number(i.inventory_qty)||0) * i.kg_per_unit : null;
+    return `<tr><td>${i.name}</td><td>${fmtNum(i.inventory_qty)} ${i.unit||''}</td><td>${kgTotal!=null?fmtNum(kgTotal)+' kg':'–'}</td></tr>`;
+  }).join('');
 }
 function flourIngredientName(id){
   const ing = FLOUR_INGREDIENTS.find(i => String(i.id) === String(id));
@@ -1933,6 +2146,8 @@ function resetFlourIngredientForm(){
   document.getElementById('flourIngSupplierNew').value = '';
   document.getElementById('flourIngSupplierNew').style.display = 'none';
   document.getElementById('flourIngUnit').value = '';
+  document.getElementById('flourIngKgPerUnit').value = '';
+  document.getElementById('flourIngReorderLevel').value = '';
 }
 function editFlourIngredient(id){
   const ing = FLOUR_INGREDIENTS.find(i => i.id === id);
@@ -1947,6 +2162,8 @@ function editFlourIngredient(id){
   else if(ing.supplier){ sel.value = '__new__'; document.getElementById('flourIngSupplierNew').style.display='block'; document.getElementById('flourIngSupplierNew').value = ing.supplier; }
   else { sel.value = ''; document.getElementById('flourIngSupplierNew').style.display = 'none'; }
   document.getElementById('flourIngUnit').value = ing.unit || '';
+  document.getElementById('flourIngKgPerUnit').value = ing.kg_per_unit ?? '';
+  document.getElementById('flourIngReorderLevel').value = ing.reorder_level ?? '';
   showScreen('flour-ingredients'); window.scrollTo(0,0);
 }
 async function submitFlourIngredient(){
@@ -1954,14 +2171,16 @@ async function submitFlourIngredient(){
   const name = document.getElementById('flourIngName').value.trim();
   const supplier = getFlourSupplierValue();
   const unit = document.getElementById('flourIngUnit').value.trim() || 'bags';
+  const kgPerUnit = document.getElementById('flourIngKgPerUnit').value ? parseFloat(document.getElementById('flourIngKgPerUnit').value) : null;
+  const reorderLevel = document.getElementById('flourIngReorderLevel').value ? parseFloat(document.getElementById('flourIngReorderLevel').value) : null;
   const editId = document.getElementById('flourIngEditId').value;
   if(!name){ toast('Please enter a name'); return; }
   try{
     if(editId){
-      await sbUpdate('erp_flour_ingredients', editId, { name, supplier: supplier||null, unit });
+      await sbUpdate('erp_flour_ingredients', editId, { name, supplier: supplier||null, unit, kg_per_unit: kgPerUnit, reorder_level: reorderLevel });
       toast('Ingredient updated');
     } else {
-      await sbInsert('erp_flour_ingredients', [{ name, supplier: supplier||null, unit }]);
+      await sbInsert('erp_flour_ingredients', [{ name, supplier: supplier||null, unit, kg_per_unit: kgPerUnit, reorder_level: reorderLevel }]);
       toast('Ingredient added');
     }
     resetFlourIngredientForm();
@@ -2001,15 +2220,28 @@ function renderFlourIngredientTable(){
     const av = (a[sortField]||'').toString(), bv = (b[sortField]||'').toString();
     return sortDir==='asc' ? av.localeCompare(bv) : bv.localeCompare(av);
   });
-  document.getElementById('flourIngTable').innerHTML = rows.map(i=>`<tr>
-    <td>${i.name}</td><td>${i.supplier||''}</td><td>${i.unit||''}</td><td>${fmtNum(i.inventory_qty)}</td>
+  document.getElementById('flourIngTable').innerHTML = rows.map(i=>{
+    const kgTotal = i.kg_per_unit ? (Number(i.inventory_qty)||0) * i.kg_per_unit : null;
+    const weeklyUsage = FLOUR_WEEKLY_USAGE[i.id] || 0;
+    const weeksLeft = weeklyUsage > 0 ? (Number(i.inventory_qty)||0) / weeklyUsage : null;
+    const lowReorder = i.reorder_level!=null && Number(i.inventory_qty) <= i.reorder_level;
+    const lowWeeks = weeksLeft!=null && weeksLeft < 1;
+    const low = lowReorder || lowWeeks;
+    return `<tr>
+    <td>${i.name}</td><td>${i.supplier||''}</td>
+    <td style="${low?'color:var(--danger);font-weight:700':''}">${fmtNum(i.inventory_qty)} ${i.unit||''}${low?' ⚠':''}</td>
+    <td>${i.kg_per_unit?fmtNum(i.kg_per_unit):'–'}</td>
+    <td>${kgTotal!=null?fmtNum(kgTotal)+' kg':'–'}</td>
+    <td>${weeklyUsage>0?fmtNum(weeklyUsage)+' '+(i.unit||''):'–'}</td>
+    <td style="${lowWeeks?'color:var(--danger);font-weight:700':''}">${weeksLeft!=null?fmtNum(weeksLeft):'–'}${lowWeeks?' ⚠':''}</td>
     <td class="no-print" style="white-space:nowrap">
       <div style="display:flex;gap:6px;flex-wrap:nowrap">
         <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editFlourIngredient(${i.id})">✎ Edit</button>
         <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto;color:var(--danger)" onclick="deleteFlourIngredient(${i.id})">✕ Delete</button>
       </div>
     </td>
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
   document.getElementById('flourIngEmpty').style.display = rows.length ? 'none' : 'block';
 }
 
@@ -2160,7 +2392,82 @@ async function saveFlourRecipeDraft(){
   }catch(e){ toast('Save failed: ' + e.message); }
 }
 async function deleteFlourRecipe(id){
-  await deleteRow('erp_flour_recipe', id, refreshFlourScreen);
+  const keepProduct = document.getElementById('flourRecBrowseProduct')?.value;
+  await deleteRow('erp_flour_recipe', id, async()=>{
+    await refreshFlourScreen();
+    if(keepProduct){ document.getElementById('flourRecBrowseProduct').value = keepProduct; renderFlourRecipeBrowse(); }
+  });
+}
+function renderFlourRecipeBrowseProductOptions(){
+  const sel = document.getElementById('flourRecBrowseProduct');
+  if(!sel) return;
+  const keep = sel.value;
+  const productsWithRecipe = [...new Set(FLOUR_RECIPE.map(r=>r.product_name))];
+  // union of the Products master list and any product name that actually has recipe rows
+  // (the two can drift apart if recipes were imported from a different source file)
+  const allNames = new Map(); // lowercase -> display name
+  PRODUCTS.forEach(p => allNames.set(p.name.toLowerCase(), p.name));
+  productsWithRecipe.forEach(n => { if(!allNames.has(n.toLowerCase())) allNames.set(n.toLowerCase(), n); });
+  const names = [...allNames.values()].sort((a,b)=>a.localeCompare(b));
+  sel.innerHTML = '<option value="">Select a product...</option>' + names.map(n=>{
+    const has = productsWithRecipe.some(x=>x.toLowerCase()===n.toLowerCase());
+    const inMaster = PRODUCTS.some(p=>p.name.toLowerCase()===n.toLowerCase());
+    return `<option value="${n.replace(/"/g,'&quot;')}">${n}${has?' ✓ has recipe':''}${!inMaster?' (not in Products master)':''}</option>`;
+  }).join('');
+  if([...sel.options].some(o=>o.value===keep)) sel.value = keep;
+}
+function renderFlourRecipeBrowse(){
+  const productName = document.getElementById('flourRecBrowseProduct').value;
+  const body = document.getElementById('flourRecBrowseBody');
+  if(!productName){ body.innerHTML = ''; return; }
+  const rows = FLOUR_RECIPE.filter(r => (r.product_name||'').trim().toLowerCase() === productName.trim().toLowerCase());
+  const optionsHtml = '<option value="">Select ingredient...</option>' + FLOUR_INGREDIENTS.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
+  body.innerHTML = `
+    <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Qty/Batch (kg)</th><th class="can-write"></th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td>${flourIngredientName(r.ingredient_id)}</td>
+      <td>${canWrite() ? `<input type="number" step="any" value="${r.qty_per_batch}" style="width:100px" id="flourRecQtyInput_${r.id}">` : fmtNum(r.qty_per_batch)}</td>
+      <td class="can-write" style="white-space:nowrap">
+        <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="updateFlourRecipeQty(${r.id}, document.getElementById('flourRecQtyInput_${r.id}').value)">💾 Save</button>
+        <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="renderFlourRecipeBrowse()">✕ Cancel</button>
+        <button class="iconbtn" style="width:28px;height:28px;font-size:12px" onclick="deleteFlourRecipe(${r.id})">🗑</button>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="3" style="color:var(--muted)">No ingredients in this recipe yet.</td></tr>`}</tbody></table></div>
+    <div class="row can-write" style="align-items:flex-end;margin-top:10px">
+      <div><label>Add Ingredient</label>
+        <select id="flourRecBrowseIngredient">${optionsHtml}</select>
+      </div>
+      <div style="max-width:130px"><label>Qty/Batch (kg)</label><input type="number" step="any" id="flourRecBrowseQty"></div>
+      <button class="btn" onclick="addIngredientToProductRecipe('${productName.replace(/'/g,"\\'")}')">💾 Save New Ingredient</button>
+      <button class="btn secondary" onclick="document.getElementById('flourRecBrowseIngredient').value=''; document.getElementById('flourRecBrowseQty').value='';">✕ Cancel</button>
+    </div>`;
+}
+async function updateFlourRecipeQty(id, value){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const qty = parseFloat(value) || 0;
+  try{
+    await sbUpdate('erp_flour_recipe', id, { qty_per_batch: qty });
+    toast('Recipe updated');
+    await refreshFlourScreen();
+    renderFlourRecipeBrowseProductOptions();
+    renderFlourRecipeBrowse();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+async function addIngredientToProductRecipe(productName){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const ingredientId = document.getElementById('flourRecBrowseIngredient').value;
+  const qty = parseFloat(document.getElementById('flourRecBrowseQty').value);
+  if(!ingredientId){ toast('Please select an ingredient'); return; }
+  if(!qty){ toast('Please enter qty per batch'); return; }
+  try{
+    await sbInsert('erp_flour_recipe', [{ product_name: productName, ingredient_id: ingredientId, qty_per_batch: qty }]);
+    toast('Ingredient added to recipe');
+    await refreshFlourScreen();
+    document.getElementById('flourRecBrowseProduct').value = productName;
+    renderFlourRecipeBrowseProductOptions();
+    document.getElementById('flourRecBrowseProduct').value = productName;
+    renderFlourRecipeBrowse();
+  }catch(e){ toast('Add failed: ' + e.message); }
 }
 function renderFlourRecipeTable(){
   const q = (document.getElementById('flourRecSearch')?.value || '').trim().toLowerCase();
@@ -2184,10 +2491,18 @@ function itemHasFlourRecipe(itemNo){
 async function deductFlourForProduct(productName, entryDate, mixes){
   const rows = FLOUR_RECIPE.filter(r => r.product_name === productName);
   if(!rows.length) return;
-  const inserts = rows.map(r => ({
-    entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: 0,
-    out_qty: mixes * (r.qty_per_batch||0), note: 'Production run confirm: ' + productName
-  }));
+  const inserts = rows.map(r => {
+    const ing = FLOUR_INGREDIENTS.find(i => i.id === r.ingredient_id);
+    const kgNeeded = mixes * (r.qty_per_batch||0); // recipe qty is always in kg
+    // convert kg -> the ingredient's native stock unit (box/bag) if we know its kg_per_unit;
+    // otherwise fall back to deducting the raw kg figure (flag this ingredient to Chris)
+    const unitsNeeded = (ing && ing.kg_per_unit) ? (kgNeeded / ing.kg_per_unit) : kgNeeded;
+    return {
+      entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: 0,
+      out_qty: unitsNeeded,
+      note: `Production run confirm: ${productName} (${fmtNum(kgNeeded)} kg${(ing && !ing.kg_per_unit) ? ' — no kg/unit set, deducted as raw kg' : ''})`
+    };
+  });
   await sbInsert('erp_flour_inout', inserts);
 }
 
@@ -2320,30 +2635,40 @@ async function submitProductionRun(){
     await refreshScheduleScreen();
   }catch(e){ toast('Start run failed: ' + e.message); }
 }
-async function confirmProductionRun(runId, productName){
+async function confirmProductionRun(runId){
   if(!canWrite()){ toast('You have read-only access'); return; }
-  const run = RUNS_CACHE.find(r => r.id === runId);
-  const mixesStr = prompt(`Confirmed MIXES/BATCHES produced for "${productName}" (drives flour deduction).`, run ? (run.planned_mixes||'') : '');
-  if(mixesStr === null) return;
-  const mixes = parseFloat(mixesStr) || 0;
-  const today = todayStr();
+  if(!confirm('Confirm this run\'s mixes now? This deducts flour usage and cannot be undone.')) return;
   try{
-    if(mixes > 0){ await deductFlourForProduct(productName, today, mixes); }
-    // confirming a run also confirms every packed item under it in one go —
-    // each adds Finished Goods In Qty (and triggers sachet-recipe deduction if applicable)
-    const runItems = await sbGet(`erp_production_run_items?select=id,item_no,item_name,planned_cases,status&run_id=eq.${runId}`);
-    for(const it of runItems){
-      if(it.status === 'Confirmed') continue;
-      const cases = parseFloat(it.planned_cases) || 0;
-      if(cases > 0){
-        await sbInsert('erp_inout', [{ entry_date: today, item_no: it.item_no, item_name: it.item_name, in_qty: cases, out_qty: 0, lot: 'Production run confirm' }]);
-        if(itemHasRecipe(it.item_no)){ await deductComponentsForItem(it.item_no, today, cases); }
-      }
-      await sbUpdate('erp_production_run_items', it.id, { status: 'Confirmed', confirmed_cases: cases, confirmed_at: new Date().toISOString() });
-    }
+    const rows = await sbGet(`erp_production_runs?select=id,product_name,planned_mixes&id=eq.${runId}`);
+    const run = rows[0];
+    if(!run){ toast('Run not found'); return; }
+    const mixes = Math.round(parseFloat(run.planned_mixes) || 0);
+    const today = todayStr();
+    if(mixes > 0){ await deductFlourForProduct(run.product_name, today, mixes); }
     await sbUpdate('erp_production_runs', runId, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_at: new Date().toISOString() });
-    toast('Run confirmed — flour usage and finished-goods stock updated');
-    await refreshScheduleScreen(); await refreshFlourScreen(); await refreshInOut(); await refreshDashboard(); await refreshComponents(); await refreshProduce();
+    toast('Run confirmed — flour usage recorded. Now confirm each packed item below.');
+    await refreshScheduleScreen(); await refreshFlourScreen();
+  }catch(e){ toast('Confirm failed: ' + e.message); }
+}
+// Confirms one packed item's ACTUAL produced cases (whatever is currently saved for
+// it — edit the Cases field first if needed): writes Finished Goods In Qty to
+// erp_inout and, if that item has a sachet recipe, deducts components too.
+async function confirmRunItem(id){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  if(!confirm('Confirm this item as produced now? This adds Finished Goods stock and cannot be undone.')) return;
+  try{
+    const rows = await sbGet(`erp_production_run_items?select=id,item_no,item_name,planned_cases&id=eq.${id}`);
+    const it = rows[0];
+    if(!it){ toast('Item not found'); return; }
+    const cases = Math.round(parseFloat(it.planned_cases) || 0);
+    const today = todayStr();
+    if(cases > 0){
+      await sbInsert('erp_inout', [{ entry_date: today, item_no: it.item_no, item_name: it.item_name, in_qty: cases, out_qty: 0, lot: 'Production run confirm' }]);
+      if(itemHasRecipe(it.item_no)){ await deductComponentsForItem(it.item_no, today, cases); }
+    }
+    await sbUpdate('erp_production_run_items', id, { status: 'Confirmed', confirmed_cases: cases, confirmed_at: new Date().toISOString() });
+    toast('Item confirmed — Finished Goods stock updated' + (itemHasRecipe(it.item_no) ? ' (components deducted)' : ''));
+    await refreshScheduleScreen(); await refreshInOut(); await refreshDashboard(); await refreshComponents(); await refreshProduce();
   }catch(e){ toast('Confirm failed: ' + e.message); }
 }
 async function deleteProductionRun(runId){
@@ -2386,6 +2711,7 @@ function itemPackDetail(item, cases){
   return (spec ? `(${spec})` : '') + (csTxt ? `: ${csTxt}` : '') + box;
 }
 function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
+  const showItemConfirmButtons = showConfirmButton; // items get their own Confirm action wherever runs can be confirmed
   const statusChip = run.status === 'Confirmed' ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)} mixes)</span>` : `<span class="chip">Planned</span>`;
   const totalKg = runTotalOutputKg(run);
   const usedKg = runUsedKg(items);
@@ -2401,9 +2727,9 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const totalPackingHrs = items.reduce((s,it)=>s+(parseFloat(it.packing_hrs)||0), 0);
   const packingHrsInfo = items.length ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">🕐 Total packing hours for this run: <strong>${fmtNum(totalPackingHrs)} hrs</strong> across ${items.length} item(s)</div>` : '';
   const confirmBtn = (showConfirmButton && run.status!=='Confirmed')
-    ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="confirmProductionRun(${run.id}, '${run.product_name.replace(/'/g,"\\'")}')">✔ Confirm Mixes</button>`
+    ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="confirmProductionRun(${run.id})">✔ Confirm Mixes</button>`
     : '';
-  const mixesCanEdit = itemsEditable && run.status!=='Confirmed' && canWrite();
+  const mixesCanEdit = (itemsEditable || showConfirmButton) && run.status!=='Confirmed' && canWrite();
   return `<div class="card" style="margin-bottom:12px" data-run-total-kg="${totalKg}" data-run-used-kg="${usedKg}">
     <div class="row" style="align-items:center;margin-bottom:6px">
       <div style="flex:2">
@@ -2422,19 +2748,21 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
     ${weightInfo}
     ${packingHrsInfo}
     ${run.remark ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">📝 ${run.remark}</div>` : ''}
-    <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Packing Hrs</th><th>Prod./Exp. Date</th><th>Status</th>${itemsEditable?'<th></th>':''}</tr></thead>
+    <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Packing Hrs</th><th>Prod./Exp. Date</th><th>Status</th>${(itemsEditable || showItemConfirmButtons)?'<th></th>':''}</tr></thead>
     <tbody>${items.map(it => {
       const item = ITEMS_BY_NO[it.item_no];
-      const dateLabel = it.expired_date ? `Exp: ${it.expired_date}` : (it.production_date ? `Prod: ${it.production_date}` : '–');
+      const jDate = it.expired_date || it.production_date;
+      const dateLabel = (it.expired_date ? `Exp: ${it.expired_date}` : (it.production_date ? `Prod: ${it.production_date}` : '–')) + (jDate ? ` (Julian: ${toJulianDate(jDate)})` : '');
       const itStatus = it.status==='Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
-      const rowEditable = itemsEditable && it.status!=='Confirmed';
+      const rowEditable = (itemsEditable || showItemConfirmButtons) && it.status!=='Confirmed';
       return `<tr>
         <td>${it.item_no}</td><td>${it.item_name||''}</td>
         <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, it.planned_cases)}</td>
         <td>${(rowEditable && canWrite()) ? `<input type="number" step="1" value="${Math.round(it.planned_cases)}" style="width:80px" onchange="updateRunItemCases(${it.id}, this.value)">` : fmtNum(it.planned_cases)}</td>
-        <td>${it.packing_hrs?fmtNum(it.packing_hrs)+'h':'–'}</td><td>${dateLabel}</td><td>${itStatus}</td>
-        ${itemsEditable ? `<td class="no-print can-write" style="white-space:nowrap">
-          <button class="iconbtn" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_production_run_items',${it.id},refreshScheduleScreen)">✕</button>
+        <td>${it.packing_hrs?fmtNum(it.packing_hrs)+'h':'–'}</td><td style="white-space:normal">${dateLabel}</td><td>${itStatus}</td>
+        ${(itemsEditable || showItemConfirmButtons) ? `<td class="no-print can-write" style="white-space:nowrap">
+          ${(showItemConfirmButtons && it.status!=='Confirmed') ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="confirmRunItem(${it.id})">✔ Confirm</button>` : ''}
+          ${itemsEditable ? `<button class="iconbtn" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_production_run_items',${it.id},refreshScheduleScreen)">✕</button>` : ''}
         </td>` : ''}
       </tr>`;
     }).join('')}</tbody></table></div>
@@ -2520,7 +2848,10 @@ async function renderPreviewSummary(){
 async function renderConfirmRunCards(){
   const date = document.getElementById('confirmViewDate').value || todayStr();
   const { runs, items } = await fetchRunsAndItems(date);
-  const pending = runs.filter(r => r.status !== 'Confirmed');
+  const pending = runs.filter(r => {
+    if(r.status !== 'Confirmed') return true; // mixes not confirmed yet
+    return items.some(it => it.run_id === r.id && it.status !== 'Confirmed'); // mixes done, but items still pending
+  });
   if(!pending.length){
     document.getElementById('confirmRunsList').innerHTML = '';
     document.getElementById('confirmEmpty').style.display = 'block';
@@ -2700,11 +3031,33 @@ function renderSchedNeedList(){
     return sortDir==='asc'?av-bv:bv-av;
   }).slice(0,200);
 
-  document.getElementById('schedNeedTable').innerHTML = rows.map(r => `<tr>
-    <td>${r.item_no}</td><td>${r.item_name||''}</td>
-    <td>${r._tier==='oos' ? 'Out of stock' : Math.floor(r._days)+'d'}</td>
-    <td>${tierChip(r._tier)}</td><td>${r.line||''}</td>
-  </tr>`).join('');
+  document.getElementById('schedNeedTable').innerHTML = rows.map((r,i) => {
+    const rowId = 'schedneed-detail-'+i;
+    const z = (i % 2 === 0) ? ' zrow' : '';
+    const item = ITEMS_BY_NO[r.item_no];
+    return `<tr class="${z}" style="cursor:pointer" onclick="toggleRowDetail('${rowId}')">
+      <td>${r.item_no}</td><td>${r.item_name||''}</td>
+      <td>${r._tier==='oos' ? 'Out of stock' : Math.floor(r._days)+'d'}</td>
+      <td>${tierChip(r._tier)}</td><td>${r.line||''}</td>
+    </tr>
+    <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="5">
+      <div class="dash-detail-grid">
+        <div><span class="l">Customer</span>${r.customer||'–'}</div>
+        <div><span class="l">Avg Daily Out (7d)</span>${fmtNum(r.avg_daily_out_7d)}</div>
+        <div><span class="l">Avg Daily Out (30d)</span>${fmtNum(r.avg_daily_out_30d)}</div>
+        <div><span class="l">Act. Inventory Qty</span>${fmtNum(r.act_inventory_qty)}</div>
+        <div><span class="l">Storage</span>${item?.storage||'–'}</div>
+        <div><span class="l">Weight/Pack</span>${fmtNum(item?.weight_per_pack)}${item?.unit_of_weight||''}</div>
+        <div><span class="l">Pieces</span>${fmtNum(item?.pieces)}</div>
+        <div><span class="l">Unit/Case</span>${item?.unit_per_case||'–'}</div>
+        <div><span class="l">Box</span>${item?.box||'–'}</div>
+        <div><span class="l">Stock Level</span>${fmtNum(item?.stock_level)}</div>
+        <div><span class="l"># M/C Running</span>${fmtNum(item?.machines_running)}</div>
+        <div><span class="l">Cycle</span>${item?.cycle||'–'}</div>
+        <div><span class="l">Bags/Cycle</span>${fmtNum(item?.bags_per_cycle)}</div>
+      </div>
+    </td></tr>`;
+  }).join('');
   document.getElementById('schedNeedEmpty').style.display = rows.length ? 'none' : 'block';
 }
 
@@ -3536,6 +3889,14 @@ async function performBackup(){
   }
 }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
+function toJulianDate(dateStr){
+  if(!dateStr) return '';
+  const d = new Date(dateStr + 'T00:00:00');
+  const year = d.getFullYear() % 100;
+  const start = new Date(d.getFullYear(), 0, 0);
+  const dayOfYear = Math.floor((d - start) / 86400000);
+  return String(year).padStart(2,'0') + String(dayOfYear).padStart(3,'0');
+}
 function fmtNum(n){ if(n===null||n===undefined||n==='') return '–'; const v = Number(n); return Number.isInteger(v)?v.toString():v.toFixed(2); }
 function parseDateLoose(v){
   if(!v) return todayStr();
@@ -3584,6 +3945,10 @@ async function consumeAuthRedirectHash(){
     const t = await Store.get('theme');
     applyTheme(t || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
   }catch(e){ applyTheme('light'); }
+  try{
+    const c = await Store.get('color-theme');
+    applyColorTheme(c || '');
+  }catch(e){ applyColorTheme(''); }
   await loadConfig();
   if(!SESSION){
     const picked = await consumeAuthRedirectHash();
