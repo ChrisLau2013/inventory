@@ -59,9 +59,31 @@
     --bg:#120c1e; --panel:#1a1229; --line:#2d2145; --text:#ece4fa; --muted:#a596c4;
     --accent:#a78bfa; --accent-ink:#160c2e; --chip:#221934;
   }
+  [data-color="sky"]{
+    --bg:#eef6fc; --panel:#ffffff; --line:#d3e7f5; --text:#12293b; --muted:#5f7f96;
+    --accent:#0ea5e9; --accent-ink:#ffffff; --chip:#e1f1fb;
+  }
+  [data-theme="dark"][data-color="sky"]{
+    --bg:#081420; --panel:#0d2130; --line:#173148; --text:#dff1fb; --muted:#7ea6c0;
+    --accent:#38bdf8; --accent-ink:#04202e; --chip:#102838;
+  }
   .color-swatch-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
   .color-swatch{width:36px;height:36px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
   .color-swatch.active{border-color:var(--text);box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--text)}
+  /* ---- Production Schedule Preview: Kanban board ---- */
+  .kanban-board{display:flex;gap:14px;overflow-x:auto;padding:4px 4px 14px;align-items:flex-start}
+  .kanban-col{flex:0 0 300px;background:var(--chip);border-radius:14px;padding:12px}
+  .kanban-col-header{display:flex;align-items:baseline;justify-content:space-between;padding:4px 6px 12px;position:sticky;top:0}
+  .kanban-col-header .name{font-weight:800;font-size:15px}
+  .kanban-col-header .meta{font-size:11px;color:var(--muted)}
+  .kanban-card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px;box-shadow:var(--shadow)}
+  .kanban-card .product{font-weight:700;font-size:14px;margin-bottom:2px}
+  .kanban-card .subinfo{font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.5}
+  .kanban-card .item-row{display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:5px 0;border-top:1px dashed var(--line)}
+  .kanban-card .item-row .iname{color:var(--text)}
+  .kanban-card .item-row .icases{color:var(--muted);white-space:nowrap}
+  .kanban-card .card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+  .kanban-empty-col{color:var(--muted);font-size:12px;text-align:center;padding:20px 0}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
   h1,h2,h3{margin:0 0 4px}
@@ -165,6 +187,11 @@
        since a lot of those fields use a fixed inline max-width for desktop layout. */
     .row{flex-direction:column}
     .row > *{width:100% !important;max-width:100% !important;min-width:0 !important}
+    /* Action-button groups (Edit/Delete, Save/Cancel/Delete, etc.) were pinned to
+       one line with flex-wrap:nowrap for desktop — on a narrow phone that pushes
+       buttons off the edge of the screen instead of wrapping. Let them wrap here. */
+    [style*="flex-wrap:nowrap"]{flex-wrap:wrap !important}
+    .btn, button.btn, .btn.secondary{font-size:12px !important;padding:7px 10px !important}
     table{font-size:12px}
     th,td{padding:6px 4px}
     .module-switcher{overflow-x:auto}
@@ -173,6 +200,12 @@
     .topnav .brand{flex:1 1 auto}
     .topnav .connwrap{font-size:11px}
     .role-badge{font-size:10px;padding:2px 6px}
+    .kanban-col{flex-basis:82vw}
+    .card{padding:14px !important}
+    /* Guard the common overflow culprits without breaking tables' intentional
+       horizontal scroll (.tablewrap already handles that with overflow-x:auto). */
+    input, select, textarea{max-width:100%}
+    .search, .search input{max-width:100%}
   }
   .screen{display:none}
   .screen.active{display:block}
@@ -191,10 +224,21 @@
   .drop{border:2px dashed var(--line);border-radius:var(--radius);padding:26px 14px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer}
   .drop.over{border-color:var(--accent);color:var(--accent)}
   .loglines{font-family:ui-monospace,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px;max-height:220px;overflow:auto;white-space:pre-wrap}
+  .print-report{display:none;max-width:800px;margin:0 auto}
+  .print-report h2{margin-bottom:2px}
+  .print-report .pr-line{margin-bottom:18px;page-break-inside:avoid}
+  .print-report .pr-line h3{margin:0 0 6px;border-bottom:2px solid #000;padding-bottom:4px}
+  .print-report table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:4px}
+  .print-report th,.print-report td{padding:6px 8px;text-align:left;border-bottom:1px solid #ddd}
+  .print-report th{border-bottom:2px solid #000;font-weight:700}
+  .print-report td.pr-detail{border-bottom:none;padding-top:0;font-size:11px;color:#555}
+  @page{ margin:14mm }
   @media print{
     .topnav,.no-print{display:none!important}
     body{padding:0;background:#fff;color:#000}
     .card{box-shadow:none;border:1px solid #ccc}
+    body.printing-report .app-shell{display:none!important}
+    body.printing-report .print-report{display:block!important}
   }
 </style>
 </head>
@@ -431,8 +475,8 @@
     <div class="kpis kpis4">
       <div class="kpi"><div class="n" id="flourKpiTotal">–</div><div class="l">Total Ingredients</div></div>
       <div class="kpi"><div class="n" id="flourKpiLow" style="color:var(--danger)">–</div><div class="l">Low Stock Warnings</div></div>
-      <div class="kpi"><div class="n" id="flourKpiProducts">–</div><div class="l">Products with Recipes</div></div>
-      <div class="kpi"><div class="n" id="flourKpiSuppliers">–</div><div class="l">Suppliers</div></div>
+      <div class="kpi"><div class="n" id="flourKpiOrder" style="color:var(--danger)">–</div><div class="l">Need to Order (Planned Runs)</div></div>
+      <div class="kpi"><div class="n" id="flourKpiProducts">–</div><div class="l">Product Doughs with Recipes</div></div>
     </div>
     <div class="card">
       <h3>⚠ Ingredients with Low Stock Warnings</h3>
@@ -440,6 +484,13 @@
       <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Supplier</th><th>Stock</th><th>Reorder Level</th><th>Weekly Usage</th><th>Weeks Left</th><th>Reason</th></tr></thead>
       <tbody id="flourLowStockTable"></tbody></table></div>
       <div class="empty" id="flourLowStockEmpty" style="display:none">No ingredients are below their reorder level 🎉</div>
+    </div>
+    <div class="card">
+      <h3>📋 Planned Ingredient Demand (Unconfirmed Production Runs)</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Total ingredients needed for every Production Run that's still Planned (from the Create tab), converted from the recipe's kg amounts into stock units. Flags anything you don't have enough of on hand yet.</p>
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Current Stock</th><th>Planned Demand</th><th>Shortfall</th><th></th></tr></thead>
+      <tbody id="flourDemandTable"></tbody></table></div>
+      <div class="empty" id="flourDemandEmpty" style="display:none">No unconfirmed production runs use flour ingredients right now.</div>
     </div>
     <div class="card">
       <h3>All Ingredient Stock (Kg)</h3>
@@ -484,8 +535,8 @@
     <p style="color:var(--muted);font-size:13px;margin-top:0">Flour ingredients consumed per batch/mix of each Product.</p>
 
     <div class="card">
-      <h3>Browse / Edit a Product's Recipe</h3>
-      <label>Product</label>
+      <h3>Browse / Edit a Product Dough's Recipe</h3>
+      <label>Product Dough</label>
       <select id="flourRecBrowseProduct" onchange="renderFlourRecipeBrowse()"></select>
       <div id="flourRecBrowseBody" style="margin-top:12px"></div>
     </div>
@@ -493,7 +544,7 @@
     <div class="card can-write">
       <h3 id="flourRecFormTitle">Add Recipe (multiple ingredients)</h3>
       <input type="hidden" id="flourRecEditId">
-      <label>Product</label>
+      <label>Product Dough</label>
       <select id="flourRecProduct"></select>
       <label>Ingredient</label>
       <select id="flourRecIngredient"><option value="">Select ingredient...</option></select>
@@ -512,7 +563,7 @@
       <div class="filterbar">
         <input id="flourRecSearch" placeholder="Search product / ingredient..." oninput="renderFlourRecipeTable()">
       </div>
-      <div class="tablewrap"><table><thead><tr><th>Product</th><th>Ingredient</th><th>Qty/Batch</th><th class="no-print"></th></tr></thead>
+      <div class="tablewrap"><table><thead><tr><th>Product Dough</th><th>Ingredient</th><th>Qty/Batch</th><th class="no-print"></th></tr></thead>
       <tbody id="flourRecTable"></tbody></table></div>
       <div class="empty" id="flourRecEmpty" style="display:none">No recipes defined yet</div>
     </div>
@@ -538,19 +589,19 @@
   <!-- DAILY PRODUCTION SCHEDULE: CREATE -->
   <section class="screen active" id="screen-schedule-create">
     <h2>Daily Production Schedule — Create</h2>
-    <p style="color:var(--muted);font-size:13px;margin-top:0">Start a new Production Run: how many mixes of a Product (e.g. "10 mixes of Sunning Special"). Add the specific packed item(s) afterwards on the Preview tab.</p>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Start a new Production Run: how many batches of a Product Dough (e.g. "10 batches of Sunning Special"). Add the specific packed item(s) afterwards on the Preview tab.</p>
 
     <div class="card can-write">
       <h3>New Production Run</h3>
       <div class="row">
         <div><label>Run Date</label><input type="date" id="runDate" onchange="renderRunsList()"></div>
-        <div><label>Product</label>
+        <div><label>Product Dough</label>
           <select id="runProduct" onchange="onRunProductChange()"><option value="">Select product...</option></select>
         </div>
       </div>
       <div class="row">
         <div><label>Line (auto-filled)</label><input id="runLine" disabled></div>
-        <div><label>Planned Mixes/Batches</label><input type="number" id="runMixes" step="any"></div>
+        <div><label>Planned Batches</label><input type="number" id="runMixes" step="any"></div>
       </div>
       <label>Remark</label>
       <textarea id="runRemark" rows="2" placeholder="Notes for this run..."></textarea>
@@ -613,21 +664,23 @@
   <!-- DAILY PRODUCTION SCHEDULE: PREVIEW -->
   <section class="screen" id="screen-schedule-preview">
     <h2>Daily Production Schedule — Preview</h2>
-    <p style="color:var(--muted);font-size:13px;margin-top:0">Read-only overview for the selected date — grouped by line, in the same read-out format as the plant floor sheet. To add items or edit, use Create; to mark things done, use Confirm Completion.</p>
-    <div class="card">
-      <div class="row" style="align-items:center">
-        <h3 style="flex:2">Line Summary</h3>
-        <input type="date" id="previewViewDate" onchange="renderPreviewSummary()" style="max-width:160px">
-      </div>
-      <div id="lineSummaryTable"></div>
-      <div class="empty" id="lineSummaryEmpty" style="display:none">No runs for this date</div>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Read-only overview for the selected date — one column per Line, one card per Run. To add items or edit, use Create; to mark things done, use Confirm Completion.</p>
+    <div class="row" style="align-items:center">
+      <h3 style="flex:2">Production Schedule</h3>
+      <input type="date" id="previewViewDate" onchange="renderPreviewSummary()" style="max-width:160px">
     </div>
+    <div class="btnrow no-print">
+      <button class="btn secondary" onclick="printProductionReport()">🖨 Print Production Team Report</button>
+      <button class="btn secondary" onclick="printPackagingReport()">🖨 Print Packaging Team Report</button>
+    </div>
+    <div id="lineSummaryTable"></div>
+    <div class="empty" id="lineSummaryEmpty" style="display:none">No runs for this date</div>
   </section>
 
   <!-- DAILY PRODUCTION SCHEDULE: CONFIRM COMPLETION -->
   <section class="screen" id="screen-schedule-confirm">
     <h2>Daily Production Schedule — Confirm Completion</h2>
-    <p style="color:var(--muted);font-size:13px;margin-top:0">Only Runs need confirming — confirming a run's mixes automatically confirms every packed item under it (adds Finished Goods stock + deducts flour) in one step. You can still edit mixes, cases, and add/remove items here first.</p>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Only Runs need confirming — confirming a run's batches automatically confirms every packed item under it (adds Finished Goods stock + deducts flour) in one step. You can still edit batches, cases, and add/remove items here first.</p>
     <div class="card">
       <div class="row" style="align-items:center">
         <h3 style="flex:2">Awaiting Confirmation</h3>
@@ -640,19 +693,19 @@
 
   <!-- DAILY PRODUCTION SCHEDULE: PRODUCTS -->
   <section class="screen" id="screen-schedule-products">
-    <h2>Manage Products</h2>
-    <p style="color:var(--muted);font-size:13px;margin-top:0">The master list of mixes/doughs used when starting a Production Run — separate from finished-goods items.</p>
+    <h2>Manage Product Doughs</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">The master list of product doughs used when starting a Production Run — separate from finished-goods items.</p>
     <div class="card can-write">
-      <h3 id="prodFormTitle">Add New Product</h3>
+      <h3 id="prodFormTitle">Add New Product Dough</h3>
       <input type="hidden" id="prodEditId">
       <div class="row">
-        <div><label>Product Name</label><input id="prodName" placeholder="e.g. Sunning Special"></div>
+        <div><label>Product Dough Name</label><input id="prodName" placeholder="e.g. Sunning Special"></div>
         <div><label>Line</label><input id="prodLine" placeholder="e.g. Line 1"></div>
       </div>
       <div class="row">
         <div><label>Yield</label><input type="number" step="any" id="prodYield" placeholder="e.g. 0.901"></div>
-        <div><label>Weight/mix (kg)</label><input type="number" step="any" id="prodWeightKg" placeholder="e.g. 192.54"></div>
-        <div><label>Mixing time (min/mix)</label><input type="number" step="any" id="prodMixMin" placeholder="e.g. 17.31"></div>
+        <div><label>Weight/batch (kg)</label><input type="number" step="any" id="prodWeightKg" placeholder="e.g. 192.54"></div>
+        <div><label>Mixing time (min/batch)</label><input type="number" step="any" id="prodMixMin" placeholder="e.g. 17.31"></div>
       </div>
       <label>Remark</label>
       <input id="prodRemark">
@@ -666,7 +719,7 @@
         <input id="prodSearch" placeholder="Search product / line..." oninput="renderProductsTable()">
       </div>
       <div class="tablewrap"><table><thead><tr>
-        <th>Product</th><th>Line</th><th>Yield</th><th>Weight/mix (kg)</th><th>Mixing (min/mix)</th><th>Remark</th><th></th>
+        <th>Product Dough</th><th>Line</th><th>Yield</th><th>Weight/batch (kg)</th><th>Mixing (min/batch)</th><th>Remark</th><th></th>
       </tr></thead><tbody id="productsTable"></tbody></table></div>
       <div class="empty" id="productsEmpty" style="display:none">No products yet</div>
     </div>
@@ -1103,6 +1156,7 @@
         <button class="color-swatch" data-color="blush" style="background:#e05263" onclick="applyColorTheme('blush')" title="Blush Coral"></button>
         <button class="color-swatch" data-color="forest" style="background:#2f7a4f" onclick="applyColorTheme('forest')" title="Forest Green"></button>
         <button class="color-swatch" data-color="plum" style="background:#7c3aed" onclick="applyColorTheme('plum')" title="Plum Purple"></button>
+        <button class="color-swatch" data-color="sky" style="background:#0ea5e9" onclick="applyColorTheme('sky')" title="Sky Blue"></button>
       </div>
     </div>
   </section>
@@ -1110,6 +1164,8 @@
 </main>
 
 </div><!-- /.app-shell -->
+
+<div id="printReportArea" class="print-report"></div>
 
 <div class="toast" id="toast"></div>
 
@@ -1841,10 +1897,18 @@ async function submitPOOrder(){
     await refreshPO(); await refreshDashboard(); await refreshProduce();
   }catch(e){ toast('Create order failed: ' + e.message); }
 }
+const PRIORITY_CUSTOMERS = ['costco','loblaw','walmart'];
 async function refreshPO(){
   if(!connected) return;
   try{
-    PO_DATA = await sbGet('erp_pending_order?select=id,ship_date,item_no,item_name,qty,customer,customer_no,po_no,status&ship_date=gte.' + todayStr() + '&order=ship_date.asc&limit=2000');
+    const upcoming = await sbGet('erp_pending_order?select=id,ship_date,item_no,item_name,qty,customer,customer_no,po_no,status&ship_date=gte.' + todayStr() + '&order=ship_date.asc&limit=2000');
+    // Overdue lines for Costco/Loblaw/Walmart that are still Pending stay visible with a
+    // warning until the whole order is confirmed shipped — they'd otherwise vanish once
+    // their ship date passes.
+    const overdueMajor = await sbGet('erp_pending_order?select=id,ship_date,item_no,item_name,qty,customer,customer_no,po_no,status&ship_date=lt.' + todayStr() + '&status=eq.Pending&order=ship_date.asc&limit=2000');
+    const overdueMajorFiltered = overdueMajor.filter(r => PRIORITY_CUSTOMERS.includes((r.customer||'').trim().toLowerCase()));
+    const seen = new Set();
+    PO_DATA = [...upcoming, ...overdueMajorFiltered].filter(r => { if(seen.has(r.id)) return false; seen.add(r.id); return true; });
     renderPOTable();
   }catch(e){ toast('Failed to load orders: ' + e.message); }
 }
@@ -1866,9 +1930,14 @@ function renderPOTable(){
     const gid = 'pog'+i;
     const shippedCount = lines.filter(l=>l.status==='Shipped').length;
     const orderStatus = shippedCount===0 ? 'Pending' : (shippedCount===lines.length ? 'Shipped' : 'Partially Shipped');
+    const isOverdue = h.ship_date < todayStr() && shippedCount < lines.length;
+    const isPriorityCustomer = PRIORITY_CUSTOMERS.includes((h.customer||'').trim().toLowerCase());
     const statusChip = orderStatus==='Shipped' ? `<span class="chip ok">Shipped</span>`
       : orderStatus==='Partially Shipped' ? `<span class="chip warn">Partially Shipped</span>`
       : `<span class="chip">Pending</span>`;
+    const overdueWarning = (isOverdue && isPriorityCustomer)
+      ? `<div style="background:var(--danger);color:#fff;border-radius:8px;padding:6px 10px;font-size:12px;font-weight:700;margin-bottom:8px">⚠ Ship date has passed — Confirm to Ship Entire Order</div>`
+      : '';
     return `<div class="card" style="margin-bottom:10px">
       <div class="row" style="align-items:center;margin-bottom:6px">
         <div style="flex:2">
@@ -1881,6 +1950,7 @@ function renderPOTable(){
         ${shippedCount < lines.length ? `<button class="btn secondary no-print can-write" style="padding:6px 10px;font-size:12px" onclick="shipWholeOrder('${key.replace(/'/g,"\\'")}')">✔ Ship Entire Order</button>` : ''}
         <button class="iconbtn no-print can-write" style="width:28px;height:28px;font-size:12px" title="Delete whole order" onclick="deletePOOrder('${key.replace(/'/g,"\\'")}')">🗑</button>
       </div>
+      ${overdueWarning}
       <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Qty</th><th>Status</th><th class="no-print"></th></tr></thead>
       <tbody>${lines.map(l=>`<tr>
         <td>${l.item_no}</td><td>${l.item_name||''}</td>
@@ -2082,10 +2152,10 @@ async function refreshFlourScreen(){
     renderFlourRecipeTable();
 
     await renderFlourLedger();
-    renderFlourDashboard();
+    await renderFlourDashboard();
   }catch(e){ toast('Failed to load Flour Usage data: ' + e.message); }
 }
-function renderFlourDashboard(){
+async function renderFlourDashboard(){
   document.getElementById('flourKpiTotal').textContent = FLOUR_INGREDIENTS.length;
   const withWarning = FLOUR_INGREDIENTS.map(i => {
     const weeklyUsage = FLOUR_WEEKLY_USAGE[i.id] || 0;
@@ -2097,7 +2167,6 @@ function renderFlourDashboard(){
   const lowStock = withWarning.filter(i => i.lowReorder || i.lowWeeks);
   document.getElementById('flourKpiLow').textContent = lowStock.length;
   document.getElementById('flourKpiProducts').textContent = new Set(FLOUR_RECIPE.map(r=>r.product_name)).size;
-  document.getElementById('flourKpiSuppliers').textContent = dedupeCaseInsensitive(FLOUR_INGREDIENTS.map(i=>i.supplier).filter(Boolean)).length;
 
   document.getElementById('flourLowStockTable').innerHTML = lowStock.map(i => `<tr>
     <td>${i.name}</td><td>${i.supplier||''}</td>
@@ -2108,6 +2177,38 @@ function renderFlourDashboard(){
     <td>${[i.lowReorder?'Below reorder level':null, i.lowWeeks?'< 1 week of stock left':null].filter(Boolean).join(', ')}</td>
   </tr>`).join('');
   document.getElementById('flourLowStockEmpty').style.display = lowStock.length ? 'none' : 'block';
+
+  // ---- Planned ingredient demand from unconfirmed Production Runs ----
+  try{
+    const plannedRuns = await sbGet(`erp_production_runs?select=product_name,planned_mixes&status=eq.Planned&limit=2000`);
+    const mixesByProduct = {};
+    plannedRuns.forEach(r => { mixesByProduct[r.product_name] = (mixesByProduct[r.product_name]||0) + (parseFloat(r.planned_mixes)||0); });
+    const demandByIngredient = {}; // ingredient_id -> units needed
+    FLOUR_RECIPE.forEach(rec => {
+      const mixes = mixesByProduct[rec.product_name];
+      if(!mixes) return;
+      const ing = FLOUR_INGREDIENTS.find(i => i.id === rec.ingredient_id);
+      const kgNeeded = mixes * (rec.qty_per_batch||0);
+      const unitsNeeded = (ing && ing.kg_per_unit) ? (kgNeeded / ing.kg_per_unit) : kgNeeded;
+      demandByIngredient[rec.ingredient_id] = (demandByIngredient[rec.ingredient_id]||0) + unitsNeeded;
+    });
+    const demandRows = Object.entries(demandByIngredient).map(([ingId, demand]) => {
+      const ing = FLOUR_INGREDIENTS.find(i => i.id === Number(ingId) || i.id === ingId);
+      const stock = ing ? (Number(ing.inventory_qty)||0) : 0;
+      const shortfall = Math.max(0, demand - stock);
+      return { ing, demand, stock, shortfall };
+    }).filter(r => r.ing).sort((a,b) => b.shortfall - a.shortfall);
+    const needOrder = demandRows.filter(r => r.shortfall > 0);
+    document.getElementById('flourKpiOrder').textContent = needOrder.length;
+    document.getElementById('flourDemandTable').innerHTML = demandRows.map(r => `<tr>
+      <td>${r.ing.name}</td>
+      <td>${fmtNum(r.stock)} ${r.ing.unit||''}</td>
+      <td>${fmtNum(r.demand)} ${r.ing.unit||''}</td>
+      <td style="${r.shortfall>0?'color:var(--danger);font-weight:700':''}">${r.shortfall>0?fmtNum(r.shortfall)+' '+(r.ing.unit||''):'–'}</td>
+      <td>${r.shortfall>0?'<span class="chip warn">⚠ Order needed</span>':'<span class="chip ok">OK</span>'}</td>
+    </tr>`).join('');
+    document.getElementById('flourDemandEmpty').style.display = demandRows.length ? 'none' : 'block';
+  }catch(e){ /* non-fatal */ }
 
   document.getElementById('flourAllStockTable').innerHTML = FLOUR_INGREDIENTS.map(i => {
     const kgTotal = i.kg_per_unit ? (Number(i.inventory_qty)||0) * i.kg_per_unit : null;
@@ -2295,11 +2396,11 @@ function flourLedgerNextPage(){ FLOUR_LEDGER_PAGE++; renderFlourLedger(); }
 
 /* ---- Recipes (flour qty per batch, per item) ---- */
 function buildProductOptionsHtml(){
-  if(!PRODUCTS.length) return '<option value="">Select product...</option>';
+  if(!PRODUCTS.length) return '<option value="">Select product dough...</option>';
   const byLine = {};
   PRODUCTS.forEach(p => { const l = p.line || '(No Line)'; (byLine[l]=byLine[l]||[]).push(p); });
   const lines = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
-  let html = '<option value="">Select product...</option>';
+  let html = '<option value="">Select product dough...</option>';
   lines.forEach(l => {
     html += `<optgroup label="${l}">`;
     byLine[l].sort((a,b)=>a.name.localeCompare(b.name)).forEach(p => {
@@ -2409,7 +2510,7 @@ function renderFlourRecipeBrowseProductOptions(){
   PRODUCTS.forEach(p => allNames.set(p.name.toLowerCase(), p.name));
   productsWithRecipe.forEach(n => { if(!allNames.has(n.toLowerCase())) allNames.set(n.toLowerCase(), n); });
   const names = [...allNames.values()].sort((a,b)=>a.localeCompare(b));
-  sel.innerHTML = '<option value="">Select a product...</option>' + names.map(n=>{
+  sel.innerHTML = '<option value="">Select a product dough...</option>' + names.map(n=>{
     const has = productsWithRecipe.some(x=>x.toLowerCase()===n.toLowerCase());
     const inMaster = PRODUCTS.some(p=>p.name.toLowerCase()===n.toLowerCase());
     return `<option value="${n.replace(/"/g,'&quot;')}">${n}${has?' ✓ has recipe':''}${!inMaster?' (not in Products master)':''}</option>`;
@@ -2428,9 +2529,11 @@ function renderFlourRecipeBrowse(){
       <td>${flourIngredientName(r.ingredient_id)}</td>
       <td>${canWrite() ? `<input type="number" step="any" value="${r.qty_per_batch}" style="width:100px" id="flourRecQtyInput_${r.id}">` : fmtNum(r.qty_per_batch)}</td>
       <td class="can-write" style="white-space:nowrap">
-        <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="updateFlourRecipeQty(${r.id}, document.getElementById('flourRecQtyInput_${r.id}').value)">💾 Save</button>
-        <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="renderFlourRecipeBrowse()">✕ Cancel</button>
-        <button class="iconbtn" style="width:28px;height:28px;font-size:12px" onclick="deleteFlourRecipe(${r.id})">🗑</button>
+        <div style="display:flex;gap:6px;flex-wrap:nowrap">
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="updateFlourRecipeQty(${r.id}, document.getElementById('flourRecQtyInput_${r.id}').value)">💾 Save</button>
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="renderFlourRecipeBrowse()">✕ Cancel</button>
+          <button class="iconbtn" style="width:28px;height:28px;font-size:12px;flex:0 0 auto" onclick="deleteFlourRecipe(${r.id})">🗑</button>
+        </div>
       </td>
     </tr>`).join('') || `<tr><td colspan="3" style="color:var(--muted)">No ingredients in this recipe yet.</td></tr>`}</tbody></table></div>
     <div class="row can-write" style="align-items:flex-end;margin-top:10px">
@@ -2508,7 +2611,7 @@ async function deductFlourForProduct(productName, entryDate, mixes){
 
 /* ============================================================
    DAILY PRODUCTION SCHEDULE — two levels:
-   Level 1 erp_production_runs: "N mixes of <Product>" on a Line.
+   Level 1 erp_production_runs: "N batches of <Product Dough>" on a Line.
      Confirming a run deducts flour (product's recipe x mixes).
    Level 2 erp_production_run_items: specific item_no(s) packed
      out of that run. Confirming an item adds Finished Goods
@@ -2637,14 +2740,12 @@ async function submitProductionRun(){
 }
 async function confirmProductionRun(runId){
   if(!canWrite()){ toast('You have read-only access'); return; }
-  if(!confirm('Confirm this run\'s mixes now? This deducts flour usage and cannot be undone.')) return;
   try{
-    const rows = await sbGet(`erp_production_runs?select=id,product_name,planned_mixes&id=eq.${runId}`);
+    const rows = await sbGet(`erp_production_runs?select=id,run_date,product_name,planned_mixes&id=eq.${runId}`);
     const run = rows[0];
     if(!run){ toast('Run not found'); return; }
     const mixes = Math.round(parseFloat(run.planned_mixes) || 0);
-    const today = todayStr();
-    if(mixes > 0){ await deductFlourForProduct(run.product_name, today, mixes); }
+    if(mixes > 0){ await deductFlourForProduct(run.product_name, run.run_date, mixes); }
     await sbUpdate('erp_production_runs', runId, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_at: new Date().toISOString() });
     toast('Run confirmed — flour usage recorded. Now confirm each packed item below.');
     await refreshScheduleScreen(); await refreshFlourScreen();
@@ -2655,16 +2756,18 @@ async function confirmProductionRun(runId){
 // erp_inout and, if that item has a sachet recipe, deducts components too.
 async function confirmRunItem(id){
   if(!canWrite()){ toast('You have read-only access'); return; }
-  if(!confirm('Confirm this item as produced now? This adds Finished Goods stock and cannot be undone.')) return;
   try{
-    const rows = await sbGet(`erp_production_run_items?select=id,item_no,item_name,planned_cases&id=eq.${id}`);
+    const rows = await sbGet(`erp_production_run_items?select=id,item_no,item_name,planned_cases,expired_date,production_date,erp_production_runs(run_date)&id=eq.${id}`);
     const it = rows[0];
     if(!it){ toast('Item not found'); return; }
     const cases = Math.round(parseFloat(it.planned_cases) || 0);
-    const today = todayStr();
+    const runDate = it.erp_production_runs?.run_date || todayStr();
+    const jDate = it.expired_date || it.production_date;
+    const lot = it.expired_date ? `Exp: ${it.expired_date}${jDate?` (Julian: ${toJulianDate(jDate)})`:''}`
+      : (it.production_date ? `Prod: ${it.production_date}${jDate?` (Julian: ${toJulianDate(jDate)})`:''}` : null);
     if(cases > 0){
-      await sbInsert('erp_inout', [{ entry_date: today, item_no: it.item_no, item_name: it.item_name, in_qty: cases, out_qty: 0, lot: 'Production run confirm' }]);
-      if(itemHasRecipe(it.item_no)){ await deductComponentsForItem(it.item_no, today, cases); }
+      await sbInsert('erp_inout', [{ entry_date: runDate, item_no: it.item_no, item_name: it.item_name, in_qty: cases, out_qty: 0, lot }]);
+      if(itemHasRecipe(it.item_no)){ await deductComponentsForItem(it.item_no, runDate, cases); }
     }
     await sbUpdate('erp_production_run_items', id, { status: 'Confirmed', confirmed_cases: cases, confirmed_at: new Date().toISOString() });
     toast('Item confirmed — Finished Goods stock updated' + (itemHasRecipe(it.item_no) ? ' (components deducted)' : ''));
@@ -2712,7 +2815,7 @@ function itemPackDetail(item, cases){
 }
 function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const showItemConfirmButtons = showConfirmButton; // items get their own Confirm action wherever runs can be confirmed
-  const statusChip = run.status === 'Confirmed' ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)} mixes)</span>` : `<span class="chip">Planned</span>`;
+  const statusChip = run.status === 'Confirmed' ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)} batches)</span>` : `<span class="chip">Planned</span>`;
   const totalKg = runTotalOutputKg(run);
   const usedKg = runUsedKg(items);
   const remainingKg = totalKg - usedKg;
@@ -2727,16 +2830,16 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const totalPackingHrs = items.reduce((s,it)=>s+(parseFloat(it.packing_hrs)||0), 0);
   const packingHrsInfo = items.length ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">🕐 Total packing hours for this run: <strong>${fmtNum(totalPackingHrs)} hrs</strong> across ${items.length} item(s)</div>` : '';
   const confirmBtn = (showConfirmButton && run.status!=='Confirmed')
-    ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="confirmProductionRun(${run.id})">✔ Confirm Mixes</button>`
+    ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="confirmProductionRun(${run.id})">✔ Confirm Batches</button>`
     : '';
   const mixesCanEdit = (itemsEditable || showConfirmButton) && run.status!=='Confirmed' && canWrite();
   return `<div class="card" style="margin-bottom:12px" data-run-total-kg="${totalKg}" data-run-used-kg="${usedKg}">
     <div class="row" style="align-items:center;margin-bottom:6px">
       <div style="flex:2">
         <span style="display:${mixesCanEdit?'inline-flex':'none'};align-items:center;gap:4px">
-          <input type="number" step="any" value="${run.planned_mixes||0}" style="width:70px" onchange="updateRunMixes(${run.id}, this.value)"> mixes of
+          <input type="number" step="any" value="${run.planned_mixes||0}" style="width:70px" onchange="updateRunMixes(${run.id}, this.value)"> batches of
         </span>
-        <strong style="display:${mixesCanEdit?'none':'inline'}">${fmtNum(run.planned_mixes)} mixes of</strong>
+        <strong style="display:${mixesCanEdit?'none':'inline'}">${fmtNum(run.planned_mixes)} batches of</strong>
         <strong>${run.product_name}</strong>
         ${run.line ? `<span class="chip" style="margin-left:6px">${run.line}</span>` : ''}
         <span style="margin-left:6px">${statusChip}</span>
@@ -2747,19 +2850,26 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
     ${productInfo}
     ${weightInfo}
     ${packingHrsInfo}
-    ${run.remark ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">📝 ${run.remark}</div>` : ''}
+    ${run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:8px">📝 ${run.remark}</div>` : ''}
     <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Packing Hrs</th><th>Prod./Exp. Date</th><th>Status</th>${(itemsEditable || showItemConfirmButtons)?'<th></th>':''}</tr></thead>
     <tbody>${items.map(it => {
       const item = ITEMS_BY_NO[it.item_no];
-      const jDate = it.expired_date || it.production_date;
-      const dateLabel = (it.expired_date ? `Exp: ${it.expired_date}` : (it.production_date ? `Prod: ${it.production_date}` : '–')) + (jDate ? ` (Julian: ${toJulianDate(jDate)})` : '');
+      const dateLabel = formatProdExpDate(it);
       const itStatus = it.status==='Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
       const rowEditable = (itemsEditable || showItemConfirmButtons) && it.status!=='Confirmed';
+      const dateCell = rowEditable
+        ? `<div style="white-space:normal">${dateLabel}</div>
+           <select style="margin-top:4px;font-size:11px;padding:2px 4px" onchange="updateRunItemDateMode(${it.id}, this.value)">
+             <option value="full" ${((it.date_display_mode||'full')==='full')?'selected':''}>Date + Julian</option>
+             <option value="julian" ${(it.date_display_mode==='julian')?'selected':''}>Julian only</option>
+           </select>`
+        : `<div style="white-space:normal">${dateLabel}</div>`;
       return `<tr>
-        <td>${it.item_no}</td><td>${it.item_name||''}</td>
+        <td>${it.item_no}</td>
+        <td>${it.item_name||''}${it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:600">📝 ${it.remark}</div>`:''}</td>
         <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, it.planned_cases)}</td>
         <td>${(rowEditable && canWrite()) ? `<input type="number" step="1" value="${Math.round(it.planned_cases)}" style="width:80px" onchange="updateRunItemCases(${it.id}, this.value)">` : fmtNum(it.planned_cases)}</td>
-        <td>${it.packing_hrs?fmtNum(it.packing_hrs)+'h':'–'}</td><td style="white-space:normal">${dateLabel}</td><td>${itStatus}</td>
+        <td>${it.packing_hrs?fmtNum(it.packing_hrs)+'h':'–'}</td><td>${dateCell}</td><td>${itStatus}</td>
         ${(itemsEditable || showItemConfirmButtons) ? `<td class="no-print can-write" style="white-space:nowrap">
           ${(showItemConfirmButtons && it.status!=='Confirmed') ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="confirmRunItem(${it.id})">✔ Confirm</button>` : ''}
           ${itemsEditable ? `<button class="iconbtn" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_production_run_items',${it.id},refreshScheduleScreen)">✕</button>` : ''}
@@ -2779,6 +2889,13 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
       <div style="max-width:80px"><label>Cycles</label><input type="number" step="any" id="${gid}_cycles" oninput="recalcRunItemPacking('${gid}')"></div>
       <div style="max-width:90px"><label>Bags/Cycle</label><input type="number" step="any" id="${gid}_bpc" oninput="recalcRunItemPacking('${gid}')"></div>
       <div style="max-width:110px"><label>Packing Hrs</label><input id="${gid}_hrs" disabled></div>
+      <div style="max-width:140px"><label>Date shows</label>
+        <select id="${gid}_datemode">
+          <option value="full">Date + Julian</option>
+          <option value="julian">Julian only</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:150px"><label>Remark</label><input id="${gid}_remark" placeholder="Notes for this item..."></div>
       <button class="btn secondary" onclick="addRunItem(${run.id}, '${gid}', '${run.run_date}')">＋ Add</button>
     </div>` : ''}
   </div>`;
@@ -2818,7 +2935,7 @@ function renderRunCardsGroupedByLine(runs, allItems, containerId, prefix, showCo
 async function fetchRunsAndItems(date){
   const runs = await sbGet(`erp_production_runs?select=id,run_date,line,product_name,planned_mixes,confirmed_mixes,status,remark&run_date=eq.${date}&order=id.asc&limit=200`);
   const items = runs.length
-    ? await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,machines,cycles,bags_per_cycle,packing_hrs,production_date,expired_date,status,confirmed_cases,remark&run_id=in.(${runs.map(r=>r.id).join(',')})&order=id.asc&limit=1000`)
+    ? await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,machines,cycles,bags_per_cycle,packing_hrs,production_date,expired_date,status,confirmed_cases,remark,date_display_mode&run_id=in.(${runs.map(r=>r.id).join(',')})&order=id.asc&limit=1000`)
     : [];
   return { runs, items };
 }
@@ -2865,7 +2982,7 @@ async function updateRunMixes(runId, value){
   const mixes = parseFloat(value) || 0;
   try{
     await sbUpdate('erp_production_runs', runId, { planned_mixes: mixes });
-    toast('Mixes updated');
+    toast('Batches updated');
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
@@ -2920,18 +3037,54 @@ function renderLineSummary(runs, items){
   document.getElementById('lineSummaryEmpty').style.display = 'none';
   el.innerHTML = lines.map(l => {
     const runsForLine = byLine[l];
+    const totalMixes = runsForLine.reduce((s,r)=>s+(parseFloat(r.status==='Confirmed'?r.confirmed_mixes:r.planned_mixes)||0), 0);
     const runsHtml = runsForLine.map(run => {
       const runItems = items.filter(it => it.run_id === run.id);
-      const itemsHtml = runItems.length
-        ? runItems.map(it => `<div style="padding-left:20px">${itemNarrative(it)}</div>`).join('')
-        : `<div style="padding-left:20px;color:var(--muted);font-size:12px">(no items packed yet)</div>`;
-      return `<div style="margin-bottom:14px;font-size:13px;font-family:ui-monospace,monospace">
-        <div>${runHeaderNarrative(run)}</div>
-        ${itemsHtml}
+      const p = getProductInfo(run.product_name);
+      const mixes = run.status === 'Confirmed' ? (run.confirmed_mixes||0) : (run.planned_mixes||0);
+      const mixTimeMin = p && p.mixing_min_per_mix ? mixes * p.mixing_min_per_mix : null;
+      const statusChip = run.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
+      const runInfoBlock = `<div style="margin-bottom:6px">
+        <strong>${fmtNum(mixes)} batches of ${run.product_name}</strong>
+        <span style="font-weight:400;color:var(--muted);font-size:12px;margin-left:8px">
+          ${p&&p.weight_per_mix_kg?`Weight/mix: ${fmtNum(p.weight_per_mix_kg)} kg`:''}${p&&p.yield_factor?` · Yield: ${fmtNum(p.yield_factor)}`:''}${mixTimeMin!=null?` · Mix Time: ${fmtNum(mixTimeMin)} min`:''}
+        </span>
+        <span style="margin-left:8px">${statusChip}</span>
+        ${run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:600;margin-top:4px">📝 ${run.remark}</div>` : ''}
+      </div>`;
+      if(!runItems.length){
+        return `<div style="margin-bottom:16px">${runInfoBlock}<div style="color:var(--muted);font-size:12px;padding-left:12px">(no items packed yet)</div></div>`;
+      }
+      const itemRows = runItems.map(it => {
+        const item = ITEMS_BY_NO[it.item_no];
+        const dateLabel = formatProdExpDate(it);
+        const itStatus = it.status==='Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
+        const packingCalc = it.packing_hrs
+          ? `<div>${fmtNum(it.packing_hrs)}h</div><div style="font-size:11px;color:var(--muted);white-space:normal">for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)</div>`
+          : '–';
+        return `<tr>
+          <td>${it.item_no}</td>
+          <td>${it.item_name||''}${it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:600">📝 ${it.remark}</div>`:''}</td>
+          <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, it.planned_cases)}</td>
+          <td>${fmtNum(it.planned_cases)}</td>
+          <td style="min-width:160px">${packingCalc}</td>
+          <td style="white-space:normal">${dateLabel}</td>
+          <td>${itStatus}</td>
+        </tr>`;
+      }).join('');
+      return `<div style="margin-bottom:16px">
+        ${runInfoBlock}
+        <div class="tablewrap"><table><thead><tr>
+          <th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Packing Hrs</th><th>Prod./Exp. Date</th><th>Status</th>
+        </tr></thead>
+        <tbody>${itemRows}</tbody></table></div>
       </div>`;
     }).join('');
-    return `<div style="margin-bottom:18px">
-      <div style="font-weight:800;font-size:14px;margin-bottom:6px">${l}:</div>
+    return `<div class="card" style="margin-bottom:14px">
+      <div class="row" style="align-items:center;margin-bottom:8px">
+        <h3 style="flex:2;margin:0">${l}</h3>
+        <span style="font-size:12px;color:var(--muted)">${runsForLine.length} run${runsForLine.length!==1?'s':''} · ${fmtNum(totalMixes)} batches</span>
+      </div>
       ${runsHtml}
     </div>`;
   }).join('');
@@ -2976,10 +3129,13 @@ async function addRunItem(runId, gid, runDate){
     productionDate = runDate;
   }
   try{
+    const remark = document.getElementById(gid+'_remark').value.trim();
+    const dateMode = document.getElementById(gid+'_datemode').value || 'full';
     await sbInsert('erp_production_run_items', [{
       run_id: runId, item_no: itemNo, item_name: itemName, planned_cases: cases,
       machines, cycles, bags_per_cycle: bagsPerCycle, packing_hrs: packingHrs,
-      production_date: productionDate, expired_date: expiredDate
+      production_date: productionDate, expired_date: expiredDate,
+      remark: remark || null, date_display_mode: dateMode
     }]);
     toast('Item added to run');
     await refreshScheduleScreen();
@@ -3897,6 +4053,24 @@ function toJulianDate(dateStr){
   const dayOfYear = Math.floor((d - start) / 86400000);
   return String(year).padStart(2,'0') + String(dayOfYear).padStart(3,'0');
 }
+// Shared Prod./Exp. Date formatter used everywhere (Create, Preview, Confirm, Packaging
+// report). Each item stores its own display preference ("full" date+Julian, or "julian"
+// only), since this varies item by item rather than being one global setting.
+function formatProdExpDate(it){
+  const jDate = it.expired_date || it.production_date;
+  if(!jDate) return '–';
+  const mode = it.date_display_mode || 'full';
+  if(mode === 'julian') return `Julian: ${toJulianDate(jDate)}`;
+  const label = it.expired_date ? `Exp: ${it.expired_date}` : `Prod: ${it.production_date}`;
+  return `${label} (Julian: ${toJulianDate(jDate)})`;
+}
+async function updateRunItemDateMode(id, mode){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  try{
+    await sbUpdate('erp_production_run_items', id, { date_display_mode: mode });
+    await refreshScheduleScreen();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
 function fmtNum(n){ if(n===null||n===undefined||n==='') return '–'; const v = Number(n); return Number.isInteger(v)?v.toString():v.toFixed(2); }
 function parseDateLoose(v){
   if(!v) return todayStr();
@@ -3909,6 +4083,73 @@ function parseDateLoose(v){
 }
 function printSection(title){
   window.print();
+}
+function runReportPrint(html){
+  document.getElementById('printReportArea').innerHTML = html;
+  document.body.classList.add('printing-report');
+  window.print();
+  // restore the normal app view once the print dialog closes (or after a fallback delay)
+  const cleanup = () => document.body.classList.remove('printing-report');
+  window.addEventListener('afterprint', cleanup, {once:true});
+  setTimeout(cleanup, 3000);
+}
+async function printProductionReport(){
+  const date = document.getElementById('previewViewDate').value || todayStr();
+  const { runs } = await fetchRunsAndItems(date);
+  if(!runs.length){ toast('No runs to print for this date'); return; }
+  const byLine = {};
+  runs.forEach(r => { const l = r.line || '(No Line)'; (byLine[l]=byLine[l]||[]).push(r); });
+  const lines = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  const html = `
+    <h2>Production Team Report</h2>
+    <p>Date: ${date}</p>
+    ${lines.map(l => {
+      const rs = byLine[l];
+      const totalBatches = rs.reduce((s,r)=>s+(parseFloat(r.status==='Confirmed'?r.confirmed_mixes:r.planned_mixes)||0),0);
+      return `<div class="pr-line">
+        <h3>${l} — ${fmtNum(totalBatches)} batches total</h3>
+        <table><thead><tr><th>Product Dough</th><th>Batches</th></tr></thead>
+        <tbody>${rs.map(r => `<tr><td>${r.product_name}</td><td>${fmtNum(r.status==='Confirmed'?r.confirmed_mixes:r.planned_mixes)}</td></tr>` +
+          (r.remark ? `<tr><td colspan="2" class="pr-detail">Remark: ${r.remark}</td></tr>` : '')).join('')}</tbody></table>
+      </div>`;
+    }).join('')}
+  `;
+  runReportPrint(html);
+}
+async function printPackagingReport(){
+  const date = document.getElementById('previewViewDate').value || todayStr();
+  const { runs, items } = await fetchRunsAndItems(date);
+  if(!runs.length){ toast('No runs to print for this date'); return; }
+  const byLine = {};
+  runs.forEach(r => { const l = r.line || '(No Line)'; (byLine[l]=byLine[l]||[]).push(r); });
+  const lines = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  const html = `
+    <h2>Packaging Team Report</h2>
+    <p>Date: ${date}</p>
+    ${lines.map(l => {
+      const rs = byLine[l];
+      return `<div class="pr-line">
+        <h3>${l}</h3>
+        ${rs.map(r => {
+          const runItems = items.filter(it => it.run_id === r.id);
+          return `<div style="margin-bottom:10px">
+            <div style="font-weight:700;margin-bottom:4px">${r.product_name}</div>
+            <table><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Prod./Exp. Date</th></tr></thead>
+            <tbody>${runItems.length ? runItems.map(it => {
+              const item = ITEMS_BY_NO[it.item_no];
+              const packingCalc = it.packing_hrs
+                ? `Packing: ${fmtNum(it.packing_hrs)}h for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)`
+                : '';
+              const detailLine = [packingCalc, it.remark ? `Remark: ${it.remark}` : ''].filter(Boolean).join(' · ');
+              return `<tr><td>${it.item_no}</td><td>${it.item_name||''}</td><td>${itemPackDetail(item, it.planned_cases)}</td><td>${fmtNum(it.planned_cases)}</td><td>${formatProdExpDate(it)}</td></tr>` +
+                (detailLine ? `<tr><td></td><td colspan="4" class="pr-detail">${detailLine}</td></tr>` : '');
+            }).join('') : `<tr><td colspan="5">(no items packed yet)</td></tr>`}</tbody></table>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }).join('')}
+  `;
+  runReportPrint(html);
 }
 
 /* ============================================================
