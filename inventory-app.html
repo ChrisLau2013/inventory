@@ -67,6 +67,30 @@
     --bg:#081420; --panel:#0d2130; --line:#173148; --text:#dff1fb; --muted:#7ea6c0;
     --accent:#38bdf8; --accent-ink:#04202e; --chip:#102838;
   }
+  [data-color="slate"]{
+    --bg:#f3f4f6; --panel:#ffffff; --line:#e2e4e8; --text:#1f2328; --muted:#6b7280;
+    --accent:#64748b; --accent-ink:#ffffff; --chip:#eceef1;
+  }
+  [data-theme="dark"][data-color="slate"]{
+    --bg:#111318; --panel:#1a1d23; --line:#2b2f37; --text:#e8eaed; --muted:#9aa1ab;
+    --accent:#94a3b8; --accent-ink:#0f1115; --chip:#20242b;
+  }
+  [data-color="warmgray"]{
+    --bg:#f6f4f2; --panel:#ffffff; --line:#e7e2dc; --text:#292420; --muted:#8a8078;
+    --accent:#9c8b7a; --accent-ink:#ffffff; --chip:#efebe6;
+  }
+  [data-theme="dark"][data-color="warmgray"]{
+    --bg:#16130f; --panel:#211c17; --line:#372f27; --text:#f0ece6; --muted:#b3a696;
+    --accent:#c2ab8e; --accent-ink:#1a140c; --chip:#2a231c;
+  }
+  [data-color="stone"]{
+    --bg:#f4f4f4; --panel:#ffffff; --line:#e0e0e0; --text:#242424; --muted:#767676;
+    --accent:#57534e; --accent-ink:#ffffff; --chip:#ececec;
+  }
+  [data-theme="dark"][data-color="stone"]{
+    --bg:#121212; --panel:#1c1c1c; --line:#2e2e2e; --text:#ececec; --muted:#a3a3a3;
+    --accent:#a8a29e; --accent-ink:#141414; --chip:#242424;
+  }
   .color-swatch-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
   .color-swatch{width:36px;height:36px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
   .color-swatch.active{border-color:var(--text);box-shadow:0 0 0 2px var(--bg), 0 0 0 4px var(--text)}
@@ -125,6 +149,8 @@
   body.logged-out .topnav nav button[data-screen="settings"]{display:inline-flex !important}
   body.logged-out .module-switcher{display:none}
   body.no-write .can-write{display:none !important}
+  body.no-write .viewer-only{display:block !important}
+  body.no-write #subNav button:not(.admin-only):not([data-screen="account"]):not([data-screen="settings"])::after{content:" (Read Only)";font-size:9px;font-weight:400;opacity:.65}
   body.no-admin .admin-only{display:none !important}
   .no-can-write{display:none}
   body.no-write .no-can-write{display:inline}
@@ -224,14 +250,14 @@
   .drop{border:2px dashed var(--line);border-radius:var(--radius);padding:26px 14px;text-align:center;color:var(--muted);font-size:13px;cursor:pointer}
   .drop.over{border-color:var(--accent);color:var(--accent)}
   .loglines{font-family:ui-monospace,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px;max-height:220px;overflow:auto;white-space:pre-wrap}
-  .print-report{display:none;max-width:800px;margin:0 auto}
+  .print-report{display:none;max-width:800px;margin:0 auto;width:100%;box-sizing:border-box}
   .print-report h2{margin-bottom:2px}
   .print-report .pr-line{margin-bottom:18px;page-break-inside:avoid}
   .print-report .pr-line h3{margin:0 0 6px;border-bottom:2px solid #000;padding-bottom:4px}
-  .print-report table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:4px}
-  .print-report th,.print-report td{padding:6px 8px;text-align:left;border-bottom:1px solid #ddd}
+  .print-report table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px;margin-bottom:4px}
+  .print-report th,.print-report td{padding:6px 8px;text-align:left;border-bottom:1px solid #ddd;white-space:normal;word-wrap:break-word;overflow-wrap:break-word;vertical-align:top}
   .print-report th{border-bottom:2px solid #000;font-weight:700}
-  .print-report td.pr-detail{border-bottom:none;padding-top:0;font-size:11px;color:#555}
+  .print-report td.pr-detail{border-bottom:1px solid #ddd;padding-top:0;padding-bottom:8px;font-size:11px;color:#555}
   @page{ margin:14mm }
   @media print{
     .topnav,.no-print{display:none!important}
@@ -249,7 +275,7 @@
   <header class="topnav">
     <div class="row1">
       <div class="brand">
-        <div class="name">Hon's Wun-Tun House</div>
+        <div class="name">Hon's Wun-Tun House <span id="appVersion" style="font-size:11px;font-weight:400;color:var(--muted)"></span></div>
         <div class="sub">Inventory Management System</div>
       </div>
       <div class="spacer"></div>
@@ -275,6 +301,7 @@
       <button data-screen="dupes" data-module="inventory" onclick="showScreen('dupes')"><span class="ic">🔀</span>Duplicated Items</button>
       <button class="can-write" data-screen="import" data-module="inventory" onclick="showScreen('import')"><span class="ic">📥</span>CSV Import</button>
       <button data-screen="history" data-module="inventory" onclick="showScreen('history')"><span class="ic">📜</span>Transaction History</button>
+      <button class="admin-only" data-screen="adjust" data-module="inventory" onclick="showScreen('adjust')"><span class="ic">🛠️</span>Inventory Adjust</button>
       <button class="can-write" data-screen="backup" data-module="maintenance" onclick="showScreen('backup')"><span class="ic">💾</span>Data Backup</button>
       <button class="admin-only" data-screen="users" data-module="maintenance" onclick="showScreen('users')"><span class="ic">👤</span>Manage Users</button>
       <button data-screen="account" data-module="maintenance" onclick="showScreen('account')"><span class="ic">🙋</span>My Account</button>
@@ -283,8 +310,9 @@
       <button data-screen="schedule-preview" data-module="schedule" onclick="showScreen('schedule-preview')"><span class="ic">👁</span>Preview</button>
       <button data-screen="schedule-confirm" data-module="schedule" onclick="showScreen('schedule-confirm')"><span class="ic">✔</span>Confirm Completion</button>
       <button class="can-write" data-screen="schedule-products" data-module="schedule" onclick="showScreen('schedule-products')"><span class="ic">🏷️</span>Products</button>
-      <button data-screen="flour-ingredients" data-module="flour" class="active" onclick="showScreen('flour-ingredients')"><span class="ic">🌾</span>Ingredients</button>
-      <button data-screen="flour-dashboard" data-module="flour" onclick="showScreen('flour-dashboard')"><span class="ic">📈</span>Dashboard</button>
+      <button class="can-write" data-screen="schedule-lines" data-module="schedule" onclick="showScreen('schedule-lines')"><span class="ic">🏭</span>Lines</button>
+      <button data-screen="flour-dashboard" data-module="flour" class="active" onclick="showScreen('flour-dashboard')"><span class="ic">📈</span>Dashboard</button>
+      <button data-screen="flour-ingredients" data-module="flour" onclick="showScreen('flour-ingredients')"><span class="ic">🌾</span>Ingredients</button>
       <button data-screen="flour-usage-report" data-module="flour" onclick="showScreen('flour-usage-report')"><span class="ic">📊</span>Usage Report</button>
       <button data-screen="flour-recipes" data-module="flour" onclick="showScreen('flour-recipes')"><span class="ic">🔗</span>Recipes</button>
       <button data-screen="flour-ledger" data-module="flour" onclick="showScreen('flour-ledger')"><span class="ic">📜</span>Ledger</button>
@@ -407,7 +435,7 @@
   </section>
 
   <!-- FLOUR USAGE: INGREDIENTS -->
-  <section class="screen active" id="screen-flour-ingredients">
+  <section class="screen" id="screen-flour-ingredients">
     <h2>Flour Usage — Ingredients</h2>
     <p style="color:var(--muted);font-size:13px;margin-top:0">Manage the ingredient master list and receive stock. Ingredients get deducted automatically when a Production Run is confirmed.</p>
 
@@ -470,7 +498,7 @@
   </section>
 
   <!-- FLOUR USAGE: DASHBOARD -->
-  <section class="screen" id="screen-flour-dashboard">
+  <section class="screen active" id="screen-flour-dashboard">
     <h2>Flour Usage — Dashboard</h2>
     <div class="kpis kpis4">
       <div class="kpi"><div class="n" id="flourKpiTotal">–</div><div class="l">Total Ingredients</div></div>
@@ -700,12 +728,13 @@
       <input type="hidden" id="prodEditId">
       <div class="row">
         <div><label>Product Dough Name</label><input id="prodName" placeholder="e.g. Sunning Special"></div>
-        <div><label>Line</label><input id="prodLine" placeholder="e.g. Line 1"></div>
+        <div><label>Line</label><select id="prodLine"><option value="">(none)</option></select></div>
       </div>
       <div class="row">
         <div><label>Yield</label><input type="number" step="any" id="prodYield" placeholder="e.g. 0.901"></div>
         <div><label>Weight/batch (kg)</label><input type="number" step="any" id="prodWeightKg" placeholder="e.g. 192.54"></div>
         <div><label>Mixing time (min/batch)</label><input type="number" step="any" id="prodMixMin" placeholder="e.g. 17.31"></div>
+        <div><label>Lactic Acid Oil</label><input id="prodLacticAcidOil" placeholder="amount / note per batch"></div>
       </div>
       <label>Remark</label>
       <input id="prodRemark">
@@ -719,9 +748,30 @@
         <input id="prodSearch" placeholder="Search product / line..." oninput="renderProductsTable()">
       </div>
       <div class="tablewrap"><table><thead><tr>
-        <th>Product Dough</th><th>Line</th><th>Yield</th><th>Weight/batch (kg)</th><th>Mixing (min/batch)</th><th>Remark</th><th></th>
+        <th>Product Dough</th><th>Line</th><th>Yield</th><th>Weight/batch (kg)</th><th>Mixing (min/batch)</th><th>Lactic Acid Oil</th><th>Remark</th><th></th>
       </tr></thead><tbody id="productsTable"></tbody></table></div>
       <div class="empty" id="productsEmpty" style="display:none">No products yet</div>
+    </div>
+  </section>
+
+  <!-- DAILY PRODUCTION SCHEDULE: LINES -->
+  <section class="screen" id="screen-schedule-lines">
+    <h2>Manage Lines</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Master list of production lines used by Product Doughs. Renaming a line here updates every Product Dough already using it.</p>
+    <div class="card can-write">
+      <h3 id="lineFormTitle">Add New Line</h3>
+      <input type="hidden" id="lineEditId">
+      <label>Line Name</label>
+      <input id="lineName" placeholder="e.g. Line 1">
+      <div class="btnrow">
+        <button class="btn" id="lineSubmitBtn" onclick="submitLine()">＋ Save Line</button>
+        <button class="btn secondary" onclick="resetLineForm()">✕ Cancel</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tablewrap"><table><thead><tr><th>Line</th><th>Product Doughs using it</th><th></th></tr></thead>
+      <tbody id="linesTable"></tbody></table></div>
+      <div class="empty" id="linesEmpty" style="display:none">No lines yet</div>
     </div>
   </section>
 
@@ -733,7 +783,7 @@
       <input type="date" id="ioDate">
       <label>Item</label>
       <div class="search">
-        <input id="ioItemSearch" placeholder="Search by item # or name..." oninput="searchItems('ioItemSearch','ioSuggest','ioItemNo','ioItemName')" autocomplete="off">
+        <input id="ioItemSearch" placeholder="Search by item # or name..." oninput="searchItems('ioItemSearch','ioSuggest','ioItemNo','ioItemName',null,true)" autocomplete="off">
         <div class="suggest" id="ioSuggest" style="display:none"></div>
       </div>
       <input type="hidden" id="ioItemNo"><input type="hidden" id="ioItemName">
@@ -876,11 +926,11 @@
       </div>
       <div class="row">
         <div><label>Chinese Name</label><input id="itemCname"></div>
-        <div><label>Customer</label><input id="itemCustomer"></div>
+        <div><label>Customer</label><input id="itemCustomer" list="itemCustomerOptions" placeholder="Select existing or type new..."><datalist id="itemCustomerOptions"></datalist></div>
       </div>
       <div class="row">
-        <div><label>Line</label><input id="itemLine"></div>
-        <div><label>Storage</label><input id="itemStorage"></div>
+        <div><label>Line</label><input id="itemLine" list="itemLineOptions" placeholder="Select existing or type new..."><datalist id="itemLineOptions"></datalist></div>
+        <div><label>Storage</label><input id="itemStorage" list="itemStorageOptions" placeholder="Select existing or type new..."><datalist id="itemStorageOptions"></datalist></div>
       </div>
       <div class="row">
         <div><label>Weight / Pack</label><input type="number" step="any" id="itemWeight"></div>
@@ -906,6 +956,13 @@
         <div><label>Cycle</label><input id="itemCycle"></div>
         <div><label>Bags per Cycle</label><input type="number" step="any" id="itemBagsCycle"></div>
       </div>
+      <label>Product Dough</label>
+      <select id="itemProductDough"><option value="">(none)</option></select>
+      <label>Item Status</label>
+      <select id="itemStatus">
+        <option value="Active">Active</option>
+        <option value="Inactive">Inactive (Discontinued)</option>
+      </select>
       <label>Remark</label>
       <input id="itemRemark" placeholder="e.g. Discontinued Item">
       <div class="btnrow">
@@ -1046,6 +1103,37 @@
     </div>
   </section>
 
+  <!-- INVENTORY ADJUST (admin only) -->
+  <section class="screen" id="screen-adjust">
+    <h2>Inventory Adjust</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Directly correct an item's live inventory quantity (e.g. after a physical count). This writes an adjustment entry to Finished Goods In/Out under the hood — it does not overwrite history. <strong>Admin only.</strong></p>
+    <div class="card">
+      <label>Item</label>
+      <div class="search">
+        <input id="adjItemSearch" placeholder="Search by item # or name..." oninput="searchItems('adjItemSearch','adjSuggest','adjItemNo','adjItemName','onAdjItemPicked')" autocomplete="off">
+        <div class="suggest" id="adjSuggest" style="display:none"></div>
+      </div>
+      <input type="hidden" id="adjItemNo"><input type="hidden" id="adjItemName">
+      <div class="row" id="adjCurrentWrap" style="display:none">
+        <div><label>Current Quantity</label><input id="adjCurrentQty" disabled></div>
+        <div><label>New Quantity</label><input type="number" step="any" id="adjNewQty" oninput="recalcAdjDelta()"></div>
+        <div><label>Adjustment (calculated)</label><input id="adjDelta" disabled></div>
+      </div>
+      <label>Reason</label>
+      <input id="adjReason" placeholder="e.g. Physical count correction">
+      <div class="btnrow">
+        <button class="btn" onclick="submitInventoryAdjust()">✔ Apply Adjustment</button>
+        <button class="btn secondary" onclick="resetInventoryAdjustForm()">✕ Cancel</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Recent Adjustments</h3>
+      <div class="tablewrap"><table><thead><tr><th>Date</th><th>Item #</th><th>Item Name</th><th>In</th><th>Out</th><th>Reason</th></tr></thead>
+      <tbody id="adjRecentTable"></tbody></table></div>
+      <div class="empty" id="adjRecentEmpty" style="display:none">No adjustments yet</div>
+    </div>
+  </section>
+
   <!-- MANAGE USERS (admin only) -->
   <section class="screen" id="screen-users">
     <h2>Manage Users</h2>
@@ -1059,7 +1147,7 @@
     </div>
     <div class="card">
       <div class="tablewrap"><table><thead><tr>
-        <th>Email</th><th>Joined</th><th>Role</th><th></th>
+        <th>Email</th><th>Joined</th><th>Role</th><th>Menu Access</th><th></th>
       </tr></thead><tbody id="usersTable"></tbody></table></div>
       <div class="empty" id="usersEmpty" style="display:none">No users yet</div>
     </div>
@@ -1077,6 +1165,15 @@
       <label>Display Name</label>
       <input id="acctDisplayName" placeholder="How your name shows up in this app">
       <div class="btnrow"><button class="btn" onclick="saveMyProfile()">Save Profile</button></div>
+    </div>
+    <div class="card">
+      <h3>Change Password</h3>
+      <label>New Password</label>
+      <input type="password" id="acctNewPassword" placeholder="At least 6 characters" autocomplete="new-password">
+      <label>Confirm New Password</label>
+      <input type="password" id="acctConfirmPassword" placeholder="Re-enter the new password" autocomplete="new-password">
+      <div class="btnrow"><button class="btn" onclick="changeMyPassword()">🔒 Update Password</button></div>
+      <p id="acctPasswordStatus" style="font-size:12px;color:var(--muted);margin-top:10px"></p>
     </div>
     <div class="card">
       <h3>Request Access Upgrade</h3>
@@ -1132,15 +1229,18 @@
     <h2>Settings</h2>
     <div class="card">
       <h3>Supabase Connection</h3>
-      <label>Project URL</label>
-      <input id="cfgUrl" placeholder="https://xxxx.supabase.co">
-      <label>anon public key</label>
-      <input id="cfgKey" placeholder="eyJ...">
-      <div class="btnrow">
-        <button class="btn" onclick="saveConfig()">Save &amp; Connect</button>
-        <button class="btn secondary" onclick="testConnection()">Test Connection</button>
+      <p class="viewer-only" style="font-size:12px;color:var(--muted);display:none" id="cfgViewerStatus">Connected — contact an Editor or Admin to change this.</p>
+      <div class="can-write">
+        <label>Project URL</label>
+        <input id="cfgUrl" placeholder="https://xxxx.supabase.co">
+        <label>anon public key</label>
+        <input id="cfgKey" placeholder="eyJ...">
+        <div class="btnrow">
+          <button class="btn" onclick="saveConfig()">Save &amp; Connect</button>
+          <button class="btn secondary" onclick="testConnection()">Test Connection</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-top:12px" id="cfgStatus"></p>
       </div>
-      <p style="font-size:12px;color:var(--muted);margin-top:12px" id="cfgStatus"></p>
     </div>
     <div class="card">
       <h3>Appearance</h3>
@@ -1157,6 +1257,9 @@
         <button class="color-swatch" data-color="forest" style="background:#2f7a4f" onclick="applyColorTheme('forest')" title="Forest Green"></button>
         <button class="color-swatch" data-color="plum" style="background:#7c3aed" onclick="applyColorTheme('plum')" title="Plum Purple"></button>
         <button class="color-swatch" data-color="sky" style="background:#0ea5e9" onclick="applyColorTheme('sky')" title="Sky Blue"></button>
+        <button class="color-swatch" data-color="slate" style="background:#64748b;border:1px solid var(--line)" onclick="applyColorTheme('slate')" title="Slate Gray"></button>
+        <button class="color-swatch" data-color="warmgray" style="background:#9c8b7a;border:1px solid var(--line)" onclick="applyColorTheme('warmgray')" title="Warm Gray"></button>
+        <button class="color-swatch" data-color="stone" style="background:#57534e;border:1px solid var(--line)" onclick="applyColorTheme('stone')" title="Stone Gray"></button>
       </div>
     </div>
   </section>
@@ -1176,6 +1279,23 @@
 let CFG = { url:'', key:'' };
 let ITEMS = [];         // erp_items cache
 let ITEMS_BY_NO = {};
+let ITEMS_BY_NO_ALL = {}; // item_no -> [item, ...] — some item_no's are shared by genuinely different items
+// When an item_no has more than one distinct item behind it (confirmed real, not a typo),
+// pick the one whose stored name best matches the CSV's name text; used by both CSV
+// import handlers so transactions land on the correct one instead of always the first.
+function resolveItemByNoAndName(itemNo, csvName){
+  const matches = ITEMS_BY_NO_ALL[itemNo];
+  if(!matches || !matches.length) return null;
+  if(matches.length === 1) return matches[0];
+  const target = (csvName||'').trim().toLowerCase();
+  if(target){
+    const exact = matches.find(it => (it.item_name||'').trim().toLowerCase() === target);
+    if(exact) return exact;
+    const partial = matches.find(it => target.includes((it.item_name||'').trim().toLowerCase()) || (it.item_name||'').trim().toLowerCase().includes(target));
+    if(partial) return partial;
+  }
+  return matches[0]; // ambiguous — falls back to the first; caller should flag this
+}
 let DUPES = [];         // erp_duplicated_items cache
 let RECIPE = [];        // erp_item_sachet_recipe cache
 let SACHETS = [];        // erp_sachets cache
@@ -1273,7 +1393,7 @@ function applySession(data){
     expires_at: Math.floor(Date.now()/1000) + (data.expires_in || 3600),
     user: { id: data.user.id, email: data.user.email }
   };
-  Store.set('auth-session', JSON.stringify(SESSION));
+  try{ sessionStorage.setItem('auth-session', JSON.stringify(SESSION)); }catch(e){}
 }
 async function refreshSession(){
   if(!SESSION?.refresh_token) throw new Error('No refresh token');
@@ -1282,7 +1402,7 @@ async function refreshSession(){
 }
 async function restoreSession(){
   try{
-    const v = await Store.get('auth-session');
+    const v = sessionStorage.getItem('auth-session');
     if(!v) return false;
     SESSION = JSON.parse(v);
     const now = Math.floor(Date.now()/1000);
@@ -1311,19 +1431,25 @@ async function submitLogin(){
         applySession(data);
         await afterLogin();
       } else {
-        statusEl.textContent = '✅ Account created. Check your email to confirm, then sign in.';
-        toggleLoginMode();
+        statusEl.innerHTML = '✅ Account created for <strong>' + email + '</strong>.<br>Check that email for a confirmation link — you can\'t sign in until it\'s confirmed.<br><span style="color:var(--muted);font-size:11px">(An Admin can turn off email confirmation in the Supabase dashboard — Authentication → Providers → Email — if your team wants to skip this step.)</span>';
+        document.getElementById('loginPassword').value = '';
       }
     } else {
       const data = await authFetch('token?grant_type=password', {email, password});
       applySession(data);
       await afterLogin();
     }
-  }catch(e){ statusEl.textContent = '❌ ' + e.message; }
+  }catch(e){
+    let msg = '❌ ' + e.message;
+    if(/invalid login credentials/i.test(e.message)){
+      msg += '<br><span style="color:var(--muted);font-size:11px">If you just created this account, check your email and click the confirmation link first — Supabase shows this same generic error for both a wrong password and an unconfirmed email.</span>';
+    }
+    statusEl.innerHTML = msg;
+  }
 }
 async function doLogout(){
   SESSION = null; CURRENT_USER = null;
-  await Store.set('auth-session', '');
+  try{ sessionStorage.removeItem('auth-session'); }catch(e){}
   document.getElementById('logoutBtn').style.display = 'none';
   document.getElementById('roleBadge').style.display = 'none';
   document.body.classList.add('logged-out');
@@ -1336,7 +1462,7 @@ async function doLogout(){
 }
 async function fetchProfile(){
   try{
-    const rows = await sbGet(`erp_profiles?select=id,email,role,display_name&id=eq.${SESSION.user.id}`);
+    const rows = await sbGet(`erp_profiles?select=id,email,role,display_name,allowed_screens&id=eq.${SESSION.user.id}`);
     CURRENT_USER = (rows && rows[0]) || {id:SESSION.user.id, email:SESSION.user.email, role:'viewer'};
   }catch(e){
     CURRENT_USER = {id:SESSION.user.id, email:SESSION.user.email, role:'viewer'};
@@ -1364,7 +1490,8 @@ async function afterLogin(){
   document.getElementById('connText').textContent = 'Connected';
   await loadCaches();
   await refreshAll();
-  showScreen('dashboard');
+  const firstAllowed = isScreenAllowed('dashboard') ? 'dashboard' : (getAllScreensList().find(s => isScreenAllowed(s.screen))?.screen || 'account');
+  showScreen(firstAllowed);
 }
 
 /* ============================================================
@@ -1451,14 +1578,28 @@ let CURRENT_MODULE = 'inventory';
 function moduleHasSubNav(mod){
   return document.querySelectorAll(`#subNav button[data-module="${mod}"]`).length > 1;
 }
+function isScreenAllowed(screen){
+  if(isAdmin()) return true; // admins are never restricted
+  const allowed = CURRENT_USER && Array.isArray(CURRENT_USER.allowed_screens) ? CURRENT_USER.allowed_screens : null;
+  if(!allowed || !allowed.length) return true; // no restriction set = full access
+  return allowed.includes(screen);
+}
 function applySubNavVisibility(mod){
   const subNav = document.getElementById('subNav');
   if(moduleHasSubNav(mod)){
     subNav.style.display = 'flex';
-    subNav.querySelectorAll('button[data-module]').forEach(b => { b.style.display = (b.dataset.module===mod) ? '' : 'none'; });
+    subNav.querySelectorAll('button[data-module]').forEach(b => {
+      b.style.display = (b.dataset.module===mod && isScreenAllowed(b.dataset.screen)) ? '' : 'none';
+    });
   } else {
     subNav.style.display = 'none';
   }
+  // hide a whole module button if the user isn't allowed to see any screen in it
+  document.querySelectorAll('.module-switcher button[data-module]').forEach(mb => {
+    const screensInModule = [...document.querySelectorAll(`#subNav button[data-module="${mb.dataset.module}"]`)];
+    const anyAllowed = screensInModule.some(b => isScreenAllowed(b.dataset.screen));
+    mb.style.display = anyAllowed ? '' : 'none';
+  });
 }
 function switchModule(mod){
   CURRENT_MODULE = mod;
@@ -1473,6 +1614,10 @@ function switchModule(mod){
   }
 }
 function showScreen(name){
+  if(name !== 'login' && CURRENT_USER && !isScreenAllowed(name)){
+    toast("You don't have access to that screen — ask an Admin if you need it");
+    return;
+  }
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   const el = document.getElementById('screen-'+name);
   if(!el) return;
@@ -1494,13 +1639,14 @@ function showScreen(name){
 /* ============================================================
    Item search / autocomplete (shared by InOut + PO forms)
    ============================================================ */
-function searchItems(inputId, suggestId, hiddenNoId, hiddenNameId, onPickFn){
+function searchItems(inputId, suggestId, hiddenNoId, hiddenNameId, onPickFn, excludeInactive){
   const q = document.getElementById(inputId).value.trim().toLowerCase();
   const box = document.getElementById(suggestId);
   document.getElementById(hiddenNoId).value = '';
   document.getElementById(hiddenNameId).value = '';
   if(!q){ box.style.display='none'; return; }
-  const matches = ITEMS.filter(it =>
+  const pool = excludeInactive ? ITEMS.filter(it => it.item_status !== 'Inactive') : ITEMS;
+  const matches = pool.filter(it =>
     (it.item_no||'').toLowerCase().includes(q) || (it.item_name||'').toLowerCase().includes(q)
   ).slice(0,20);
   if(!matches.length){ box.style.display='none'; return; }
@@ -1529,7 +1675,11 @@ document.addEventListener('click', (e)=>{
    ============================================================ */
 async function loadCaches(){
   ITEMS = await sbGet('erp_items?select=*&order=item_no.asc&limit=2000');
-  ITEMS_BY_NO = {}; ITEMS.forEach(it => ITEMS_BY_NO[it.item_no] = it);
+  ITEMS_BY_NO = {}; ITEMS_BY_NO_ALL = {};
+  ITEMS.forEach(it => {
+    ITEMS_BY_NO[it.item_no] = it; // last-one-wins, kept for existing single-item lookups
+    (ITEMS_BY_NO_ALL[it.item_no] = ITEMS_BY_NO_ALL[it.item_no] || []).push(it);
+  });
   DUPES = await sbGet('erp_duplicated_items?select=id,item_no,item_name,correct_item_no,correct_item_name&limit=5000');
   RECIPE = await sbGet('erp_item_sachet_recipe?select=id,item_no,item_name,sachet_name,pcs_per_case&limit=5000');
   SACHETS = await sbGet('erp_sachets?select=sachet_name&order=sachet_name.asc&limit=1000');
@@ -1539,7 +1689,7 @@ async function loadCaches(){
 }
 
 async function refreshAll(){
-  await Promise.all([refreshDashboard(), refreshInOut(), refreshPO(), refreshComponents(), refreshProduce(), refreshItemsScreen(), refreshRecipesScreen(), refreshDupesScreen(), refreshUsersScreen(), refreshFlourScreen(), refreshScheduleScreen()]);
+  await Promise.all([refreshDashboard(), refreshInOut(), refreshPO(), refreshComponents(), refreshProduce(), refreshItemsScreen(), refreshRecipesScreen(), refreshDupesScreen(), refreshUsersScreen(), refreshFlourScreen(), refreshScheduleScreen(), refreshAdjustScreen()]);
 }
 
 /* ============================================================
@@ -1874,7 +2024,7 @@ function removePODraftLine(idx){
 function renderPODraft(){
   document.getElementById('poDraftLines').innerHTML = PO_DRAFT.map((l,i)=>`<tr>
     <td>${l.item_no}</td><td>${l.item_name||''}</td><td>${fmtNum(l.qty)}</td>
-    <td><button class="iconbtn" style="width:28px;height:28px;font-size:12px" onclick="removePODraftLine(${i})">✕</button></td>
+    <td><button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="removePODraftLine(${i})">✕ Remove</button></td>
   </tr>`).join('');
   document.getElementById('poDraftEmpty').style.display = PO_DRAFT.length ? 'none' : 'block';
 }
@@ -1948,7 +2098,7 @@ function renderPOTable(){
         <span class="no-can-write" style="font-size:13px">${h.ship_date}</span>
         <input class="can-write" type="date" value="${h.ship_date}" style="width:150px" onchange="updatePOShipDate('${key.replace(/'/g,"\\'")}', this.value)">
         ${shippedCount < lines.length ? `<button class="btn secondary no-print can-write" style="padding:6px 10px;font-size:12px" onclick="shipWholeOrder('${key.replace(/'/g,"\\'")}')">✔ Ship Entire Order</button>` : ''}
-        <button class="iconbtn no-print can-write" style="width:28px;height:28px;font-size:12px" title="Delete whole order" onclick="deletePOOrder('${key.replace(/'/g,"\\'")}')">🗑</button>
+        <button class="btn secondary no-print can-write" style="padding:6px 10px;font-size:12px" title="Delete whole order" onclick="deletePOOrder('${key.replace(/'/g,"\\'")}')">🗑 Delete Order</button>
       </div>
       ${overdueWarning}
       <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Qty</th><th>Status</th><th class="no-print"></th></tr></thead>
@@ -1957,8 +2107,10 @@ function renderPOTable(){
         <td><input type="number" step="any" value="${l.qty}" style="width:90px" ${(l.status==='Shipped' || !isAdmin())?'disabled':''} onchange="updatePOQty(${l.id}, this.value)"></td>
         <td>${l.status==='Shipped' ? `<span class="chip ok">Shipped</span>` : `<span class="chip">Pending</span>`}</td>
         <td class="no-print" style="white-space:nowrap">
-          ${l.status!=='Shipped' ? `<button class="iconbtn can-write" style="width:28px;height:28px;font-size:12px" title="Mark shipped → erp_inout" onclick="shipPOLine(${l.id})">📤</button>` : ''}
-          <button class="iconbtn can-write" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_pending_order', ${l.id}, async()=>{await refreshPO(); await refreshDashboard(); await refreshProduce();})">✕</button>
+          <div style="display:flex;gap:6px;flex-wrap:nowrap">
+            ${l.status!=='Shipped' ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" title="Mark shipped → erp_inout" onclick="shipPOLine(${l.id})">📤 Mark Shipped</button>` : ''}
+            <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteRow('erp_pending_order', ${l.id}, async()=>{await refreshPO(); await refreshDashboard(); await refreshProduce();})">✕ Delete</button>
+          </div>
         </td>
       </tr>`).join('')}</tbody></table></div>
       <div style="font-size:12px;color:var(--muted);margin:4px 0 10px">Total qty: ${fmtNum(total)}</div>
@@ -2145,8 +2297,8 @@ async function refreshFlourScreen(){
     populateFlourIngredientFilters();
     renderFlourIngredientTable();
 
-    FLOUR_RECIPE = await sbGet('erp_flour_recipe?select=id,product_name,ingredient_id,qty_per_batch&order=product_name.asc&limit=2000');
-    PRODUCTS = await sbGet('erp_products?select=id,name,line,yield_factor,weight_per_mix_kg,mixing_min_per_mix&order=name.asc&limit=1000');
+    FLOUR_RECIPE = await sbGet('erp_flour_recipe?select=id,product_name,ingredient_id,qty_per_batch,qty_unit&order=product_name.asc&limit=2000');
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil&order=name.asc&limit=1000');
     document.getElementById('flourRecProduct').innerHTML = buildProductOptionsHtml();
     renderFlourRecipeBrowseProductOptions();
     renderFlourRecipeTable();
@@ -2184,28 +2336,37 @@ async function renderFlourDashboard(){
     const mixesByProduct = {};
     plannedRuns.forEach(r => { mixesByProduct[r.product_name] = (mixesByProduct[r.product_name]||0) + (parseFloat(r.planned_mixes)||0); });
     const demandByIngredient = {}; // ingredient_id -> units needed
+    const demandUnreliable = {}; // ingredient_id -> true if any contributing row fell back to raw kg
     FLOUR_RECIPE.forEach(rec => {
       const mixes = mixesByProduct[rec.product_name];
       if(!mixes) return;
       const ing = FLOUR_INGREDIENTS.find(i => i.id === rec.ingredient_id);
-      const kgNeeded = mixes * (rec.qty_per_batch||0);
-      const unitsNeeded = (ing && ing.kg_per_unit) ? (kgNeeded / ing.kg_per_unit) : kgNeeded;
+      const perBatch = rec.qty_per_batch || 0;
+      let unitsNeeded;
+      if(rec.qty_unit === 'unit'){
+        unitsNeeded = mixes * perBatch; // already in the ingredient's stock unit
+      } else {
+        const kgNeeded = mixes * perBatch;
+        if(ing && ing.kg_per_unit){ unitsNeeded = kgNeeded / ing.kg_per_unit; }
+        else { unitsNeeded = kgNeeded; demandUnreliable[rec.ingredient_id] = true; }
+      }
       demandByIngredient[rec.ingredient_id] = (demandByIngredient[rec.ingredient_id]||0) + unitsNeeded;
     });
     const demandRows = Object.entries(demandByIngredient).map(([ingId, demand]) => {
       const ing = FLOUR_INGREDIENTS.find(i => i.id === Number(ingId) || i.id === ingId);
       const stock = ing ? (Number(ing.inventory_qty)||0) : 0;
-      const shortfall = Math.max(0, demand - stock);
-      return { ing, demand, stock, shortfall };
-    }).filter(r => r.ing).sort((a,b) => b.shortfall - a.shortfall);
+      const hasConv = !demandUnreliable[ingId];
+      const shortfall = hasConv ? Math.max(0, demand - stock) : null;
+      return { ing, demand, stock, shortfall, hasConv };
+    }).filter(r => r.ing).sort((a,b) => (b.shortfall||0) - (a.shortfall||0));
     const needOrder = demandRows.filter(r => r.shortfall > 0);
     document.getElementById('flourKpiOrder').textContent = needOrder.length;
     document.getElementById('flourDemandTable').innerHTML = demandRows.map(r => `<tr>
-      <td>${r.ing.name}</td>
+      <td>${r.ing.name}${!r.hasConv?' <span class="chip warn" title="No Kg/Unit set on this ingredient — demand shown in kg, not stock units">⚠ kg only</span>':''}</td>
       <td>${fmtNum(r.stock)} ${r.ing.unit||''}</td>
-      <td>${fmtNum(r.demand)} ${r.ing.unit||''}</td>
-      <td style="${r.shortfall>0?'color:var(--danger);font-weight:700':''}">${r.shortfall>0?fmtNum(r.shortfall)+' '+(r.ing.unit||''):'–'}</td>
-      <td>${r.shortfall>0?'<span class="chip warn">⚠ Order needed</span>':'<span class="chip ok">OK</span>'}</td>
+      <td>${r.hasConv ? `${fmtNum(r.demand)} ${r.ing.unit||''}` : `${fmtNum(r.demand)} kg`}</td>
+      <td style="${r.shortfall>0?'color:var(--danger);font-weight:700':''}">${r.hasConv ? (r.shortfall>0?fmtNum(r.shortfall)+' '+(r.ing.unit||''):'–') : '–'}</td>
+      <td>${!r.hasConv ? '<span class="chip">Set Kg/Unit to check</span>' : (r.shortfall>0?'<span class="chip warn">⚠ Order needed</span>':'<span class="chip ok">OK</span>')}</td>
     </tr>`).join('');
     document.getElementById('flourDemandEmpty').style.display = demandRows.length ? 'none' : 'block';
   }catch(e){ /* non-fatal */ }
@@ -2218,6 +2379,10 @@ async function renderFlourDashboard(){
 function flourIngredientName(id){
   const ing = FLOUR_INGREDIENTS.find(i => String(i.id) === String(id));
   return ing ? ing.name : '(unknown)';
+}
+function flourIngredientUnit(id){
+  const ing = FLOUR_INGREDIENTS.find(i => String(i.id) === String(id));
+  return (ing && ing.unit) ? ing.unit : 'units';
 }
 
 /* ---- Ingredient master ---- */
@@ -2372,7 +2537,7 @@ async function renderFlourLedger(){
     const z = (i % 2 === 0) ? ' zrow' : '';
     return `<tr class="${z}" style="cursor:pointer" onclick="toggleRowDetail('${rowId}')">
       <td>${r.entry_date}</td><td>${flourIngredientName(r.ingredient_id)}</td><td>${fmtNum(r.in_qty)}</td><td>${fmtNum(r.out_qty)}</td><td>${r.note||''}</td>
-      <td class="no-print"><button class="iconbtn can-write" style="width:28px;height:28px;font-size:12px" onclick="event.stopPropagation(); deleteRow('erp_flour_inout',${r.id},refreshFlourScreen)">✕</button></td>
+      <td class="no-print"><button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="event.stopPropagation(); deleteRow('erp_flour_inout',${r.id},refreshFlourScreen)">✕ Delete</button></td>
     </tr>
     <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="6">
       <div class="dash-detail-grid">
@@ -2524,32 +2689,42 @@ function renderFlourRecipeBrowse(){
   const rows = FLOUR_RECIPE.filter(r => (r.product_name||'').trim().toLowerCase() === productName.trim().toLowerCase());
   const optionsHtml = '<option value="">Select ingredient...</option>' + FLOUR_INGREDIENTS.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
   body.innerHTML = `
-    <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Qty/Batch (kg)</th><th class="can-write"></th></tr></thead>
+    <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Qty/Batch</th><th>Unit</th><th class="can-write"></th></tr></thead>
     <tbody>${rows.map(r => `<tr>
       <td>${flourIngredientName(r.ingredient_id)}</td>
       <td>${canWrite() ? `<input type="number" step="any" value="${r.qty_per_batch}" style="width:100px" id="flourRecQtyInput_${r.id}">` : fmtNum(r.qty_per_batch)}</td>
+      <td>${canWrite() ? `<select id="flourRecUnitInput_${r.id}" style="font-size:12px">
+             <option value="kg" ${(r.qty_unit||'kg')==='kg'?'selected':''}>kg (needs Kg/Unit to convert)</option>
+             <option value="unit" ${r.qty_unit==='unit'?'selected':''}>Already in ${flourIngredientUnit(r.ingredient_id)}</option>
+           </select>` : ((r.qty_unit==='unit') ? flourIngredientUnit(r.ingredient_id) : 'kg')}</td>
       <td class="can-write" style="white-space:nowrap">
         <div style="display:flex;gap:6px;flex-wrap:nowrap">
-          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="updateFlourRecipeQty(${r.id}, document.getElementById('flourRecQtyInput_${r.id}').value)">💾 Save</button>
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="updateFlourRecipeQty(${r.id}, document.getElementById('flourRecQtyInput_${r.id}').value, document.getElementById('flourRecUnitInput_${r.id}').value)">💾 Save</button>
           <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="renderFlourRecipeBrowse()">✕ Cancel</button>
-          <button class="iconbtn" style="width:28px;height:28px;font-size:12px;flex:0 0 auto" onclick="deleteFlourRecipe(${r.id})">🗑</button>
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="deleteFlourRecipe(${r.id})">🗑 Delete</button>
         </div>
       </td>
-    </tr>`).join('') || `<tr><td colspan="3" style="color:var(--muted)">No ingredients in this recipe yet.</td></tr>`}</tbody></table></div>
+    </tr>`).join('') || `<tr><td colspan="4" style="color:var(--muted)">No ingredients in this recipe yet.</td></tr>`}</tbody></table></div>
     <div class="row can-write" style="align-items:flex-end;margin-top:10px">
       <div><label>Add Ingredient</label>
         <select id="flourRecBrowseIngredient">${optionsHtml}</select>
       </div>
-      <div style="max-width:130px"><label>Qty/Batch (kg)</label><input type="number" step="any" id="flourRecBrowseQty"></div>
+      <div style="max-width:130px"><label>Qty/Batch</label><input type="number" step="any" id="flourRecBrowseQty"></div>
+      <div style="max-width:180px"><label>Unit</label>
+        <select id="flourRecBrowseUnit">
+          <option value="kg">kg (needs Kg/Unit to convert)</option>
+          <option value="unit">Already in the ingredient's stock unit</option>
+        </select>
+      </div>
       <button class="btn" onclick="addIngredientToProductRecipe('${productName.replace(/'/g,"\\'")}')">💾 Save New Ingredient</button>
       <button class="btn secondary" onclick="document.getElementById('flourRecBrowseIngredient').value=''; document.getElementById('flourRecBrowseQty').value='';">✕ Cancel</button>
     </div>`;
 }
-async function updateFlourRecipeQty(id, value){
+async function updateFlourRecipeQty(id, value, unit){
   if(!canWrite()){ toast('You have read-only access'); return; }
   const qty = parseFloat(value) || 0;
   try{
-    await sbUpdate('erp_flour_recipe', id, { qty_per_batch: qty });
+    await sbUpdate('erp_flour_recipe', id, { qty_per_batch: qty, qty_unit: unit || 'kg' });
     toast('Recipe updated');
     await refreshFlourScreen();
     renderFlourRecipeBrowseProductOptions();
@@ -2560,10 +2735,11 @@ async function addIngredientToProductRecipe(productName){
   if(!canWrite()){ toast('You have read-only access'); return; }
   const ingredientId = document.getElementById('flourRecBrowseIngredient').value;
   const qty = parseFloat(document.getElementById('flourRecBrowseQty').value);
+  const unit = document.getElementById('flourRecBrowseUnit').value || 'kg';
   if(!ingredientId){ toast('Please select an ingredient'); return; }
   if(!qty){ toast('Please enter qty per batch'); return; }
   try{
-    await sbInsert('erp_flour_recipe', [{ product_name: productName, ingredient_id: ingredientId, qty_per_batch: qty }]);
+    await sbInsert('erp_flour_recipe', [{ product_name: productName, ingredient_id: ingredientId, qty_per_batch: qty, qty_unit: unit }]);
     toast('Ingredient added to recipe');
     await refreshFlourScreen();
     document.getElementById('flourRecBrowseProduct').value = productName;
@@ -2592,19 +2768,28 @@ function itemHasFlourRecipe(itemNo){
 }
 // Called when a Daily Production Schedule entry is confirmed with N batches produced.
 async function deductFlourForProduct(productName, entryDate, mixes){
-  const rows = FLOUR_RECIPE.filter(r => r.product_name === productName);
-  if(!rows.length) return;
+  const target = (productName||'').trim().toLowerCase();
+  const rows = FLOUR_RECIPE.filter(r => (r.product_name||'').trim().toLowerCase() === target);
+  if(!rows.length){
+    toast(`⚠ No flour recipe found for "${productName}" — no ingredients were deducted`);
+    return;
+  }
   const inserts = rows.map(r => {
     const ing = FLOUR_INGREDIENTS.find(i => i.id === r.ingredient_id);
-    const kgNeeded = mixes * (r.qty_per_batch||0); // recipe qty is always in kg
-    // convert kg -> the ingredient's native stock unit (box/bag) if we know its kg_per_unit;
-    // otherwise fall back to deducting the raw kg figure (flag this ingredient to Chris)
-    const unitsNeeded = (ing && ing.kg_per_unit) ? (kgNeeded / ing.kg_per_unit) : kgNeeded;
-    return {
-      entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: 0,
-      out_qty: unitsNeeded,
-      note: `Production run confirm: ${productName} (${fmtNum(kgNeeded)} kg${(ing && !ing.kg_per_unit) ? ' — no kg/unit set, deducted as raw kg' : ''})`
-    };
+    const perBatch = r.qty_per_batch || 0;
+    let unitsNeeded, note;
+    if(r.qty_unit === 'unit'){
+      // this recipe row is already written in the ingredient's own stock unit — no kg conversion
+      unitsNeeded = mixes * perBatch;
+      note = `Production run confirm: ${productName} (${fmtNum(unitsNeeded)} ${ing?.unit||'units'}, recipe already in stock units)`;
+    } else {
+      const kgNeeded = mixes * perBatch; // recipe qty is in kg
+      // convert kg -> the ingredient's native stock unit (box/bag) if we know its kg_per_unit;
+      // otherwise fall back to deducting the raw kg figure (flag this ingredient to Chris)
+      unitsNeeded = (ing && ing.kg_per_unit) ? (kgNeeded / ing.kg_per_unit) : kgNeeded;
+      note = `Production run confirm: ${productName} (${fmtNum(kgNeeded)} kg${(ing && !ing.kg_per_unit) ? ' — no kg/unit set, deducted as raw kg' : ''})`;
+    }
+    return { entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: 0, out_qty: unitsNeeded, note };
   });
   await sbInsert('erp_flour_inout', inserts);
 }
@@ -2626,6 +2811,7 @@ async function deductFlourForProduct(productName, entryDate, mixes){
    ============================================================ */
 let SCHED_NEED_DATA = [];
 let PRODUCTS = [];
+let LINES = [];
 async function refreshScheduleScreen(){
   if(!connected) return;
   document.getElementById('runDate').value = document.getElementById('runDate').value || todayStr();
@@ -2633,9 +2819,13 @@ async function refreshScheduleScreen(){
   document.getElementById('previewViewDate').value = document.getElementById('previewViewDate').value || todayStr();
   document.getElementById('confirmViewDate').value = document.getElementById('confirmViewDate').value || todayStr();
   try{
-    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix&order=name.asc&limit=1000');
+    LINES = await sbGet('erp_lines?select=id,name&order=name.asc&limit=500');
+    document.getElementById('prodLine').innerHTML = '<option value="">(none)</option>' + LINES.map(l=>`<option>${l.name}</option>`).join('');
+
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil&order=name.asc&limit=1000');
     document.getElementById('runProduct').innerHTML = buildProductOptionsHtml();
     renderProductsTable();
+    renderLinesTable();
 
     SCHED_NEED_DATA = await sbGet('erp_inventory_summary?select=item_no,item_name,customer,line,act_inventory_qty,avg_daily_out_7d,avg_daily_out_30d&order=item_no.asc&limit=3000');
     populateSchedFilters();
@@ -2646,10 +2836,72 @@ async function refreshScheduleScreen(){
     await renderConfirmRunCards();
   }catch(e){ toast('Failed to load schedule data: ' + e.message); }
 }
+/* ============================================================
+   LINES — master list driving the Line dropdown on Product Doughs
+   ============================================================ */
+function resetLineForm(){
+  document.getElementById('lineEditId').value = '';
+  document.getElementById('lineFormTitle').textContent = 'Add New Line';
+  document.getElementById('lineSubmitBtn').textContent = '＋ Save Line';
+  document.getElementById('lineName').value = '';
+}
+function editLine(id){
+  const l = LINES.find(x => x.id === id);
+  if(!l) return;
+  document.getElementById('lineEditId').value = id;
+  document.getElementById('lineFormTitle').textContent = 'Edit Line';
+  document.getElementById('lineSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('lineName').value = l.name;
+  showScreen('schedule-lines'); window.scrollTo(0,0);
+}
+async function submitLine(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const name = document.getElementById('lineName').value.trim();
+  if(!name){ toast('Please enter a line name'); return; }
+  const editId = document.getElementById('lineEditId').value;
+  try{
+    if(editId){
+      const old = LINES.find(x => x.id === Number(editId));
+      await sbUpdate('erp_lines', editId, { name });
+      // keep every Product Dough already using the old name in sync
+      if(old && old.name !== name){
+        const affected = PRODUCTS.filter(p => p.line === old.name);
+        for(const p of affected){ await sbUpdate('erp_products', p.id, { line: name }); }
+      }
+      toast('Line updated');
+    } else {
+      await sbInsert('erp_lines', [{ name }]);
+      toast('Line added');
+    }
+    resetLineForm();
+    await refreshScheduleScreen();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteLine(id){
+  const l = LINES.find(x => x.id === id);
+  const inUse = l ? PRODUCTS.filter(p => p.line === l.name).length : 0;
+  if(inUse > 0){ toast(`Can't delete — ${inUse} Product Dough(s) still use "${l.name}". Change their Line first.`); return; }
+  await deleteRow('erp_lines', id, refreshScheduleScreen);
+}
+function renderLinesTable(){
+  document.getElementById('linesTable').innerHTML = LINES.map(l => {
+    const count = PRODUCTS.filter(p => p.line === l.name).length;
+    return `<tr>
+      <td>${l.name}</td><td>${count}</td>
+      <td class="no-print can-write" style="white-space:nowrap">
+        <div style="display:flex;gap:6px;flex-wrap:nowrap">
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="editLine(${l.id})">✎ Edit</button>
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteLine(${l.id})">✕ Delete</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('linesEmpty').style.display = LINES.length ? 'none' : 'block';
+}
 function resetProductForm(){
   document.getElementById('prodEditId').value = '';
   document.getElementById('prodFormTitle').textContent = 'Add New Product';
-  ['prodName','prodLine','prodYield','prodWeightKg','prodMixMin','prodRemark'].forEach(id=>document.getElementById(id).value='');
+  ['prodName','prodLine','prodYield','prodWeightKg','prodMixMin','prodLacticAcidOil','prodRemark'].forEach(id=>document.getElementById(id).value='');
 }
 function editProduct(id){
   const p = PRODUCTS.find(x => x.id === id);
@@ -2661,6 +2913,7 @@ function editProduct(id){
   document.getElementById('prodYield').value = p.yield_factor ?? '';
   document.getElementById('prodWeightKg').value = p.weight_per_mix_kg ?? '';
   document.getElementById('prodMixMin').value = p.mixing_min_per_mix ?? '';
+  document.getElementById('prodLacticAcidOil').value = p.lactic_acid_oil ?? '';
   document.getElementById('prodRemark').value = p.remark || '';
   showScreen('schedule-products'); window.scrollTo(0,0);
 }
@@ -2675,6 +2928,7 @@ async function submitProduct(){
     yield_factor: document.getElementById('prodYield').value ? parseFloat(document.getElementById('prodYield').value) : null,
     weight_per_mix_kg: document.getElementById('prodWeightKg').value ? parseFloat(document.getElementById('prodWeightKg').value) : null,
     mixing_min_per_mix: document.getElementById('prodMixMin').value ? parseFloat(document.getElementById('prodMixMin').value) : null,
+    lactic_acid_oil: document.getElementById('prodLacticAcidOil').value.trim() || null,
     remark: document.getElementById('prodRemark').value.trim() || null
   };
   try{
@@ -2686,14 +2940,14 @@ async function submitProduct(){
       toast('Product added');
     }
     resetProductForm();
-    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix&order=name.asc&limit=1000');
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil&order=name.asc&limit=1000');
     document.getElementById('runProduct').innerHTML = buildProductOptionsHtml();
     renderProductsTable();
   }catch(e){ toast('Save failed: ' + e.message); }
 }
 async function deleteProduct(id){
   await deleteRow('erp_products', id, async()=>{
-    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix&order=name.asc&limit=1000');
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil&order=name.asc&limit=1000');
     document.getElementById('runProduct').innerHTML = buildProductOptionsHtml();
     renderProductsTable();
   });
@@ -2703,7 +2957,7 @@ function renderProductsTable(){
   let rows = PRODUCTS;
   if(q) rows = rows.filter(p => (p.name||'').toLowerCase().includes(q) || (p.line||'').toLowerCase().includes(q));
   document.getElementById('productsTable').innerHTML = rows.map(p => `<tr>
-    <td>${p.name}</td><td>${p.line||''}</td><td>${fmtNum(p.yield_factor)}</td><td>${fmtNum(p.weight_per_mix_kg)}</td><td>${fmtNum(p.mixing_min_per_mix)}</td><td>${p.remark||''}</td>
+    <td>${p.name}</td><td>${p.line||''}</td><td>${fmtNum(p.yield_factor)}</td><td>${fmtNum(p.weight_per_mix_kg)}</td><td>${fmtNum(p.mixing_min_per_mix)}</td><td>${p.lactic_acid_oil||''}</td><td>${p.remark||''}</td>
     <td class="no-print" style="white-space:nowrap">
       <div style="display:flex;gap:6px;flex-wrap:nowrap">
         <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editProduct(${p.id})">✎ Edit</button>
@@ -2744,8 +2998,12 @@ async function confirmProductionRun(runId){
     const rows = await sbGet(`erp_production_runs?select=id,run_date,product_name,planned_mixes&id=eq.${runId}`);
     const run = rows[0];
     if(!run){ toast('Run not found'); return; }
-    const mixes = Math.round(parseFloat(run.planned_mixes) || 0);
-    if(mixes > 0){ await deductFlourForProduct(run.product_name, run.run_date, mixes); }
+    const mixes = parseFloat(run.planned_mixes) || 0; // batches can be fractional (e.g. 0.6) — don't round
+    if(mixes > 0){
+      // re-fetch the recipe fresh in case it was edited since this page last loaded
+      FLOUR_RECIPE = await sbGet('erp_flour_recipe?select=id,product_name,ingredient_id,qty_per_batch,qty_unit&order=product_name.asc&limit=2000');
+      await deductFlourForProduct(run.product_name, run.run_date, mixes);
+    }
     await sbUpdate('erp_production_runs', runId, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_at: new Date().toISOString() });
     toast('Run confirmed — flour usage recorded. Now confirm each packed item below.');
     await refreshScheduleScreen(); await refreshFlourScreen();
@@ -2762,9 +3020,9 @@ async function confirmRunItem(id){
     if(!it){ toast('Item not found'); return; }
     const cases = Math.round(parseFloat(it.planned_cases) || 0);
     const runDate = it.erp_production_runs?.run_date || todayStr();
-    const jDate = it.expired_date || it.production_date;
-    const lot = it.expired_date ? `Exp: ${it.expired_date}${jDate?` (Julian: ${toJulianDate(jDate)})`:''}`
-      : (it.production_date ? `Prod: ${it.production_date}${jDate?` (Julian: ${toJulianDate(jDate)})`:''}` : null);
+    const julian = it.production_date ? toJulianDate(it.production_date) : (it.expired_date ? toJulianDate(it.expired_date) : '');
+    const lot = it.expired_date ? `Exp: ${it.expired_date}${julian?` (Julian: ${julian})`:''}`
+      : (it.production_date ? `Prod: ${it.production_date}${julian?` (Julian: ${julian})`:''}` : null);
     if(cases > 0){
       await sbInsert('erp_inout', [{ entry_date: runDate, item_no: it.item_no, item_name: it.item_name, in_qty: cases, out_qty: 0, lot }]);
       if(itemHasRecipe(it.item_no)){ await deductComponentsForItem(it.item_no, runDate, cases); }
@@ -2781,11 +3039,19 @@ async function deleteProductionRun(runId){
 let RUNS_CACHE = [];
 function toKg(value, unit){
   const v = parseFloat(value) || 0;
-  const u = (unit||'').toLowerCase();
-  if(u.includes('lb')) return v * 0.453592;
-  if(u === 'g' || u.includes('gram')) return v * 0.001;
-  if(u.includes('kg')) return v;
-  return v; // unknown unit — assume already kg
+  let u = (unit||'').toLowerCase().trim();
+  // handle "gx2" / "g x 2" / "MLx3" style: base unit × N sub-packs inside one pack
+  let multiplier = 1;
+  const m = u.match(/^([a-z]+)\s*x\s*(\d+(?:\.\d+)?)$/);
+  if(m){ u = m[1]; multiplier = parseFloat(m[2]) || 1; }
+  let perUnitKg;
+  if(u.includes('lb')) perUnitKg = 0.453592;
+  else if(u.includes('oz')) perUnitKg = 0.0283495;
+  else if(u === 'ml' || u.includes('millilit')) perUnitKg = 0.001; // assumes ~1g/ml (water-like density — flag if a liquid needs a real density)
+  else if(u === 'g' || u.includes('gram')) perUnitKg = 0.001;
+  else if(u.includes('kg')) perUnitKg = 1;
+  else perUnitKg = 1; // unknown unit — assume already kg
+  return v * perUnitKg * multiplier;
 }
 function caseWeightKg(item){
   if(!item) return 0;
@@ -2845,12 +3111,12 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
         <span style="margin-left:6px">${statusChip}</span>
       </div>
       ${confirmBtn}
-      ${itemsEditable ? `<button class="iconbtn can-write" style="width:28px;height:28px;font-size:12px" title="Delete run" onclick="deleteProductionRun(${run.id})">🗑</button>` : ''}
+      ${itemsEditable ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" title="Delete run" onclick="deleteProductionRun(${run.id})">🗑 Delete Run</button>` : ''}
     </div>
     ${productInfo}
     ${weightInfo}
     ${packingHrsInfo}
-    ${run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:600;margin-bottom:8px">📝 ${run.remark}</div>` : ''}
+    ${run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:700;font-style:italic;margin-bottom:8px">📝 ${run.remark}</div>` : ''}
     <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Packing Hrs</th><th>Prod./Exp. Date</th><th>Status</th>${(itemsEditable || showItemConfirmButtons)?'<th></th>':''}</tr></thead>
     <tbody>${items.map(it => {
       const item = ITEMS_BY_NO[it.item_no];
@@ -2866,19 +3132,26 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
         : `<div style="white-space:normal">${dateLabel}</div>`;
       return `<tr>
         <td>${it.item_no}</td>
-        <td>${it.item_name||''}${it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:600">📝 ${it.remark}</div>`:''}</td>
+        <td>${it.item_name||''}
+          ${(rowEditable && canWrite())
+            ? `<input placeholder="Remark..." value="${(it.remark||'').replace(/"/g,'&quot;')}" style="display:block;margin-top:4px;font-size:11px;padding:3px 6px;width:100%;color:var(--danger);font-weight:700;font-style:italic" onchange="updateRunItemRemark(${it.id}, this.value)">`
+            : (it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${it.remark}</div>`:'')}
+        </td>
         <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, it.planned_cases)}</td>
         <td>${(rowEditable && canWrite()) ? `<input type="number" step="1" value="${Math.round(it.planned_cases)}" style="width:80px" onchange="updateRunItemCases(${it.id}, this.value)">` : fmtNum(it.planned_cases)}</td>
         <td>${it.packing_hrs?fmtNum(it.packing_hrs)+'h':'–'}</td><td>${dateCell}</td><td>${itStatus}</td>
         ${(itemsEditable || showItemConfirmButtons) ? `<td class="no-print can-write" style="white-space:nowrap">
-          ${(showItemConfirmButtons && it.status!=='Confirmed') ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="confirmRunItem(${it.id})">✔ Confirm</button>` : ''}
-          ${itemsEditable ? `<button class="iconbtn" style="width:28px;height:28px;font-size:12px" onclick="deleteRow('erp_production_run_items',${it.id},refreshScheduleScreen)">✕</button>` : ''}
+          <div style="display:flex;gap:6px;flex-wrap:nowrap">
+            ${(showItemConfirmButtons && it.status!=='Confirmed') ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="confirmRunItem(${it.id})">✔ Confirm</button>` : ''}
+            ${(itemsEditable && it.status!=='Confirmed') ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="editRunItemInline(${it.id}, '${gid}')">✎ Edit</button>` : ''}
+            ${itemsEditable ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="deleteRow('erp_production_run_items',${it.id},refreshScheduleScreen)">✕ Delete</button>` : ''}
+          </div>
         </td>` : ''}
       </tr>`;
     }).join('')}</tbody></table></div>
     ${itemsEditable ? `<div class="row can-write" style="align-items:flex-end;border-top:1px dashed var(--line);padding-top:10px;margin-top:8px">
       <div class="search" style="flex:2;min-width:180px">
-        <label>Add packed item to this run</label>
+        <label id="${gid}_formLabel">Add packed item to this run</label>
         <input id="${gid}_search" placeholder="Search item # or name..." autocomplete="off"
                oninput="searchItems('${gid}_search','${gid}_suggest','${gid}_no','${gid}_name','onRunItemPicked_${gid}')">
         <div class="suggest" id="${gid}_suggest" style="display:none"></div>
@@ -2889,6 +3162,12 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
       <div style="max-width:80px"><label>Cycles</label><input type="number" step="any" id="${gid}_cycles" oninput="recalcRunItemPacking('${gid}')"></div>
       <div style="max-width:90px"><label>Bags/Cycle</label><input type="number" step="any" id="${gid}_bpc" oninput="recalcRunItemPacking('${gid}')"></div>
       <div style="max-width:110px"><label>Packing Hrs</label><input id="${gid}_hrs" disabled></div>
+      <div style="max-width:150px;display:none" id="${gid}_dateChoiceWrap"><label>Use which date?</label>
+        <select id="${gid}_dateChoice">
+          <option value="expired">Expired Date</option>
+          <option value="production">Production Date</option>
+        </select>
+      </div>
       <div style="max-width:140px"><label>Date shows</label>
         <select id="${gid}_datemode">
           <option value="full">Date + Julian</option>
@@ -2896,7 +3175,9 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
         </select>
       </div>
       <div style="flex:1;min-width:150px"><label>Remark</label><input id="${gid}_remark" placeholder="Notes for this item..."></div>
-      <button class="btn secondary" onclick="addRunItem(${run.id}, '${gid}', '${run.run_date}')">＋ Add</button>
+      <input type="hidden" id="${gid}_editItemId">
+      <button class="btn secondary" id="${gid}_addBtn" onclick="addRunItem(${run.id}, '${gid}', '${run.run_date}')">＋ Add</button>
+      <button class="btn secondary" id="${gid}_cancelBtn" style="display:none" onclick="cancelEditRunItemInline('${gid}')">✕ Cancel Edit</button>
     </div>` : ''}
   </div>`;
 }
@@ -2910,6 +3191,9 @@ function registerRunItemPickCallback(gid, run, allItems){
     document.getElementById(gid+'_machines').value = item.machines_running || '';
     document.getElementById(gid+'_cycles').value = item.cycle || '';
     document.getElementById(gid+'_bpc').value = item.bags_per_cycle || '';
+    const storage = (item.storage || '').toLowerCase();
+    const isCompoundStorage = storage.includes('freezer') && storage.includes('cooler');
+    document.getElementById(gid+'_dateChoiceWrap').style.display = isCompoundStorage ? '' : 'none';
     const cwKg = caseWeightKg(item);
     const remainingKg = totalKg - usedKg;
     if(cwKg > 0 && remainingKg > 0){
@@ -2918,10 +3202,12 @@ function registerRunItemPickCallback(gid, run, allItems){
     recalcRunItemPacking(gid);
   };
 }
+let RUN_ITEMS_CACHE = {};
 function renderRunCardsGroupedByLine(runs, allItems, containerId, prefix, showConfirmButton, itemsEditable){
   const cardEntries = runs.map((run,ri) => {
     const items = allItems.filter(it => it.run_id === run.id);
     const gid = prefix+ri;
+    RUN_ITEMS_CACHE[gid] = items;
     return { line: run.line || '(No Line)', html: buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable), run, gid };
   });
   const byLine = {};
@@ -2995,6 +3281,14 @@ async function updateRunItemCases(id, value){
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
+async function updateRunItemRemark(id, value){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  try{
+    await sbUpdate('erp_production_run_items', id, { remark: value.trim() || null });
+    toast('Remark updated');
+    await refreshScheduleScreen();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
 function runHeaderNarrative(run){
   const p = getProductInfo(run.product_name);
   const mixes = run.status === 'Confirmed' ? (run.confirmed_mixes||0) : (run.planned_mixes||0);
@@ -3045,12 +3339,12 @@ function renderLineSummary(runs, items){
       const mixTimeMin = p && p.mixing_min_per_mix ? mixes * p.mixing_min_per_mix : null;
       const statusChip = run.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
       const runInfoBlock = `<div style="margin-bottom:6px">
-        <strong>${fmtNum(mixes)} batches of ${run.product_name}</strong>
+        <strong>${fmtNum(mixes)} batches of ${run.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}</strong>
         <span style="font-weight:400;color:var(--muted);font-size:12px;margin-left:8px">
           ${p&&p.weight_per_mix_kg?`Weight/mix: ${fmtNum(p.weight_per_mix_kg)} kg`:''}${p&&p.yield_factor?` · Yield: ${fmtNum(p.yield_factor)}`:''}${mixTimeMin!=null?` · Mix Time: ${fmtNum(mixTimeMin)} min`:''}
         </span>
         <span style="margin-left:8px">${statusChip}</span>
-        ${run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:600;margin-top:4px">📝 ${run.remark}</div>` : ''}
+        ${run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:700;font-style:italic;margin-top:4px">📝 ${run.remark}</div>` : ''}
       </div>`;
       if(!runItems.length){
         return `<div style="margin-bottom:16px">${runInfoBlock}<div style="color:var(--muted);font-size:12px;padding-left:12px">(no items packed yet)</div></div>`;
@@ -3064,7 +3358,7 @@ function renderLineSummary(runs, items){
           : '–';
         return `<tr>
           <td>${it.item_no}</td>
-          <td>${it.item_name||''}${it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:600">📝 ${it.remark}</div>`:''}</td>
+          <td>${it.item_name||''}${it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${it.remark}</div>`:''}</td>
           <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, it.planned_cases)}</td>
           <td>${fmtNum(it.planned_cases)}</td>
           <td style="min-width:160px">${packingCalc}</td>
@@ -3106,6 +3400,39 @@ function recalcRunItemPacking(gid){
   }
   document.getElementById(gid+'_hrs').value = hrs ? hrs+' hrs' : '';
 }
+function editRunItemInline(itemId, gid){
+  const rows = RUN_ITEMS_CACHE || {};
+  const it = (rows[gid] || []).find(x => x.id === itemId);
+  if(!it){ toast('Item not found — try refreshing'); return; }
+  document.getElementById(gid+'_editItemId').value = itemId;
+  document.getElementById(gid+'_search').value = it.item_no + ' — ' + (it.item_name||'');
+  document.getElementById(gid+'_no').value = it.item_no;
+  document.getElementById(gid+'_name').value = it.item_name || '';
+  document.getElementById(gid+'_cases').value = Math.round(it.planned_cases || 0);
+  document.getElementById(gid+'_machines').value = it.machines ?? '';
+  document.getElementById(gid+'_cycles').value = it.cycles ?? '';
+  document.getElementById(gid+'_bpc').value = it.bags_per_cycle ?? '';
+  document.getElementById(gid+'_remark').value = it.remark || '';
+  document.getElementById(gid+'_datemode').value = it.date_display_mode || 'full';
+  const item = ITEMS_BY_NO[it.item_no];
+  const storage = (item?.storage || '').toLowerCase();
+  const isCompoundStorage = storage.includes('freezer') && storage.includes('cooler');
+  document.getElementById(gid+'_dateChoiceWrap').style.display = isCompoundStorage ? '' : 'none';
+  if(isCompoundStorage){ document.getElementById(gid+'_dateChoice').value = it.expired_date ? 'expired' : 'production'; }
+  recalcRunItemPacking(gid);
+  document.getElementById(gid+'_formLabel').textContent = `Editing: ${it.item_no} — ${it.item_name||''}`;
+  document.getElementById(gid+'_addBtn').textContent = '💾 Save Changes';
+  document.getElementById(gid+'_cancelBtn').style.display = '';
+  document.getElementById(gid+'_search').scrollIntoView({behavior:'smooth', block:'center'});
+}
+function cancelEditRunItemInline(gid){
+  document.getElementById(gid+'_editItemId').value = '';
+  ['_search','_no','_name','_cases','_machines','_cycles','_bpc','_hrs','_remark'].forEach(suffix => { const el = document.getElementById(gid+suffix); if(el) el.value=''; });
+  document.getElementById(gid+'_formLabel').textContent = 'Add packed item to this run';
+  document.getElementById(gid+'_addBtn').textContent = '＋ Add';
+  document.getElementById(gid+'_cancelBtn').style.display = 'none';
+  document.getElementById(gid+'_dateChoiceWrap').style.display = 'none';
+}
 async function addRunItem(runId, gid, runDate){
   if(!canWrite()){ toast('You have read-only access'); return; }
   const itemNo = document.getElementById(gid+'_no').value;
@@ -3120,26 +3447,39 @@ async function addRunItem(runId, gid, runDate){
   const hrsStr = document.getElementById(gid+'_hrs').value;
   const packingHrs = hrsStr ? parseFloat(hrsStr) : null;
   const storage = (item?.storage || '').toLowerCase();
+  const isCompoundStorage = storage.includes('freezer') && storage.includes('cooler');
   const base = new Date(runDate + 'T00:00:00');
-  let productionDate = null, expiredDate = null;
-  if(storage.includes('cooler')){
+  // production_date is always the Run's actual date (used for Julian date), regardless
+  // of storage type; Cooler items (and Freezer/Cooler items where "Expired Date" was
+  // chosen) additionally get a computed expiry date.
+  let productionDate = runDate, expiredDate = null;
+  const wantsExpiry = isCompoundStorage
+    ? (document.getElementById(gid+'_dateChoice')?.value !== 'production')
+    : storage.includes('cooler');
+  if(wantsExpiry){
     const rsl = parseFloat(item?.r_sl_day) || 0;
     expiredDate = new Date(base.getTime() + rsl*86400000).toISOString().slice(0,10);
-  } else {
-    productionDate = runDate;
   }
   try{
     const remark = document.getElementById(gid+'_remark').value.trim();
     const dateMode = document.getElementById(gid+'_datemode').value || 'full';
-    await sbInsert('erp_production_run_items', [{
-      run_id: runId, item_no: itemNo, item_name: itemName, planned_cases: cases,
+    const editItemId = document.getElementById(gid+'_editItemId').value;
+    const payload = {
+      item_no: itemNo, item_name: itemName, planned_cases: cases,
       machines, cycles, bags_per_cycle: bagsPerCycle, packing_hrs: packingHrs,
       production_date: productionDate, expired_date: expiredDate,
       remark: remark || null, date_display_mode: dateMode
-    }]);
-    toast('Item added to run');
+    };
+    if(editItemId){
+      await sbUpdate('erp_production_run_items', editItemId, payload);
+      toast('Item updated');
+      cancelEditRunItemInline(gid);
+    } else {
+      await sbInsert('erp_production_run_items', [{ run_id: runId, ...payload }]);
+      toast('Item added to run');
+    }
     await refreshScheduleScreen();
-  }catch(e){ toast('Add failed: ' + e.message); }
+  }catch(e){ toast('Save failed: ' + e.message); }
 }
 
 
@@ -3260,7 +3600,7 @@ async function refreshComponents(){
       const z = (i % 2 === 0) ? ' zrow' : '';
       return `<tr class="${z}" style="cursor:pointer" onclick="toggleRowDetail('${rowId}')">
         <td>${r.entry_date}</td><td>${r.sachet_name}</td><td>${fmtNum(r.in_qty)}</td><td>${fmtNum(r.out_qty)}</td>
-        <td class="no-print"><button class="iconbtn can-write" style="width:28px;height:28px;font-size:12px" onclick="event.stopPropagation(); deleteRow('erp_components_inout',${r.id},refreshComponents)">✕</button></td>
+        <td class="no-print"><button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="event.stopPropagation(); deleteRow('erp_components_inout',${r.id},refreshComponents)">✕ Delete</button></td>
       </tr>
       <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="5">
         <div class="dash-detail-grid">
@@ -3370,9 +3710,9 @@ function renderProduceList(){
 /* ============================================================
    MANAGE ITEMS (erp_items CRUD)
    ============================================================ */
-const ITEM_FIELDS = ['itemNo','itemName','itemCname','weightPerPack','unitOfWeight','unit','pieces','unitPerCase','customer','line','storage','fSlDay','rSlDay','box','stockLevel','machinesRunning','cycle','bagsPerCycle','remark'];
-const ITEM_DB_COLS = {itemNo:'item_no',itemName:'item_name',itemCname:'item_cname',weightPerPack:'weight_per_pack',unitOfWeight:'unit_of_weight',unit:'unit',pieces:'pieces',unitPerCase:'unit_per_case',customer:'customer',line:'line',storage:'storage',fSlDay:'f_sl_day',rSlDay:'r_sl_day',box:'box',stockLevel:'stock_level',machinesRunning:'machines_running',cycle:'cycle',bagsPerCycle:'bags_per_cycle',remark:'remark'};
-const ITEM_INPUT_IDS = {itemNo:'itemNo',itemName:'itemName',itemCname:'itemCname',weightPerPack:'itemWeight',unitOfWeight:'itemUnitW',unit:'itemUnit',pieces:'itemPieces',unitPerCase:'itemUnitCase',customer:'itemCustomer',line:'itemLine',storage:'itemStorage',fSlDay:'itemFSl',rSlDay:'itemRSl',box:'itemBox',stockLevel:'itemStockLevel',machinesRunning:'itemMcRunning',cycle:'itemCycle',bagsPerCycle:'itemBagsCycle',remark:'itemRemark'};
+const ITEM_FIELDS = ['itemNo','itemName','itemCname','weightPerPack','unitOfWeight','unit','pieces','unitPerCase','customer','line','storage','fSlDay','rSlDay','box','stockLevel','machinesRunning','cycle','bagsPerCycle','productDough','itemStatus','remark'];
+const ITEM_DB_COLS = {itemNo:'item_no',itemName:'item_name',itemCname:'item_cname',weightPerPack:'weight_per_pack',unitOfWeight:'unit_of_weight',unit:'unit',pieces:'pieces',unitPerCase:'unit_per_case',customer:'customer',line:'line',storage:'storage',fSlDay:'f_sl_day',rSlDay:'r_sl_day',box:'box',stockLevel:'stock_level',machinesRunning:'machines_running',cycle:'cycle',bagsPerCycle:'bags_per_cycle',productDough:'product_dough',itemStatus:'item_status',remark:'remark'};
+const ITEM_INPUT_IDS = {itemNo:'itemNo',itemName:'itemName',itemCname:'itemCname',weightPerPack:'itemWeight',unitOfWeight:'itemUnitW',unit:'itemUnit',pieces:'itemPieces',unitPerCase:'itemUnitCase',customer:'itemCustomer',line:'itemLine',storage:'itemStorage',fSlDay:'itemFSl',rSlDay:'itemRSl',box:'itemBox',stockLevel:'itemStockLevel',machinesRunning:'itemMcRunning',cycle:'itemCycle',bagsPerCycle:'itemBagsCycle',productDough:'itemProductDough',itemStatus:'itemStatus',remark:'itemRemark'};
 const NUMERIC_ITEM_FIELDS = ['weightPerPack','pieces','rSlDay','stockLevel','machinesRunning','bagsPerCycle'];
 
 function resetItemForm(){
@@ -3423,6 +3763,18 @@ async function deleteItem(id){
 }
 async function refreshItemsScreen(){
   if(!connected) return;
+  try{
+    const products = await sbGet('erp_products?select=id,name,line&order=name.asc&limit=1000');
+    if(products && products.length) PRODUCTS = products; // keep in sync with the shared cache too
+    const optionsHtml = products && products.length ? buildProductOptionsHtml() : '';
+    document.getElementById('itemProductDough').innerHTML = '<option value="">(none)</option>' + optionsHtml.replace('<option value="">Select product dough...</option>','');
+  }catch(e){ /* non-fatal — dropdown just falls back to (none) */ }
+  const lines = dedupeCaseInsensitive(ITEMS.map(it=>it.line).filter(Boolean));
+  const customers = dedupeCaseInsensitive(ITEMS.map(it=>it.customer).filter(Boolean));
+  const storages = dedupeCaseInsensitive(ITEMS.map(it=>it.storage).filter(Boolean));
+  document.getElementById('itemLineOptions').innerHTML = lines.map(l=>`<option value="${l}">`).join('');
+  document.getElementById('itemCustomerOptions').innerHTML = customers.map(c=>`<option value="${c}">`).join('');
+  document.getElementById('itemStorageOptions').innerHTML = storages.map(s=>`<option value="${s}">`).join('');
   populateItemsFilters();
   renderItemsTable();
 }
@@ -3459,8 +3811,10 @@ function renderItemsTable(){
       <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.customer||''}</td><td>${r.line||''}</td>
       <td>${fmtNum(r.stock_level)}</td><td>${fmtNum(r.machines_running)}</td><td>${r.remark||''}</td>
       <td class="no-print" style="white-space:nowrap">
-        <button class="iconbtn can-write" onclick="event.stopPropagation(); editItem(${r.id})" style="width:28px;height:28px;font-size:12px">✎</button>
-        <button class="iconbtn can-write" onclick="event.stopPropagation(); deleteItem(${r.id})" style="width:28px;height:28px;font-size:12px">✕</button>
+        <div style="display:flex;gap:6px;flex-wrap:nowrap">
+          <button class="btn secondary can-write" onclick="event.stopPropagation(); editItem(${r.id})" style="padding:6px 10px;font-size:12px">✎ Edit</button>
+          <button class="btn secondary can-write" onclick="event.stopPropagation(); deleteItem(${r.id})" style="padding:6px 10px;font-size:12px">✕ Delete</button>
+        </div>
       </td>
     </tr>
     <tr id="${rowId}" class="${z.trim()}" style="display:none">
@@ -3478,6 +3832,8 @@ function renderItemsTable(){
           <div><span class="l">Box</span>${r.box||'–'}</div>
           <div><span class="l">Cycle</span>${r.cycle||'–'}</div>
           <div><span class="l">Bags/Cycle</span>${fmtNum(r.bags_per_cycle)}</div>
+          <div><span class="l">Product Dough</span>${r.product_dough||'–'}</div>
+          <div><span class="l">Item Status</span>${r.item_status||'Active'}</div>
         </div>
       </td>
     </tr>`;
@@ -3646,10 +4002,78 @@ function renderDupesTable(){
    ============================================================ */
 let USERS_DATA = [];
 let ROLE_REQUESTS = [];
+/* ============================================================
+   INVENTORY ADJUST (admin only) — direct correction of an item's
+   live quantity, implemented as a Finished Goods In/Out entry so
+   it's fully auditable rather than overwriting history.
+   ============================================================ */
+function resetInventoryAdjustForm(){
+  document.getElementById('adjItemSearch').value = '';
+  document.getElementById('adjItemNo').value = '';
+  document.getElementById('adjItemName').value = '';
+  document.getElementById('adjReason').value = '';
+  document.getElementById('adjNewQty').value = '';
+  document.getElementById('adjCurrentWrap').style.display = 'none';
+}
+async function onAdjItemPicked(){
+  const itemNo = document.getElementById('adjItemNo').value;
+  if(!itemNo){ document.getElementById('adjCurrentWrap').style.display = 'none'; return; }
+  try{
+    const rows = await sbGet(`erp_inventory_summary?select=act_inventory_qty&item_no=eq.${encodeURIComponent(itemNo)}&limit=1`);
+    const qty = rows && rows[0] ? Number(rows[0].act_inventory_qty)||0 : 0;
+    document.getElementById('adjCurrentQty').value = fmtNum(qty);
+    document.getElementById('adjCurrentWrap').dataset.currentQty = qty;
+    document.getElementById('adjNewQty').value = qty;
+    document.getElementById('adjCurrentWrap').style.display = 'flex';
+    recalcAdjDelta();
+  }catch(e){ toast('Failed to load current quantity: ' + e.message); }
+}
+function recalcAdjDelta(){
+  const current = parseFloat(document.getElementById('adjCurrentWrap').dataset.currentQty) || 0;
+  const newQty = parseFloat(document.getElementById('adjNewQty').value);
+  document.getElementById('adjDelta').value = isNaN(newQty) ? '' : fmtNum(newQty - current);
+}
+async function submitInventoryAdjust(){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const itemNo = document.getElementById('adjItemNo').value;
+  const itemName = document.getElementById('adjItemName').value;
+  if(!itemNo){ toast('Please select an item first'); return; }
+  const current = parseFloat(document.getElementById('adjCurrentWrap').dataset.currentQty) || 0;
+  const newQty = parseFloat(document.getElementById('adjNewQty').value);
+  if(isNaN(newQty)){ toast('Please enter a new quantity'); return; }
+  const delta = newQty - current;
+  if(delta === 0){ toast('New quantity is the same as current — nothing to adjust'); return; }
+  const reason = document.getElementById('adjReason').value.trim();
+  try{
+    await sbInsert('erp_inout', [{
+      entry_date: todayStr(), item_no: itemNo, item_name: itemName,
+      in_qty: delta > 0 ? delta : 0, out_qty: delta < 0 ? -delta : 0,
+      lot: 'Inventory Adjustment' + (reason ? `: ${reason}` : '')
+    }]);
+    toast('Inventory adjusted');
+    document.getElementById('adjItemSearch').value = '';
+    document.getElementById('adjItemNo').value = '';
+    document.getElementById('adjItemName').value = '';
+    document.getElementById('adjReason').value = '';
+    document.getElementById('adjCurrentWrap').style.display = 'none';
+    await refreshAdjustScreen(); await refreshDashboard(); await refreshInOut(); await refreshProduce();
+  }catch(e){ toast('Adjustment failed: ' + e.message); }
+}
+async function refreshAdjustScreen(){
+  if(!connected || !isAdmin()) return;
+  try{
+    const rows = await sbGet(`erp_inout?select=entry_date,item_no,item_name,in_qty,out_qty,lot&lot=ilike.${encodeURIComponent('Inventory Adjustment*')}&order=id.desc&limit=100`);
+    document.getElementById('adjRecentTable').innerHTML = rows.map(r => `<tr>
+      <td>${r.entry_date}</td><td>${r.item_no}</td><td>${r.item_name||''}</td>
+      <td>${fmtNum(r.in_qty)}</td><td>${fmtNum(r.out_qty)}</td><td>${(r.lot||'').replace('Inventory Adjustment: ','').replace('Inventory Adjustment','–')}</td>
+    </tr>`).join('');
+    document.getElementById('adjRecentEmpty').style.display = rows.length ? 'none' : 'block';
+  }catch(e){ /* table may just be empty */ }
+}
 async function refreshUsersScreen(){
   if(!connected || !isAdmin()) return;
   try{
-    USERS_DATA = await sbGet('erp_profiles?select=id,email,role,display_name,created_at&order=created_at.asc&limit=500');
+    USERS_DATA = await sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens&order=created_at.asc&limit=500');
     renderUsersTable();
   }catch(e){ /* table may not exist yet if fix7-schema.sql hasn't been run */ }
   try{
@@ -3681,10 +4105,23 @@ async function resolveRoleRequest(reqId, userId, requestedRole, approve){
     if(userId === CURRENT_USER?.id) await fetchProfile();
   }catch(e){ toast('Failed: ' + e.message); }
 }
+function getAllScreensList(){
+  return [...document.querySelectorAll('#subNav button[data-screen]')].map(b => ({
+    screen: b.dataset.screen, module: b.dataset.module,
+    label: b.textContent.trim()
+  }));
+}
 function renderUsersTable(){
   const tbody = document.getElementById('usersTable');
   if(!tbody) return;
-  tbody.innerHTML = USERS_DATA.map(u => `<tr>
+  const allScreens = getAllScreensList();
+  const byModule = {};
+  allScreens.forEach(s => { (byModule[s.module] = byModule[s.module]||[]).push(s); });
+  tbody.innerHTML = USERS_DATA.map((u,i) => {
+    const rowId = 'userAccess'+i;
+    const allowed = Array.isArray(u.allowed_screens) ? u.allowed_screens : null;
+    const isFull = !allowed || !allowed.length;
+    return `<tr>
     <td>${u.display_name ? `${u.display_name} <span style="color:var(--muted);font-size:11px">(${u.email})</span>` : (u.email||'')}</td>
     <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : ''}</td>
     <td>
@@ -3695,9 +4132,60 @@ function renderUsersTable(){
       </select>
       <div style="font-size:10px;color:var(--muted);margin-top:3px">Viewer: read only · Editor: can edit data · Admin: can also manage users</div>
     </td>
-    <td>${u.id === CURRENT_USER?.id ? '<span class="chip">You</span>' : ''}</td>
-  </tr>`).join('');
+    <td>
+      <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="toggleRowDetail('${rowId}')">${isFull?'🔓 Full Access':'🔒 Restricted'}</button>
+    </td>
+    <td>${u.id === CURRENT_USER?.id ? '<span class="chip">You</span>' : `<button class="btn secondary" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteUser('${u.id}','${(u.display_name||u.email||'').replace(/'/g,"\\'")}')">✕ Delete</button>`}</td>
+  </tr>
+  <tr id="${rowId}" style="display:none"><td colspan="5">
+    <div style="padding:10px;border:1px solid var(--line);border-radius:9px">
+      <label style="display:flex;align-items:center;gap:6px;font-weight:600">
+        <input type="checkbox" id="${rowId}_full" ${isFull?'checked':''} onchange="document.getElementById('${rowId}_grid').style.display=this.checked?'none':'grid'">
+        Full access (every screen their role allows)
+      </label>
+      <div id="${rowId}_grid" style="display:${isFull?'none':'grid'};grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 16px;margin-top:10px">
+        ${Object.keys(byModule).map(m => `<div>
+          <div style="font-weight:700;font-size:12px;margin-bottom:4px;text-transform:capitalize">${m}</div>
+          ${byModule[m].map(s => `<label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:3px">
+            <input type="checkbox" value="${s.screen}" ${(!isFull && allowed.includes(s.screen))?'checked':''} class="${rowId}_cb">
+            ${s.label}
+          </label>`).join('')}
+        </div>`).join('')}
+      </div>
+      <div class="btnrow" style="margin-top:10px">
+        <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="saveUserMenuAccess('${u.id}','${rowId}')">💾 Save</button>
+        <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="toggleRowDetail('${rowId}')">✕ Cancel</button>
+      </div>
+    </div>
+  </td></tr>`;
+  }).join('');
   document.getElementById('usersEmpty').style.display = USERS_DATA.length ? 'none' : 'block';
+}
+async function saveUserMenuAccess(userId, rowId){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const full = document.getElementById(rowId+'_full').checked;
+  let allowedScreens = null;
+  if(!full){
+    const checked = [...document.querySelectorAll(`.${rowId}_cb:checked`)].map(cb => cb.value);
+    if(!checked.length){ toast('Select at least one screen, or check Full access'); return; }
+    allowedScreens = checked;
+  }
+  try{
+    await sbUpdate('erp_profiles', userId, { allowed_screens: allowedScreens });
+    toast('Menu access updated');
+    await refreshUsersScreen();
+    if(userId === CURRENT_USER?.id) await fetchProfile();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+async function deleteUser(userId, name){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  if(userId === CURRENT_USER?.id){ toast("You can't delete your own account"); return; }
+  if(!confirm(`Remove ${name} from this app? This deletes their profile (role, display name, menu access) — it does not delete their Supabase Auth login, so they could still sign in and would default back to Viewer with no restrictions. To fully block their login, remove them from Authentication → Users in the Supabase dashboard.`)) return;
+  try{
+    await sbDelete('erp_profiles', userId);
+    toast('User profile removed');
+    await refreshUsersScreen();
+  }catch(e){ toast('Delete failed: ' + e.message); }
 }
 async function updateUserRole(id, role){
   if(!isAdmin()){ toast('Admins only'); return; }
@@ -3723,6 +4211,26 @@ async function saveMyProfile(){
     toast('Profile saved');
     await fetchProfile();
   }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function changeMyPassword(){
+  const statusEl = document.getElementById('acctPasswordStatus');
+  const pw = document.getElementById('acctNewPassword').value;
+  const confirm = document.getElementById('acctConfirmPassword').value;
+  if(!pw || pw.length < 6){ statusEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if(pw !== confirm){ statusEl.textContent = "Passwords don't match."; return; }
+  statusEl.textContent = 'Updating...';
+  try{
+    const res = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/user', {
+      method: 'PUT',
+      headers: { 'apikey': CFG.key, 'Authorization': 'Bearer ' + SESSION.access_token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error_description || data.msg || data.error || ('Error ' + res.status));
+    statusEl.textContent = '✅ Password updated.';
+    document.getElementById('acctNewPassword').value = '';
+    document.getElementById('acctConfirmPassword').value = '';
+  }catch(e){ statusEl.textContent = '❌ ' + e.message; }
 }
 async function submitRoleRequest(){
   if(!CURRENT_USER) return;
@@ -3888,38 +4396,45 @@ async function handleInvoiceFile(file){
   if(!rows.length){ logImport('invoice.csv: file is empty'); return; }
   const fileHash = await sha256Hex(text);
   if(await alreadyImported('invoice', fileHash)) return;
-  const poCheckValue = String(rows[0][24] ?? '').trim(); // col 25 (1-indexed) -> index 24
-  // check already imported
+  // New format: this is a printed invoice exported to CSV, one row per line item,
+  // with the invoice's letterhead/customer/PO info repeated on every row. Column
+  // positions (0-indexed): 8=invoice/ship date, 9=customer, 24=PO# ("CUSTOMER PO #"),
+  // 26=customer # ("CUSTOMER #"), 36=qty, 38=item#, 39=item name.
+  const poCheckValue = String(rows[0][24] ?? '').trim();
   try{
     const existing = await sbGet('erp_pending_order?select=id&po_no=eq.' + encodeURIComponent(poCheckValue) + '&limit=1');
     if(existing && existing.length){ logImport('⚠ invoice.csv: PO ' + poCheckValue + ' already imported, skipping'); toast('PO already imported!'); return; }
   }catch(e){ logImport('Failed to check duplicate PO: ' + e.message); }
 
   const out = [];
-  let skipped = 0;
+  let skipped = 0, ambiguous = 0;
   for(const r of rows){
-    let raw = String(r[38] ?? '').trim(); // col 39 -> index 38
-    if(raw === '' || raw === '9049') { continue; }
-    let itemNo = raw === '01420SC' ? raw : ('0' + raw);
-    let itemName = String(r[39] ?? '').trim(); // col 40 -> index 39
+    let raw = String(r[38] ?? '').trim(); // item# column
+    if(raw === '' || raw === 'ITEM NO.') continue; // blank or a stray repeated header row
+    let itemNo = raw;
+    if(/^\d+$/.test(itemNo) && itemNo.length < 5) itemNo = itemNo.padStart(5, '0');
+    if(itemNo === '9049' || itemNo === '09049') continue; // CHEP Pallet, not a real product
+    let itemName = String(r[39] ?? '').trim();
     const corrected = lookupDupe(itemNo, itemName);
     itemNo = corrected.item_no; itemName = corrected.item_name;
     if(!itemNo) continue;
-    if(!ITEMS_BY_NO[itemNo]){ skipped++; continue; }
+    const matched = resolveItemByNoAndName(itemNo, itemName);
+    if(!matched){ skipped++; continue; }
+    if((ITEMS_BY_NO_ALL[itemNo]||[]).length > 1 && (matched.item_name||'').trim().toLowerCase() !== itemName.trim().toLowerCase()){ ambiguous++; }
     out.push({
-      ship_date: parseDateLoose(r[8]),                 // col 9 -> index 8
+      ship_date: parseDateLoose(r[8]),
       item_no: itemNo, item_name: itemName,
-      qty: parseFloat(r[36]) || 0,                      // col 37 -> index 36
-      customer: String(r[9] ?? '').trim(),               // col 10 -> index 9
-      po_no: String(r[26] ?? '').trim(),                 // col 27 -> index 26
-      customer_no: poCheckValue
+      qty: parseFloat(r[36]) || 0,
+      customer: String(r[9] ?? '').trim(),
+      po_no: poCheckValue,
+      customer_no: String(r[26] ?? '').trim()
     });
   }
   if(!out.length){ logImport('invoice.csv: no rows to import'); return; }
   try{
     await sbInsert('erp_pending_order', out);
     await logImportRun('invoice', file.name, fileHash, out.length);
-    logImport(`✅ invoice.csv import complete: added ${out.length} order(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}`);
+    logImport(`✅ invoice.csv import complete: added ${out.length} order(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}${ambiguous?`, ⚠ ${ambiguous} row(s) had a shared item# that couldn't be matched to a name — please double-check those`:''}`);
     toast('Import completed successfully!');
     await refreshPO(); await refreshDashboard(); await refreshProduce();
   }catch(e){ logImport('❌ Import failed: ' + e.message); }
@@ -3945,7 +4460,7 @@ async function handleSalesFile(file){
 
   const out = [];
   const compTriggers = []; // {itemNo, entryDate, qty} for any item found in erp_item_sachet_recipe
-  let skipped = 0;
+  let skipped = 0, ambiguous = 0;
   for(const r of clean){
     const qtyRaw = parseFloat(r[25]); // col26 -> index25
     if(!qtyRaw) continue;
@@ -3972,8 +4487,9 @@ async function handleSalesFile(file){
     const corrected = lookupDupe(itemNo, itemName);
     itemNo = corrected.item_no; itemName = corrected.item_name;
 
-    const item = ITEMS_BY_NO[itemNo];
+    const item = resolveItemByNoAndName(itemNo, itemName);
     if(!item){ skipped++; continue; }
+    if((ITEMS_BY_NO_ALL[itemNo]||[]).length > 1 && (item.item_name||'').trim().toLowerCase() !== itemName.trim().toLowerCase()){ ambiguous++; }
     let qty = qtyRaw;
     if(usePieces && item.pieces){ qty = qtyRaw / item.pieces; }
 
@@ -3990,7 +4506,7 @@ async function handleSalesFile(file){
     await sbInsert('erp_inout', out);
     for(const t of compTriggers){ await deductComponentsForItem(t.itemNo, t.entryDate, t.qty); }
     await logImportRun('itemsalessummary', file.name, fileHash, out.length);
-    logImport(`✅ itemsalessummary.csv import complete: added ${out.length} out-qty record(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}${compTriggers.length?`, triggered sachet deduction for ${compTriggers.length} row(s)`:''}`);
+    logImport(`✅ itemsalessummary.csv import complete: added ${out.length} out-qty record(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}${compTriggers.length?`, triggered sachet deduction for ${compTriggers.length} row(s)`:''}${ambiguous?`, ⚠ ${ambiguous} row(s) had a shared item# that couldn't be matched to a name — please double-check those`:''}`);
     toast('Import completed successfully!');
     await refreshInOut(); await refreshDashboard(); await refreshProduce(); await refreshComponents();
   }catch(e){ logImport('❌ Import failed: ' + e.message); }
@@ -4047,22 +4563,26 @@ async function performBackup(){
 function todayStr(){ return new Date().toISOString().slice(0,10); }
 function toJulianDate(dateStr){
   if(!dateStr) return '';
-  const d = new Date(dateStr + 'T00:00:00');
-  const year = d.getFullYear() % 100;
-  const start = new Date(d.getFullYear(), 0, 0);
-  const dayOfYear = Math.floor((d - start) / 86400000);
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if(!y || !m || !d) return '';
+  const year = y % 100;
+  const startOfYearUTC = Date.UTC(y, 0, 1);
+  const dateUTC = Date.UTC(y, m - 1, d);
+  const dayOfYear = Math.round((dateUTC - startOfYearUTC) / 86400000) + 1;
   return String(year).padStart(2,'0') + String(dayOfYear).padStart(3,'0');
 }
 // Shared Prod./Exp. Date formatter used everywhere (Create, Preview, Confirm, Packaging
 // report). Each item stores its own display preference ("full" date+Julian, or "julian"
 // only), since this varies item by item rather than being one global setting.
 function formatProdExpDate(it){
-  const jDate = it.expired_date || it.production_date;
-  if(!jDate) return '–';
+  if(!it.expired_date && !it.production_date) return '–';
   const mode = it.date_display_mode || 'full';
-  if(mode === 'julian') return `Julian: ${toJulianDate(jDate)}`;
+  // Julian date is always derived from the actual PRODUCTION date, never the
+  // (calculated) expiry date — production_date is now always set on every item.
+  const julian = it.production_date ? toJulianDate(it.production_date) : (it.expired_date ? toJulianDate(it.expired_date) : '');
+  if(mode === 'julian') return `Julian: ${julian}`;
   const label = it.expired_date ? `Exp: ${it.expired_date}` : `Prod: ${it.production_date}`;
-  return `${label} (Julian: ${toJulianDate(jDate)})`;
+  return `${label} (Julian: ${julian})`;
 }
 async function updateRunItemDateMode(id, mode){
   if(!canWrite()){ toast('You have read-only access'); return; }
@@ -4108,7 +4628,7 @@ async function printProductionReport(){
       const totalBatches = rs.reduce((s,r)=>s+(parseFloat(r.status==='Confirmed'?r.confirmed_mixes:r.planned_mixes)||0),0);
       return `<div class="pr-line">
         <h3>${l} — ${fmtNum(totalBatches)} batches total</h3>
-        <table><thead><tr><th>Product Dough</th><th>Batches</th></tr></thead>
+        <table><colgroup><col style="width:75%"><col style="width:25%"></colgroup><thead><tr><th>Product Dough</th><th>Batches</th></tr></thead>
         <tbody>${rs.map(r => `<tr><td>${r.product_name}</td><td>${fmtNum(r.status==='Confirmed'?r.confirmed_mixes:r.planned_mixes)}</td></tr>` +
           (r.remark ? `<tr><td colspan="2" class="pr-detail">Remark: ${r.remark}</td></tr>` : '')).join('')}</tbody></table>
       </div>`;
@@ -4132,17 +4652,18 @@ async function printPackagingReport(){
         <h3>${l}</h3>
         ${rs.map(r => {
           const runItems = items.filter(it => it.run_id === r.id);
+          const p = getProductInfo(r.product_name);
           return `<div style="margin-bottom:10px">
-            <div style="font-weight:700;margin-bottom:4px">${r.product_name}</div>
-            <table><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Prod./Exp. Date</th></tr></thead>
+            <div style="font-weight:700;font-style:italic;margin-bottom:4px">${r.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}</div>
+            <table><colgroup><col style="width:10%"><col style="width:26%"><col style="width:30%"><col style="width:10%"><col style="width:24%"></colgroup><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Prod./Exp. Date</th></tr></thead>
             <tbody>${runItems.length ? runItems.map(it => {
               const item = ITEMS_BY_NO[it.item_no];
               const packingCalc = it.packing_hrs
                 ? `Packing: ${fmtNum(it.packing_hrs)}h for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)`
                 : '';
-              const detailLine = [packingCalc, it.remark ? `Remark: ${it.remark}` : ''].filter(Boolean).join(' · ');
+              const remarkLine = it.remark ? `<tr><td></td><td colspan="4" class="pr-detail" style="color:#c0392b;font-weight:700;font-style:italic">📝 ${it.remark}</td></tr>` : '';
               return `<tr><td>${it.item_no}</td><td>${it.item_name||''}</td><td>${itemPackDetail(item, it.planned_cases)}</td><td>${fmtNum(it.planned_cases)}</td><td>${formatProdExpDate(it)}</td></tr>` +
-                (detailLine ? `<tr><td></td><td colspan="4" class="pr-detail">${detailLine}</td></tr>` : '');
+                (packingCalc ? `<tr><td></td><td colspan="4" class="pr-detail">${packingCalc}</td></tr>` : '') + remarkLine;
             }).join('') : `<tr><td colspan="5">(no items packed yet)</td></tr>`}</tbody></table>
           </div>`;
         }).join('')}
@@ -4176,11 +4697,14 @@ async function consumeAuthRedirectHash(){
       expires_at: Math.floor(Date.now()/1000) + (parseInt(expiresIn,10) || 3600),
       user: { id: user.id, email: user.email }
     };
-    await Store.set('auth-session', JSON.stringify(SESSION));
+    try{ sessionStorage.setItem('auth-session', JSON.stringify(SESSION)); }catch(e){}
     history.replaceState(null, '', location.pathname + location.search);
     return true;
   }catch(e){ return false; }
 }
+// Bump this string whenever you ship a new build — it's the only place it's set.
+const APP_VERSION = 'Ver. 1.0';
+document.getElementById('appVersion').textContent = APP_VERSION;
 (async function init(){
   try{
     const t = await Store.get('theme');
