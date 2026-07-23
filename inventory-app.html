@@ -5,91 +5,82 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
 <title>Hon's Wun-Tun House Inventory System</title>
 <style>
+  /* ============================================================
+     Identity: "Hon's Wun-Tun House" runs a Cantonese wonton/dim sum
+     plant — Bamboo & Jade direction: pale celadon/jade-tinted paper
+     with a deep forest-jade primary accent (bamboo steamers, jade dim
+     sum dishware), and a lacquer-red ink-chop as the one signature
+     accent (used only for the stamp motif, never as a semantic/
+     interactive color, so it never competes with the real status
+     colors below). "Success" green is kept a warmer, brighter fresh-
+     bamboo-shoot green, deliberately distinct from the cooler jade
+     accent so the two are never confused at a glance. Codes — item #,
+     Julian date, lot — are everywhere in this app, so those and every
+     tag/chip are set in a monospaced face, like ink stamped on a carton.
+     ============================================================ */
+  @import url('https://fonts.googleapis.com/css2?family=Zilla+Slab:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
   :root{
-    --bg:#f5f6f8; --panel:#ffffff; --line:#e2e6ec; --text:#1a2230; --muted:#6b7686;
-    --accent:#2f6fed; --accent-ink:#ffffff; --green:#1c9c6b; --amber:#c98a12; --danger:#d64545;
-    --chip:#eef1f6; --radius:12px; --shadow:0 1px 2px rgba(20,30,50,.06),0 8px 24px rgba(20,30,50,.04);
+    --bg:#e9f0e3; --panel:#ffffff; --line:#cfe0c9; --text:#1e2b21; --muted:#6e8570;
+    --accent:#1b6e4a; --accent-ink:#ffffff; --green:#5a9e3f; --amber:#b8802a; --danger:#c8472f;
+    --stamp:#9c1f3c;
+    --chip:#dfebd8; --radius:12px; --shadow:0 1px 2px rgba(20,35,24,.08),0 8px 24px rgba(20,35,24,.06);
+    --font-display:"Zilla Slab",Georgia,serif; --font-body:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; --font-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
   }
   [data-theme="dark"]{
-    --bg:#10141b; --panel:#171d27; --line:#262f3d; --text:#e7ecf3; --muted:#8a95a6;
-    --accent:#5b8cff; --accent-ink:#0b1020; --green:#33c98d; --amber:#e0a83a; --danger:#ff6b6b;
-    --chip:#212a37; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+    --bg:#141b15; --panel:#1d251e; --line:#34402f; --text:#e7f0e1; --muted:#9bae93;
+    --accent:#3fb37e; --accent-ink:#06231a; --green:#6bc24a; --amber:#e0a83a; --danger:#ff6b52;
+    --stamp:#d14568;
+    --chip:#232b21; --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 24px rgba(0,0,0,.3);
   }
   /* ============================================================
-     Color themes — each defines a FULL palette (bg/panel/line/text/
-     chip/accent), not just the accent color, for both light & dark.
+     Color themes — user-selectable, on top of the fixed identity
+     above. "Bamboo & Jade" (no data-color) is the default. Each of
+     the other five is a full palette for both light & dark, except
+     Jade & Persimmon, which deliberately keeps every Bamboo & Jade
+     value and only swaps the stamp/Confirmed-chip color — its whole
+     point is a different ink color on the same base, not a new base.
      ============================================================ */
-  [data-color="sunset"]{
-    --bg:#f7f2ea; --panel:#ffffff; --line:#ecdfce; --text:#2a2118; --muted:#8a7a63;
-    --accent:#ff6b35; --accent-ink:#ffffff; --chip:#faf0e3;
+  [data-color="emerald"]{
+    --bg:#e4eee0; --panel:#ffffff; --line:#c8ddc2; --text:#182620; --muted:#65816d;
+    --accent:#0f5c3f; --accent-ink:#ffffff; --green:#5a9e3f; --amber:#b8802a; --danger:#c8472f;
+    --stamp:#9c1f3c; --chip:#d7e6d1;
   }
-  [data-theme="dark"][data-color="sunset"]{
-    --bg:#161210; --panel:#211a15; --line:#3a2c22; --text:#f3e9dd; --muted:#b39a80;
-    --accent:#ff8a5c; --accent-ink:#1a0d05; --chip:#2b211b;
+  [data-theme="dark"][data-color="emerald"]{
+    --bg:#101a13; --panel:#182219; --line:#2c3a2e; --text:#e2f0e2; --muted:#93aa95;
+    --accent:#2fd18f; --accent-ink:#052316; --green:#6bc24a; --amber:#e0a83a; --danger:#ff6b52;
+    --stamp:#d14568; --chip:#1f2b21;
   }
-  [data-color="teal"]{
-    --bg:#eef7f6; --panel:#ffffff; --line:#d3e9e5; --text:#0e2b28; --muted:#5c8481;
-    --accent:#0d9488; --accent-ink:#ffffff; --chip:#e2f3f1;
+  [data-color="persimmon"]{ --stamp:#c76b2e; }
+  [data-theme="dark"][data-color="persimmon"]{ --stamp:#e08a4c; }
+  [data-color="golden"]{
+    --bg:#f3e6c4; --panel:#fffaf0; --line:#e0cb96; --text:#2b2016; --muted:#8c7a54;
+    --accent:#6b4423; --accent-ink:#ffffff; --green:#5a9e3f; --amber:#b8802a; --danger:#c8472f;
+    --stamp:#9c1f3c; --chip:#ecdba8;
   }
-  [data-theme="dark"][data-color="teal"]{
-    --bg:#050e0d; --panel:#0a1b19; --line:#153230; --text:#dff5f2; --muted:#7fa8a3;
-    --accent:#2dd4bf; --accent-ink:#04211d; --chip:#0f2422;
+  [data-theme="dark"][data-color="golden"]{
+    --bg:#1c150d; --panel:#261d13; --line:#3f321f; --text:#f0e2c4; --muted:#b8a37c;
+    --accent:#c9a24d; --accent-ink:#241a06; --green:#6bc24a; --amber:#e0a83a; --danger:#ff6b52;
+    --stamp:#d14568; --chip:#2e2415;
   }
-  [data-color="blush"]{
-    --bg:#fdf1f0; --panel:#ffffff; --line:#f6dcda; --text:#3a1f21; --muted:#a17d7f;
-    --accent:#e05263; --accent-ink:#ffffff; --chip:#fbe6e5;
+  [data-color="steel"]{
+    --bg:#f2f1ec; --panel:#ffffff; --line:#ddd9cf; --text:#222420; --muted:#7c7a70;
+    --accent:#4a5a68; --accent-ink:#ffffff; --green:#5a9e3f; --amber:#b8802a; --danger:#c8472f;
+    --stamp:#9c1f3c; --chip:#e6e4da;
   }
-  [data-theme="dark"][data-color="blush"]{
-    --bg:#170f11; --panel:#221618; --line:#3c2528; --text:#f6e3e4; --muted:#b98e91;
-    --accent:#f2778a; --accent-ink:#210a0d; --chip:#2c1c1e;
+  [data-theme="dark"][data-color="steel"]{
+    --bg:#16181a; --panel:#1e2124; --line:#333739; --text:#e6e6e2; --muted:#9a9c98;
+    --accent:#7b93a3; --accent-ink:#0c1418; --green:#6bc24a; --amber:#e0a83a; --danger:#ff6b52;
+    --stamp:#d14568; --chip:#24282b;
   }
-  [data-color="forest"]{
-    --bg:#f1f6f1; --panel:#ffffff; --line:#dbe9dc; --text:#16281a; --muted:#6b8873;
-    --accent:#2f7a4f; --accent-ink:#ffffff; --chip:#e5f0e6;
+  [data-color="porcelain"]{
+    --bg:#eaf0f4; --panel:#ffffff; --line:#cddbe3; --text:#1a2b33; --muted:#6b8590;
+    --accent:#2a5f7a; --accent-ink:#ffffff; --green:#5a9e3f; --amber:#b8802a; --danger:#c8472f;
+    --stamp:#9c1f3c; --chip:#d7e5ec;
   }
-  [data-theme="dark"][data-color="forest"]{
-    --bg:#0b130d; --panel:#111f14; --line:#213525; --text:#e2f0e4; --muted:#83a68c;
-    --accent:#54b57a; --accent-ink:#06170d; --chip:#16261a;
-  }
-  [data-color="plum"]{
-    --bg:#f5f2fb; --panel:#ffffff; --line:#e4dbf5; --text:#241a38; --muted:#8172a1;
-    --accent:#7c3aed; --accent-ink:#ffffff; --chip:#ece4fa;
-  }
-  [data-theme="dark"][data-color="plum"]{
-    --bg:#120c1e; --panel:#1a1229; --line:#2d2145; --text:#ece4fa; --muted:#a596c4;
-    --accent:#a78bfa; --accent-ink:#160c2e; --chip:#221934;
-  }
-  [data-color="sky"]{
-    --bg:#eef6fc; --panel:#ffffff; --line:#d3e7f5; --text:#12293b; --muted:#5f7f96;
-    --accent:#0ea5e9; --accent-ink:#ffffff; --chip:#e1f1fb;
-  }
-  [data-theme="dark"][data-color="sky"]{
-    --bg:#081420; --panel:#0d2130; --line:#173148; --text:#dff1fb; --muted:#7ea6c0;
-    --accent:#38bdf8; --accent-ink:#04202e; --chip:#102838;
-  }
-  [data-color="slate"]{
-    --bg:#f3f4f6; --panel:#ffffff; --line:#e2e4e8; --text:#1f2328; --muted:#6b7280;
-    --accent:#64748b; --accent-ink:#ffffff; --chip:#eceef1;
-  }
-  [data-theme="dark"][data-color="slate"]{
-    --bg:#111318; --panel:#1a1d23; --line:#2b2f37; --text:#e8eaed; --muted:#9aa1ab;
-    --accent:#94a3b8; --accent-ink:#0f1115; --chip:#20242b;
-  }
-  [data-color="warmgray"]{
-    --bg:#f6f4f2; --panel:#ffffff; --line:#e7e2dc; --text:#292420; --muted:#8a8078;
-    --accent:#9c8b7a; --accent-ink:#ffffff; --chip:#efebe6;
-  }
-  [data-theme="dark"][data-color="warmgray"]{
-    --bg:#16130f; --panel:#211c17; --line:#372f27; --text:#f0ece6; --muted:#b3a696;
-    --accent:#c2ab8e; --accent-ink:#1a140c; --chip:#2a231c;
-  }
-  [data-color="stone"]{
-    --bg:#f4f4f4; --panel:#ffffff; --line:#e0e0e0; --text:#242424; --muted:#767676;
-    --accent:#57534e; --accent-ink:#ffffff; --chip:#ececec;
-  }
-  [data-theme="dark"][data-color="stone"]{
-    --bg:#121212; --panel:#1c1c1c; --line:#2e2e2e; --text:#ececec; --muted:#a3a3a3;
-    --accent:#a8a29e; --accent-ink:#141414; --chip:#242424;
+  [data-theme="dark"][data-color="porcelain"]{
+    --bg:#101a1f; --panel:#17252c; --line:#2c3f47; --text:#e3eef2; --muted:#91aab3;
+    --accent:#4fa8c9; --accent-ink:#052026; --green:#6bc24a; --amber:#e0a83a; --danger:#ff6b52;
+    --stamp:#d14568; --chip:#1c2d34;
   }
   .color-swatch-row{display:flex;gap:10px;margin-top:6px;flex-wrap:wrap}
   .color-swatch{width:36px;height:36px;border-radius:50%;border:2px solid transparent;cursor:pointer;padding:0}
@@ -109,15 +100,24 @@
   .kanban-card .card-footer{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
   .kanban-empty-col{color:var(--muted);font-size:12px;text-align:center;padding:20px 0}
   *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif}
-  h1,h2,h3{margin:0 0 4px}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body)}
+  h1,h2,h3{margin:0 0 4px;font-family:var(--font-display);font-weight:700;letter-spacing:-.01em}
   .app-shell{display:flex;flex-direction:column;min-height:100vh}
 
   /* ---- Top navigation (menu across the top) ---- */
   .topnav{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
   .topnav .row1{display:flex;align-items:center;gap:12px;padding:12px 20px 8px}
-  .topnav .brand .name{font-size:15px;font-weight:700;line-height:1.2}
+  .topnav .brand{display:flex;align-items:center;gap:10px}
+  .topnav .brand .name{font-family:var(--font-display);font-size:19px;font-weight:700;line-height:1.2}
   .topnav .brand .sub{font-size:11px;color:var(--muted)}
+  .brand-stamp{
+    width:32px;height:32px;flex:0 0 auto;border-radius:50%;position:relative;
+    border:2px solid var(--stamp);color:var(--stamp);
+    display:flex;align-items:center;justify-content:center;
+    font-family:var(--font-mono);font-weight:700;font-size:7.5px;letter-spacing:0;
+    transform:rotate(-9deg);opacity:.85;
+  }
+  .brand-stamp::before{content:"";position:absolute;inset:3px;border:1px solid var(--stamp);border-radius:50%;opacity:.7}
   .topnav .spacer{flex:1}
   .topnav .connwrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
   .topnav nav{display:flex;gap:4px;padding:0 14px 10px;overflow-x:auto}
@@ -150,19 +150,21 @@
   body.logged-out .module-switcher{display:none}
   body.no-write .can-write{display:none !important}
   body.no-write .viewer-only{display:block !important}
-  body.no-write #subNav button:not(.admin-only):not([data-screen="account"]):not([data-screen="settings"])::after{content:" (Read Only)";font-size:9px;font-weight:400;opacity:.65}
+  .subnav-readonly-note{display:none;font-size:11px;font-weight:600;color:var(--muted);opacity:.75;padding:4px 20px 8px}
+  body.no-write .subnav-readonly-note{display:block}
   body.no-admin .admin-only{display:none !important}
   .no-can-write{display:none}
   body.no-write .no-can-write{display:inline}
   .role-badge{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--chip);color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em}
-  .role-badge.admin{background:rgba(28,156,107,.15);color:var(--green)}
-  .role-badge.editor{background:rgba(47,111,237,.15);color:var(--accent)}
-  .tier-chip{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap}
-  .tier-sufficient{background:rgba(28,156,107,.15);color:var(--green)}
-  .tier-watch{background:rgba(47,111,237,.15);color:var(--accent)}
-  .tier-caution{background:rgba(201,138,18,.18);color:var(--amber)}
-  .tier-urgent{background:rgba(214,69,69,.18);color:var(--danger)}
+  .role-badge.admin{background:rgba(90,158,63,.15);color:var(--green)}
+  .role-badge.editor{background:rgba(27,110,74,.15);color:var(--accent)}
+  .tier-chip{display:inline-block;padding:3px 9px;border-radius:99px;font-size:11px;font-weight:700;white-space:nowrap;font-family:var(--font-mono)}
+  .tier-sufficient{background:rgba(90,158,63,.15);color:var(--green)}
+  .tier-watch{background:rgba(27,110,74,.15);color:var(--accent)}
+  .tier-caution{background:rgba(184,128,42,.18);color:var(--amber)}
+  .tier-urgent{background:rgba(200,71,47,.18);color:var(--danger)}
   .tier-oos{background:var(--danger);color:#fff}
+  .tier-mto{background:var(--chip);color:var(--muted)}
   .pyramid-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:12px}
   .pyramid-row .lbl{width:80px;flex:0 0 80px;color:var(--muted);text-align:right}
   .pyramid-row .bar-wrap{flex:1;background:var(--chip);border-radius:6px;overflow:hidden;height:20px}
@@ -178,13 +180,20 @@
   tbody tr:last-child td{border-bottom:none}
   .tablewrap table:not(#dashTable):not(#produceTable):not(#itemsTableEl):not(#ioRecentTable):not(#compRecentTable):not(#histTable):not(#flourLedgerTableEl):not(#schedNeedTableEl) tbody tr:nth-child(odd){background:var(--chip)}
   #dashTable tbody tr.zrow, #produceTable tbody tr.zrow, #itemsTableEl tbody tr.zrow, #schedNeedTableEl tbody tr.zrow,
-  #ioRecentTable tbody tr.zrow, #compRecentTable tbody tr.zrow, #histTable tbody tr.zrow, #flourLedgerTableEl tbody tr.zrow{background:var(--chip)}
+  #ioRecentTable tbody tr.zrow, #compRecentTable tbody tr.zrow, #histTable tbody tr.zrow, #flourLedgerTableEl tbody tr.zrow,
+  #saucesTableEl tbody tr.zrow{background:var(--chip)}
   .dash-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 18px;padding:12px 4px;white-space:normal}
   .dash-detail-grid .l{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:2px}
   .tablewrap{overflow-x:auto}
-  .chip{display:inline-block;padding:3px 9px;border-radius:99px;background:var(--chip);font-size:11px;font-weight:600}
-  .chip.warn{background:rgba(214,69,69,.15);color:var(--danger)}
-  .chip.ok{background:rgba(28,156,107,.15);color:var(--green)}
+  .chip{display:inline-block;padding:3px 9px;border-radius:99px;background:var(--chip);font-size:11px;font-weight:600;font-family:var(--font-mono);letter-spacing:.01em}
+  .chip.warn{background:rgba(200,71,47,.15);color:var(--danger)}
+  /* signature: a confirmed/ok chip reads like a stamped seal on a carton, not a flat pill */
+  .chip.ok{
+    background:transparent;border:1.5px solid var(--green);color:var(--green);
+    position:relative;text-transform:uppercase;font-weight:700;
+    transform:rotate(-2.5deg);padding:2px 10px 2px 8px;
+  }
+  .chip.ok::before{content:"";position:absolute;inset:1.5px;border:1px solid var(--green);border-radius:inherit;opacity:.55}
   .empty{text-align:center;color:var(--muted);padding:30px 10px;font-size:13px}
   .toast{position:fixed;bottom:88px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:10px 18px;border-radius:99px;font-size:13px;box-shadow:var(--shadow);z-index:50;opacity:0;transition:opacity .2s}
   .toast.show{opacity:1}
@@ -193,7 +202,11 @@
   @media (max-width:820px){ .row.wide2{grid-template-columns:1fr} }
 
   /* ---- Dashboard: left search/filter rail + main table ---- */
-  .dash-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start}
+  /* min-width:0 on every grid item: a CSS Grid track otherwise refuses to shrink below
+     its content's intrinsic width, so a wide table forces the whole grid (and the page)
+     wider instead of letting the table's own .tablewrap{overflow-x:auto} scroll internally. */
+  .dash-layout{display:grid;grid-template-columns:220px 1fr;gap:16px;align-items:start;min-width:0}
+  .dash-layout > *{min-width:0}
   .dash-filters{position:sticky;top:76px}
   .dash-filters label{margin-top:14px}
   .dash-filters label:first-child{margin-top:0}
@@ -242,7 +255,7 @@
   .suggest div:hover, .suggest div.hi{background:var(--chip)}
   .kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
   .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;text-align:center}
-  .kpi .n{font-size:22px;font-weight:800}
+  .kpi .n{font-size:24px;font-weight:700;font-family:var(--font-display)}
   .kpi .l{font-size:11px;color:var(--muted);margin-top:2px}
   .section-title{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:18px 0 8px}
   .filterbar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
@@ -275,8 +288,11 @@
   <header class="topnav">
     <div class="row1">
       <div class="brand">
-        <div class="name">Hon's Wun-Tun House <span id="appVersion" style="font-size:11px;font-weight:400;color:var(--muted)"></span></div>
-        <div class="sub">Inventory Management System</div>
+        <span class="brand-stamp" title="Hon's Wun-Tun House">Hon's</span>
+        <div>
+          <div class="name">Hon's Wun-Tun House <span id="appVersion" style="font-size:11px;font-weight:400;color:var(--muted);font-family:var(--font-body)"></span></div>
+          <div class="sub">Inventory Management System</div>
+        </div>
       </div>
       <div class="spacer"></div>
       <div class="connwrap"><span class="dot" id="connDot" title="Connection status"></span><span id="connText">Not connected</span></div>
@@ -288,6 +304,7 @@
       <button data-module="inventory" class="active" onclick="switchModule('inventory')">📦 Inventory</button>
       <button data-module="schedule" onclick="switchModule('schedule')">📅 Production Schedule</button>
       <button data-module="flour" onclick="switchModule('flour')">🌾 Flour Usage</button>
+      <button class="admin-only" data-module="sauce" onclick="switchModule('sauce')">🥫 Sauce Production</button>
       <button data-module="maintenance" onclick="switchModule('maintenance')">🔧 Maintenance</button>
     </div>
     <nav id="subNav" data-module="inventory">
@@ -316,7 +333,16 @@
       <button data-screen="flour-usage-report" data-module="flour" onclick="showScreen('flour-usage-report')"><span class="ic">📊</span>Usage Report</button>
       <button data-screen="flour-recipes" data-module="flour" onclick="showScreen('flour-recipes')"><span class="ic">🔗</span>Recipes</button>
       <button data-screen="flour-ledger" data-module="flour" onclick="showScreen('flour-ledger')"><span class="ic">📜</span>Ledger</button>
+      <button class="admin-only active" data-screen="sauce-create" data-module="sauce" onclick="showScreen('sauce-create')"><span class="ic">➕</span>Create</button>
+      <button class="admin-only" data-screen="sauce-preview" data-module="sauce" onclick="showScreen('sauce-preview')"><span class="ic">👁</span>Preview</button>
+      <button class="admin-only" data-screen="sauce-confirm" data-module="sauce" onclick="showScreen('sauce-confirm')"><span class="ic">✔</span>Confirm Completion</button>
+      <button class="admin-only" data-screen="sauce-sauces" data-module="sauce" onclick="showScreen('sauce-sauces')"><span class="ic">🥫</span>Sauces</button>
+      <button class="admin-only" data-screen="sauce-ingredients" data-module="sauce" onclick="showScreen('sauce-ingredients')"><span class="ic">🌶️</span>Ingredients</button>
+      <button class="admin-only" data-screen="sauce-recipes" data-module="sauce" onclick="showScreen('sauce-recipes')"><span class="ic">🔗</span>Recipes</button>
+      <button class="admin-only can-write" data-screen="sauce-locations" data-module="sauce" onclick="showScreen('sauce-locations')"><span class="ic">🏭</span>Locations</button>
+      <button class="admin-only can-write" data-screen="sauce-allergens" data-module="sauce" onclick="showScreen('sauce-allergens')"><span class="ic">⚠️</span>Allergens</button>
     </nav>
+    <div class="subnav-readonly-note" id="subNavReadOnlyNote">Read Only — you have view-only access</div>
   </header>
 
   <main>
@@ -619,6 +645,13 @@
     <h2>Daily Production Schedule — Create</h2>
     <p style="color:var(--muted);font-size:13px;margin-top:0">Start a new Production Run: how many batches of a Product Dough (e.g. "10 batches of Sunning Special"). Add the specific packed item(s) afterwards on the Preview tab.</p>
 
+    <div class="card">
+      <h3>📅 Upcoming Scheduled Days</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Dates from today onward that already have at least one Production Run. Click one to jump straight to it.</p>
+      <div id="scheduledDaysListCreate" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <div class="empty" id="scheduledDaysEmptyCreate" style="display:none">Nothing scheduled for today or later yet</div>
+    </div>
+
     <div class="card can-write">
       <h3>New Production Run</h3>
       <div class="row">
@@ -643,7 +676,7 @@
       </div>
       <p style="color:var(--muted);font-size:12px;margin-top:0">Search any date to view, add, edit, or delete its Runs and packed items. Save just clears this view — nothing is deleted.</p>
       <div class="row">
-        <div style="max-width:220px"><label>Search Date</label><input type="date" id="itemsPackDate" onchange="renderRunsList()"></div>
+        <div style="max-width:220px"><label>Search Date</label><input type="date" id="itemsPackDate" onchange="renderRunsList(); renderScheduledDaysList('scheduledDaysListCreate', 'scheduledDaysEmptyCreate', 'jumpToScheduledDayCreate', this.value)"></div>
         <div style="display:flex;align-items:flex-end"><button class="btn secondary" onclick="renderRunsList()">🔍 Search</button></div>
       </div>
       <div id="runsList"></div>
@@ -695,7 +728,13 @@
     <p style="color:var(--muted);font-size:13px;margin-top:0">Read-only overview for the selected date — one column per Line, one card per Run. To add items or edit, use Create; to mark things done, use Confirm Completion.</p>
     <div class="row" style="align-items:center">
       <h3 style="flex:2">Production Schedule</h3>
-      <input type="date" id="previewViewDate" onchange="renderPreviewSummary()" style="max-width:160px">
+      <input type="date" id="previewViewDate" onchange="renderPreviewSummary(); renderScheduledDaysList('scheduledDaysListPreview', 'scheduledDaysEmptyPreview', 'jumpToScheduledDayPreview', this.value)" style="max-width:160px">
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">📅 Upcoming Scheduled Days</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Dates from today onward that already have at least one Production Run.</p>
+      <div id="scheduledDaysListPreview" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <div class="empty" id="scheduledDaysEmptyPreview" style="display:none">Nothing scheduled for today or later yet</div>
     </div>
     <div class="btnrow no-print">
       <button class="btn secondary" onclick="printProductionReport()">🖨 Print Production Team Report</button>
@@ -772,6 +811,278 @@
       <div class="tablewrap"><table><thead><tr><th>Line</th><th>Product Doughs using it</th><th></th></tr></thead>
       <tbody id="linesTable"></tbody></table></div>
       <div class="empty" id="linesEmpty" style="display:none">No lines yet</div>
+    </div>
+  </section>
+
+  <!-- SAUCE PRODUCTION: CREATE -->
+  <section class="screen" id="screen-sauce-create">
+    <h2>Sauce Production Schedule — Create</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Pick a date to start or edit that day's sauce production tasks. Production Date and Julian Date (-DDD) are computed automatically from the day's date; Best Before Date is computed from each sauce's shelf-life.</p>
+
+    <div class="card">
+      <h3>📅 Upcoming Scheduled Days</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Dates from today onward that already have a sauce production day started. Click one to jump straight to it.</p>
+      <div id="scheduledDaysListSauceCreate" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <div class="empty" id="scheduledDaysEmptySauceCreate" style="display:none">Nothing scheduled for today or later yet</div>
+    </div>
+
+    <div class="card can-write">
+      <h3>Day</h3>
+      <div class="row">
+        <div><label>Date</label><input type="date" id="sauceDayDate" onchange="onSauceDayDateChange()"></div>
+        <div><label>Manpower Count</label><input type="number" step="any" id="sauceDayManpowerCount"></div>
+        <div><label>Manpower Names</label><input id="sauceDayManpowerNames" placeholder="e.g. Jojo, Thomas, Yi"></div>
+      </div>
+      <div class="btnrow"><button class="btn secondary" onclick="saveSauceDayHeader()">💾 Save Day Info</button></div>
+    </div>
+
+    <div class="card can-write">
+      <h3 id="sauceTaskFormTitle">Add Production Task</h3>
+      <input type="hidden" id="sauceTaskEditId">
+      <div class="row">
+        <div><label>Location</label><select id="sauceTaskLocation"><option value="">Select location...</option></select></div>
+        <div><label>Mixes</label><input type="number" step="any" id="sauceTaskMixes" oninput="recalcSauceTaskPackingHrs(); recalcSauceTaskUsageNote()"></div>
+        <div><label>Sauce</label>
+          <div class="search">
+            <input id="sauceTaskSauceSearch" placeholder="Search sauce name..." oninput="searchSauceTaskSauce()" autocomplete="off">
+            <div class="suggest" id="sauceTaskSauceSuggest" style="display:none"></div>
+          </div>
+          <input type="hidden" id="sauceTaskSauceId">
+        </div>
+      </div>
+      <label>Machine / Process Notes</label>
+      <textarea id="sauceTaskMachineNotes" rows="2" placeholder="e.g. #4 Kettle, dipping cup machine, 50 packs/min"></textarea>
+      <label>Operator / Timing Notes</label>
+      <textarea id="sauceTaskOperatorNotes" rows="2" placeholder="e.g. Start cooking at 7:00am"></textarea>
+      <label>Pack Size Notes</label>
+      <input id="sauceTaskPackNotes" placeholder="e.g. 500g x 8 bags/case">
+      <div class="row">
+        <div><label>Pack Weight</label><input type="number" step="any" id="sauceTaskPackWeight" oninput="recalcSauceTaskPackingHrs()"></div>
+        <div><label>Pack Weight Unit</label><select id="sauceTaskPackWeightUnit" onchange="recalcSauceTaskPackingHrs()"><option value="g">g</option><option value="kg">kg</option><option value="lb">lb</option></select></div>
+      </div>
+      <div class="row">
+        <div><label># M/C Running</label><input type="number" step="any" id="sauceTaskMachines" oninput="recalcSauceTaskPackingHrs()"></div>
+        <div><label>Cycle (cycles/min)</label><input type="number" step="any" id="sauceTaskCycles" oninput="recalcSauceTaskPackingHrs()"></div>
+        <div><label>Bags per Cycle</label><input type="number" step="any" id="sauceTaskBagsPerCycle" oninput="recalcSauceTaskPackingHrs()"></div>
+      </div>
+      <label>Packing Hrs (calculated)</label>
+      <input id="sauceTaskPackingHrsDisplay" disabled>
+      <label>Usage / Stock Coverage Note</label>
+      <input id="sauceTaskUsageNote" placeholder="e.g. Approximately 200 cases, it's 5 weeks stock">
+      <div class="btnrow">
+        <button class="btn" id="sauceTaskSubmitBtn" onclick="submitSauceTask()">➕ Add Task</button>
+        <button class="btn secondary" onclick="resetSauceTaskForm()">Clear / Cancel Edit</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Tasks for this Day</h3>
+      <div class="tablewrap"><table><thead><tr>
+        <th>Location</th><th>Mixes</th><th>Sauce</th><th>Prod. / Best Before</th><th>Status</th><th></th>
+      </tr></thead><tbody id="sauceTasksTable"></tbody></table></div>
+      <div class="empty" id="sauceTasksEmpty" style="display:none">No tasks added for this date yet</div>
+    </div>
+  </section>
+
+  <!-- SAUCE PRODUCTION: PREVIEW -->
+  <section class="screen" id="screen-sauce-preview">
+    <h2>Sauce Production Schedule — Preview</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Read-only overview for the selected date, grouped by Location. To add or edit tasks, use Create; to mark a day done, use Confirm Completion.</p>
+    <div class="row" style="align-items:center">
+      <h3 style="flex:2">Day Overview</h3>
+      <input type="date" id="saucePreviewDate" onchange="renderSaucePreview()" style="max-width:160px">
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">📅 Upcoming Scheduled Days</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Dates from today onward that already have a sauce production day started.</p>
+      <div id="scheduledDaysListSaucePreview" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <div class="empty" id="scheduledDaysEmptySaucePreview" style="display:none">Nothing scheduled for today or later yet</div>
+    </div>
+    <div class="btnrow no-print">
+      <button class="btn secondary" onclick="printSauceProductionReport()">🖨 Print Production Report</button>
+    </div>
+    <div id="sauceDayInfo"></div>
+    <div id="saucePreviewTable"></div>
+    <div class="empty" id="saucePreviewEmpty" style="display:none">No tasks for this date</div>
+  </section>
+
+  <!-- SAUCE PRODUCTION: CONFIRM COMPLETION -->
+  <section class="screen" id="screen-sauce-confirm">
+    <h2>Sauce Production Schedule — Confirm Completion</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Confirming a day deducts every task's recipe ingredients (mixes × recipe) in one step, dated to the day's own date. You can still edit mixes here first.</p>
+    <div class="card">
+      <div class="row" style="align-items:center">
+        <h3 style="flex:2">Awaiting Confirmation</h3>
+        <input type="date" id="sauceConfirmDate" onchange="renderSauceConfirmTab()" style="max-width:160px">
+      </div>
+      <div id="sauceConfirmDayInfo"></div>
+      <div id="sauceConfirmTasksList"></div>
+      <div class="empty" id="sauceConfirmEmpty" style="display:none">Nothing left to confirm for this date 🎉</div>
+      <div class="btnrow can-write" id="sauceConfirmDayBtnWrap" style="display:none">
+        <button class="btn" onclick="confirmSauceDayBtn()">✔ Confirm Day</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SAUCE PRODUCTION: SAUCES -->
+  <section class="screen" id="screen-sauce-sauces">
+    <h2>Manage Sauces</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">The master list of sauces (~260 items) used across recipes, the daily schedule, and printed labels.</p>
+    <div class="card can-write">
+      <h3 id="sauceFormTitle">Add New Sauce</h3>
+      <input type="hidden" id="sauceEditId">
+      <div class="row">
+        <div><label>Sauce Name</label><input id="sauceName" placeholder="e.g. Wegmans Sesame Sauce K750"></div>
+        <div><label>Item Code</label><input id="sauceItemCode" placeholder="e.g. 9637" oninput="renderSauceItemMatchInfo(this.value,'sauceItemMatchInfo')"></div>
+      </div>
+      <div id="sauceItemMatchInfo"></div>
+      <div class="row">
+        <div><label>Package Spec</label><input id="saucePackageSpec" placeholder="e.g. K750"></div>
+        <div><label>Shelf-life (days)</label><input type="number" id="sauceShelfLifeDays" placeholder="e.g. 120"></div>
+      </div>
+      <label>Allergens</label>
+      <div class="row" id="sauceAllergenChecks" style="flex-wrap:wrap;gap:10px"></div>
+      <label>Remark</label>
+      <input id="sauceRemark">
+      <div class="btnrow">
+        <button class="btn" id="sauceSubmitBtn" onclick="submitSauce()">＋ Save Sauce</button>
+        <button class="btn secondary" onclick="resetSauceForm()">Clear / Cancel Edit</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="filterbar">
+        <input id="sauceSearch" placeholder="Search name / item code..." oninput="renderSaucesTable()">
+      </div>
+      <div class="tablewrap"><table id="saucesTableEl"><thead><tr>
+        <th>Sauce</th><th>Item Code</th><th>Package Spec</th><th>Shelf-life (days)</th><th>Allergens</th><th>Linked Item</th><th>Remark</th><th></th>
+      </tr></thead><tbody id="saucesTable"></tbody></table></div>
+      <div class="empty" id="saucesEmpty" style="display:none">No sauces yet</div>
+    </div>
+  </section>
+
+  <!-- SAUCE PRODUCTION: INGREDIENTS -->
+  <section class="screen" id="screen-sauce-ingredients">
+    <h2>Sauce Production — Ingredients</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Raw ingredient master used by Sauce Recipes — separate from the Flour Usage ingredient list.</p>
+    <div class="card can-write">
+      <h3 id="sauceIngFormTitle">Add New Ingredient</h3>
+      <input type="hidden" id="sauceIngEditId">
+      <div class="row">
+        <div><label>Ingredient Name</label><input id="sauceIngName"></div>
+        <div><label>Pcs</label><input type="number" step="any" id="sauceIngPcs"></div>
+        <div><label>Weight</label><input type="number" step="any" id="sauceIngWeight"></div>
+      </div>
+      <div class="row">
+        <div><label>Package Size</label><input id="sauceIngPackageSize" placeholder="e.g. kg/bag"></div>
+        <div><label>Unit</label><input id="sauceIngUnit" placeholder="e.g. kg"></div>
+        <div><label>Kg per Unit</label><input type="number" step="any" id="sauceIngKgPerUnit" placeholder="for unit conversion, optional"></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn" id="sauceIngSubmitBtn" onclick="submitSauceIngredient()">＋ Save Ingredient</button>
+        <button class="btn secondary" onclick="resetSauceIngredientForm()">Clear / Cancel Edit</button>
+      </div>
+    </div>
+    <div class="card can-write">
+      <h3>Receive Stock</h3>
+      <div class="row">
+        <div><label>Date</label><input type="date" id="sauceIngReceiveDate"></div>
+        <div><label>Ingredient</label><select id="sauceIngReceiveId"></select></div>
+        <div><label>Qty</label><input type="number" step="any" id="sauceIngReceiveQty"></div>
+      </div>
+      <div class="btnrow"><button class="btn secondary" onclick="receiveSauceIngredientStock()">📥 Receive</button></div>
+    </div>
+    <div class="card">
+      <div class="filterbar">
+        <input id="sauceIngSearch" placeholder="Search ingredient..." oninput="renderSauceIngredientsTable()">
+      </div>
+      <div class="tablewrap"><table><thead><tr>
+        <th>Ingredient</th><th>Pcs</th><th>Weight</th><th>Package Size</th><th>Unit</th><th>Kg/Unit</th><th>Stock Qty</th><th></th>
+      </tr></thead><tbody id="sauceIngredientsTable"></tbody></table></div>
+      <div class="empty" id="sauceIngredientsEmpty" style="display:none">No ingredients yet</div>
+    </div>
+  </section>
+
+  <!-- SAUCE PRODUCTION: RECIPES -->
+  <section class="screen" id="screen-sauce-recipes">
+    <h2>Sauce Production — Recipes</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Ingredients consumed per batch/mix of each sauce.</p>
+    <div class="card">
+      <h3>Browse / Edit a Sauce's Recipe</h3>
+      <label>Sauce</label>
+      <select id="sauceRecBrowseSauce" onchange="renderSauceRecipeBrowse()"></select>
+      <div id="sauceRecBrowseBody" style="margin-top:12px"></div>
+    </div>
+    <div class="card can-write">
+      <h3 id="sauceRecFormTitle">Add Recipe (multiple ingredients)</h3>
+      <input type="hidden" id="sauceRecEditId">
+      <label>Sauce</label>
+      <select id="sauceRecSauce"></select>
+      <label>Ingredient</label>
+      <select id="sauceRecIngredient"><option value="">Select ingredient...</option></select>
+      <label>Qty per Batch</label>
+      <input type="number" id="sauceRecQty" step="any">
+      <label>Qty Unit</label>
+      <select id="sauceRecQtyUnit"><option value="unit">Already in ingredient's stock unit</option><option value="kg">kg (needs Kg/Unit to convert)</option></select>
+      <div class="btnrow" id="sauceRecDraftAddRow">
+        <button class="btn secondary" onclick="addSauceRecipeDraftLine()">＋ Add Ingredient to Draft</button>
+      </div>
+      <div id="sauceRecDraftLines" style="margin-top:10px"></div>
+      <div class="btnrow">
+        <button class="btn" id="sauceRecSubmitBtn" onclick="saveSauceRecipeDraft()">✔ Save Recipe</button>
+        <button class="btn secondary" onclick="resetSauceRecipeForm()">Clear / Cancel Edit</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="filterbar">
+        <input id="sauceRecSearch" placeholder="Search sauce / ingredient..." oninput="renderSauceRecipeTable()">
+      </div>
+      <div class="tablewrap"><table><thead><tr><th>Sauce</th><th>Ingredient</th><th>Qty/Batch</th><th>Unit</th><th class="no-print"></th></tr></thead>
+      <tbody id="sauceRecTable"></tbody></table></div>
+      <div class="empty" id="sauceRecEmpty" style="display:none">No recipes defined yet</div>
+    </div>
+  </section>
+
+  <!-- SAUCE PRODUCTION: LOCATIONS -->
+  <section class="screen" id="screen-sauce-locations">
+    <h2>Manage Sauce Locations</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Master list of production locations (e.g. L4, MC, MC2, R) used by Sauce Production tasks.</p>
+    <div class="card can-write">
+      <h3 id="sauceLocFormTitle">Add New Location</h3>
+      <input type="hidden" id="sauceLocEditId">
+      <label>Location Name</label>
+      <input id="sauceLocName" placeholder="e.g. L4">
+      <div class="btnrow">
+        <button class="btn" id="sauceLocSubmitBtn" onclick="submitSauceLocation()">＋ Save Location</button>
+        <button class="btn secondary" onclick="resetSauceLocationForm()">✕ Cancel</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tablewrap"><table><thead><tr><th>Location</th><th>Tasks using it</th><th></th></tr></thead>
+      <tbody id="sauceLocationsTable"></tbody></table></div>
+      <div class="empty" id="sauceLocationsEmpty" style="display:none">No locations yet</div>
+    </div>
+  </section>
+
+  <!-- SAUCE PRODUCTION: ALLERGENS -->
+  <section class="screen" id="screen-sauce-allergens">
+    <h2>Manage Allergens</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Master list of allergens sauces can declare. Each has its own color, used everywhere allergen tags are shown.</p>
+    <div class="card can-write">
+      <h3 id="allergenFormTitle">Add New Allergen</h3>
+      <input type="hidden" id="allergenEditId">
+      <div class="row">
+        <div><label>Name</label><input id="allergenName" placeholder="e.g. Sesame"></div>
+        <div><label>Color</label><input type="color" id="allergenColor" value="#d64545"></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn" id="allergenSubmitBtn" onclick="submitAllergen()">＋ Save Allergen</button>
+        <button class="btn secondary" onclick="resetAllergenForm()">✕ Cancel</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="tablewrap"><table><thead><tr><th>Allergen</th><th>Color</th><th></th></tr></thead>
+      <tbody id="allergensTable"></tbody></table></div>
+      <div class="empty" id="allergensEmpty" style="display:none">No allergens yet</div>
     </div>
   </section>
 
@@ -872,12 +1183,37 @@
       <tbody id="sachetTable"></tbody></table></div>
       <div class="empty" id="sachetEmpty" style="display:none">No data yet</div>
     </div>
+    <div class="card admin-only">
+      <h3>Adjust Sachet Inventory</h3>
+      <p style="color:var(--muted);font-size:13px;margin-top:0">Directly correct a sachet's live inventory quantity (e.g. after a physical count). This writes an adjustment entry under the hood — it does not overwrite history. <strong>Admin only.</strong></p>
+      <label>Sachet Name</label>
+      <select id="compAdjSachet" onchange="onCompAdjSachetChange()"><option value="">Select sachet...</option></select>
+      <div class="row" id="compAdjWrap" style="display:none">
+        <div><label>Current Quantity</label><input id="compAdjCurrentQty" disabled></div>
+        <div><label>New Quantity</label><input type="number" step="any" id="compAdjNewQty" oninput="recalcCompAdjDelta()"></div>
+        <div><label>Adjustment (calculated)</label><input id="compAdjDelta" disabled></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn" onclick="submitComponentAdjust()">✔ Apply Adjustment</button>
+        <button class="btn secondary" onclick="resetComponentAdjustForm()">✕ Cancel</button>
+      </div>
+    </div>
     <div class="card" style="padding:0;overflow:hidden">
       <div style="padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleCompRecent()">
         <h3 style="margin:0">Recent Sachet Records</h3>
         <span id="compRecentToggleIcon" style="font-size:13px;color:var(--muted)">▸ Click to expand</span>
       </div>
       <div id="compRecentBody" style="display:none;padding:0 16px 16px">
+        <div class="row" style="align-items:flex-end">
+          <div><label>Search Sachet</label><input id="compRecentSearch" placeholder="Search sachet name..." oninput="onCompRecentFilterChange()"></div>
+          <div><label>Type</label>
+            <select id="compRecentTypeFilter" onchange="onCompRecentFilterChange()">
+              <option value="">In / Out (Both)</option>
+              <option value="in">In only</option>
+              <option value="out">Out only</option>
+            </select>
+          </div>
+        </div>
         <div class="tablewrap"><table id="compRecentTable"><thead><tr><th>Date</th><th>Sachet</th><th>In</th><th>Out</th><th></th></tr></thead>
         <tbody id="compRecent"></tbody></table></div>
         <div class="empty" id="compRecentEmpty" style="display:none">No records yet</div>
@@ -937,6 +1273,9 @@
         <div><label>Unit of Weight</label><input id="itemUnitW" placeholder="g / lb / kg"></div>
       </div>
       <div class="row">
+        <div><label>Dough Weight / Pack</label><input type="number" step="any" id="itemDoughWeight" placeholder="Leave blank to use Weight / Pack"></div>
+      </div>
+      <div class="row">
         <div><label>Unit</label><input id="itemUnit" placeholder="bag / tray"></div>
         <div><label>Pieces</label><input type="number" step="any" id="itemPieces"></div>
       </div>
@@ -963,6 +1302,10 @@
         <option value="Active">Active</option>
         <option value="Inactive">Inactive (Discontinued)</option>
       </select>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:12px">
+        <input type="checkbox" id="itemMakeToOrder" style="width:auto">
+        Make to Order (produced only after an order comes in — don't flag low/zero stock as a shortage)
+      </label>
       <label>Remark</label>
       <input id="itemRemark" placeholder="e.g. Discontinued Item">
       <div class="btnrow">
@@ -1250,16 +1593,12 @@
       </div>
       <label style="margin-top:16px">Color Theme</label>
       <div class="color-swatch-row">
-        <button class="color-swatch" data-color="" style="background:#2f6fed" onclick="applyColorTheme('')" title="Classic Blue"></button>
-        <button class="color-swatch" data-color="sunset" style="background:#ff6b35" onclick="applyColorTheme('sunset')" title="Sunset Orange"></button>
-        <button class="color-swatch" data-color="teal" style="background:#0d9488" onclick="applyColorTheme('teal')" title="Cyber Teal"></button>
-        <button class="color-swatch" data-color="blush" style="background:#e05263" onclick="applyColorTheme('blush')" title="Blush Coral"></button>
-        <button class="color-swatch" data-color="forest" style="background:#2f7a4f" onclick="applyColorTheme('forest')" title="Forest Green"></button>
-        <button class="color-swatch" data-color="plum" style="background:#7c3aed" onclick="applyColorTheme('plum')" title="Plum Purple"></button>
-        <button class="color-swatch" data-color="sky" style="background:#0ea5e9" onclick="applyColorTheme('sky')" title="Sky Blue"></button>
-        <button class="color-swatch" data-color="slate" style="background:#64748b;border:1px solid var(--line)" onclick="applyColorTheme('slate')" title="Slate Gray"></button>
-        <button class="color-swatch" data-color="warmgray" style="background:#9c8b7a;border:1px solid var(--line)" onclick="applyColorTheme('warmgray')" title="Warm Gray"></button>
-        <button class="color-swatch" data-color="stone" style="background:#57534e;border:1px solid var(--line)" onclick="applyColorTheme('stone')" title="Stone Gray"></button>
+        <button class="color-swatch" data-color="" style="background:#1b6e4a" onclick="applyColorTheme('')" title="Bamboo &amp; Jade"></button>
+        <button class="color-swatch" data-color="emerald" style="background:#0f5c3f" onclick="applyColorTheme('emerald')" title="Emerald Tea"></button>
+        <button class="color-swatch" data-color="persimmon" style="background:#c76b2e" onclick="applyColorTheme('persimmon')" title="Jade &amp; Persimmon"></button>
+        <button class="color-swatch" data-color="golden" style="background:#6b4423" onclick="applyColorTheme('golden')" title="Golden Wonton"></button>
+        <button class="color-swatch" data-color="steel" style="background:#4a5a68" onclick="applyColorTheme('steel')" title="Wonton Broth &amp; Steel"></button>
+        <button class="color-swatch" data-color="porcelain" style="background:#2a5f7a" onclick="applyColorTheme('porcelain')" title="Porcelain Blue"></button>
       </div>
     </div>
   </section>
@@ -1298,6 +1637,7 @@ function resolveItemByNoAndName(itemNo, csvName){
 }
 let DUPES = [];         // erp_duplicated_items cache
 let RECIPE = [];        // erp_item_sachet_recipe cache
+let SACHET_STOCK = {};  // sachet_name -> current stock qty, used to cap suggested case counts
 let SACHETS = [];        // erp_sachets cache
 let connected = false;
 
@@ -1633,8 +1973,26 @@ function showScreen(name){
     }
     applySubNavVisibility(mod); // always reapply, even if the module didn't change
   }
+  // pull fresh data for whatever screen you just switched to, so navigating
+  // between screens never shows stale data from whenever it was last loaded.
+  // Runs in the background so the switch itself still feels instant.
+  const refreshFn = SCREEN_REFRESH_FN[name];
+  if(refreshFn && connected) refreshFn();
   window.scrollTo(0,0);
 }
+const SCREEN_REFRESH_FN = {
+  dashboard: refreshDashboard, inout: refreshInOut, po: refreshPO, components: refreshComponents,
+  produce: refreshProduce, items: refreshItemsScreen, recipes: refreshRecipesScreen, dupes: refreshDupesScreen,
+  users: refreshUsersScreen, adjust: refreshAdjustScreen,
+  'schedule-create': refreshScheduleScreen, 'schedule-preview': refreshScheduleScreen,
+  'schedule-confirm': refreshScheduleScreen, 'schedule-products': refreshScheduleScreen, 'schedule-lines': refreshScheduleScreen,
+  'flour-dashboard': refreshFlourScreen, 'flour-ingredients': refreshFlourScreen,
+  'flour-recipes': refreshFlourScreen, 'flour-ledger': refreshFlourScreen,
+  'sauce-create': refreshSauceScreen, 'sauce-preview': refreshSauceScreen, 'sauce-confirm': refreshSauceScreen,
+  'sauce-sauces': refreshSauceScreen, 'sauce-ingredients': refreshSauceScreen, 'sauce-recipes': refreshSauceScreen,
+  'sauce-locations': refreshSauceScreen, 'sauce-allergens': refreshSauceScreen,
+};
+
 
 /* ============================================================
    Item search / autocomplete (shared by InOut + PO forms)
@@ -1682,14 +2040,20 @@ async function loadCaches(){
   });
   DUPES = await sbGet('erp_duplicated_items?select=id,item_no,item_name,correct_item_no,correct_item_name&limit=5000');
   RECIPE = await sbGet('erp_item_sachet_recipe?select=id,item_no,item_name,sachet_name,pcs_per_case&limit=5000');
+  SACHET_STOCK = {};
+  try{
+    const sachetInv = await sbGet('erp_sachet_inventory?select=sachet_name,inventory_qty&limit=1000');
+    sachetInv.forEach(s => { SACHET_STOCK[s.sachet_name] = Number(s.inventory_qty)||0; });
+  }catch(e){ /* non-fatal — case suggestions just skip the component check */ }
   SACHETS = await sbGet('erp_sachets?select=sachet_name&order=sachet_name.asc&limit=1000');
   const optionsHtml = '<option value="">Select sachet...</option>' + SACHETS.map(s=>`<option>${s.sachet_name}</option>`).join('');
   document.getElementById('compSachet').innerHTML = optionsHtml;
   document.getElementById('recSachet').innerHTML = optionsHtml;
+  document.getElementById('compAdjSachet').innerHTML = optionsHtml;
 }
 
 async function refreshAll(){
-  await Promise.all([refreshDashboard(), refreshInOut(), refreshPO(), refreshComponents(), refreshProduce(), refreshItemsScreen(), refreshRecipesScreen(), refreshDupesScreen(), refreshUsersScreen(), refreshFlourScreen(), refreshScheduleScreen(), refreshAdjustScreen()]);
+  await Promise.all([refreshDashboard(), refreshInOut(), refreshPO(), refreshComponents(), refreshProduce(), refreshItemsScreen(), refreshRecipesScreen(), refreshDupesScreen(), refreshUsersScreen(), refreshFlourScreen(), refreshScheduleScreen(), refreshAdjustScreen(), refreshSauceScreen()]);
 }
 
 /* ============================================================
@@ -1745,15 +2109,22 @@ function clearDashboardFilters(){
   renderDashboardTable();
 }
 
-/* ---- 5-level warning classification: Sufficient / Watch / Caution / Urgent / Out of Stock ---- */
+/* ---- 5-level warning classification: Sufficient / Watch / Caution / Urgent / Out of Stock,
+   plus a 6th non-warning tier for items flagged Make to Order — those are meant to sit at
+   zero stock between orders, so they're excluded from the pyramid/heat-matrix (which only
+   visualize the 5 warning tiers) and from every urgent/warning-rate count, but still show
+   their own clearly-labeled chip wherever a per-row tier is displayed. ---- */
 const TIER_META = {
-  sufficient: {label:'Sufficient', cls:'tier-sufficient', color:'#1c9c6b', order:0, action:''},
-  watch:      {label:'Watch',      cls:'tier-watch',      color:'#2f6fed', order:1, action:'Keep watching'},
-  caution:    {label:'Caution',    cls:'tier-caution',    color:'#c98a12', order:2, action:'Plan a restock'},
-  urgent:     {label:'Urgent',     cls:'tier-urgent',      color:'#d64545', order:3, action:'Confirm restock / in-transit now'},
-  oos:        {label:'Out of Stock', cls:'tier-oos',       color:'#8f2d2d', order:4, action:'Produce immediately'}
+  sufficient: {label:'Sufficient', cls:'tier-sufficient', color:'#5a9e3f', order:0, action:''},
+  watch:      {label:'Watch',      cls:'tier-watch',      color:'#1b6e4a', order:1, action:'Keep watching'},
+  caution:    {label:'Caution',    cls:'tier-caution',    color:'#b8802a', order:2, action:'Plan a restock'},
+  urgent:     {label:'Urgent',     cls:'tier-urgent',      color:'#c8472f', order:3, action:'Confirm restock / in-transit now'},
+  oos:        {label:'Out of Stock', cls:'tier-oos',       color:'#7a2418', order:4, action:'Produce immediately'},
+  mto:        {label:'Make to Order', cls:'tier-mto',      color:'#6e8570', order:-1, action:'Produced to order — no restock needed'}
 };
 function classifyRow(r, thresholdN){
+  const item = ITEMS_BY_NO[r.item_no];
+  if(item && item.make_to_order) return {tier:'mto', days: Infinity};
   const qty = Number(r.act_inventory_qty) || 0;
   const daily = (r.avg_daily_out_7d > 0) ? Number(r.avg_daily_out_7d) : Number(r.avg_daily_out_30d) || 0;
   if(qty <= 0) return {tier:'oos', days: 0};
@@ -1795,7 +2166,7 @@ function renderDashboardTable(){
   document.getElementById('kpiHealthy').textContent = classified.filter(r=>r._tier==='sufficient').length;
   const urgentOos = classified.filter(r=>r._tier==='urgent' || r._tier==='oos').length;
   document.getElementById('kpiLow').textContent = urgentOos;
-  const warnCount = classified.filter(r=>r._tier!=='sufficient').length;
+  const warnCount = classified.filter(r=>r._tier!=='sufficient' && r._tier!=='mto').length;
   document.getElementById('kpiWarnRate').textContent = classified.length ? ((warnCount/classified.length)*100).toFixed(1)+'%' : '0%';
 
   // Stockout countdown ranking — top 10 most urgent (excludes Sufficient/Watch)
@@ -1839,6 +2210,13 @@ function renderDashboardTable(){
   if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.item_name||'').toLowerCase().includes(q));
   if(lineFilter) rows = rows.filter(r => (r.line||'').toLowerCase() === lineFilter.toLowerCase());
   if(custFilter) rows = rows.filter(r => (r.customer||'').toLowerCase() === custFilter.toLowerCase());
+  // Inactive items with zero stock are just noise on this list — nothing to act on for a
+  // discontinued item that's already at zero. Other screens still show everything.
+  rows = rows.filter(r => {
+    const it = ITEMS_BY_NO[r.item_no];
+    const isInactiveZero = it && it.item_status === 'Inactive' && (Number(r.act_inventory_qty)||0) === 0;
+    return !isInactiveZero;
+  });
   if(DASH_TIER_FILTER) rows = rows.filter(r => DASH_TIER_FILTER.includes(r._tier));
   const banner = document.getElementById('dashTierFilterBanner');
   if(banner){
@@ -1959,6 +2337,22 @@ async function sbGetPaged(path, offset, limit){
   }
   return {rows, total};
 }
+// Supabase caps rows-per-request at the project's configured "Max Rows" (1000 by default)
+// regardless of any client-side ?limit= in the query string — a plain sbGet on a table with
+// more rows than that silently comes back truncated. Page through with the Range header
+// (sbGetPaged, which Supabase does honor) until every row has been fetched.
+async function sbGetAll(path, pageSize){
+  pageSize = pageSize || 1000;
+  let all = [];
+  let offset = 0;
+  while(true){
+    const { rows, total } = await sbGetPaged(path, offset, pageSize);
+    all = all.concat(rows);
+    offset += rows.length;
+    if(rows.length === 0 || all.length >= total) break;
+  }
+  return all;
+}
 let IO_PAGE = 1;
 const IO_PAGE_SIZE = 20;
 async function refreshInOut(){
@@ -2016,6 +2410,8 @@ function addPODraftLine(){
   PO_DRAFT.push({ item_no: itemNo, item_name: document.getElementById('poItemName').value, qty });
   ['poItemSearch','poItemNo','poItemName','poQty'].forEach(id=>document.getElementById(id).value='');
   renderPODraft();
+  const shortfall = componentShortfallInfo(itemNo, qty);
+  if(shortfall) toast(`⚠ Components short for ${itemNo} — need ${fmtNum(shortfall.needed)} cases, only ${fmtNum(shortfall.cap)} on hand`);
 }
 function removePODraftLine(idx){
   PO_DRAFT.splice(idx,1);
@@ -2023,7 +2419,7 @@ function removePODraftLine(idx){
 }
 function renderPODraft(){
   document.getElementById('poDraftLines').innerHTML = PO_DRAFT.map((l,i)=>`<tr>
-    <td>${l.item_no}</td><td>${l.item_name||''}</td><td>${fmtNum(l.qty)}</td>
+    <td>${l.item_no}</td><td>${l.item_name||''}</td><td>${fmtNum(l.qty)}${componentShortfallNoteHtml(l.item_no, l.qty)}</td>
     <td><button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="removePODraftLine(${i})">✕ Remove</button></td>
   </tr>`).join('');
   document.getElementById('poDraftEmpty').style.display = PO_DRAFT.length ? 'none' : 'block';
@@ -2104,7 +2500,7 @@ function renderPOTable(){
       <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Qty</th><th>Status</th><th class="no-print"></th></tr></thead>
       <tbody>${lines.map(l=>`<tr>
         <td>${l.item_no}</td><td>${l.item_name||''}</td>
-        <td><input type="number" step="any" value="${l.qty}" style="width:90px" ${(l.status==='Shipped' || !isAdmin())?'disabled':''} onchange="updatePOQty(${l.id}, this.value)"></td>
+        <td><input type="number" step="any" value="${l.qty}" style="width:90px" ${(l.status==='Shipped' || !isAdmin())?'disabled':''} onchange="updatePOQty(${l.id}, this.value)">${l.status!=='Shipped'?componentShortfallNoteHtml(l.item_no, l.qty):''}</td>
         <td>${l.status==='Shipped' ? `<span class="chip ok">Shipped</span>` : `<span class="chip">Pending</span>`}</td>
         <td class="no-print" style="white-space:nowrap">
           <div style="display:flex;gap:6px;flex-wrap:nowrap">
@@ -2834,7 +3230,38 @@ async function refreshScheduleScreen(){
     await renderRunsList();
     await renderPreviewSummary();
     await renderConfirmRunCards();
+    await renderScheduledDaysList('scheduledDaysListCreate', 'scheduledDaysEmptyCreate', 'jumpToScheduledDayCreate', document.getElementById('itemsPackDate').value);
+    await renderScheduledDaysList('scheduledDaysListPreview', 'scheduledDaysEmptyPreview', 'jumpToScheduledDayPreview', document.getElementById('previewViewDate').value);
   }catch(e){ toast('Failed to load schedule data: ' + e.message); }
+}
+// Only today-and-forward — past dates are already done and not useful to surface here.
+async function renderScheduledDaysList(listElId, emptyElId, jumpFnName, selectedDate){
+  const listEl = document.getElementById(listElId);
+  if(!listEl) return;
+  try{
+    const rows = await sbGetAll(`erp_production_runs?select=run_date&run_date=gte.${todayStr()}&order=run_date.asc`);
+    const counts = {};
+    rows.forEach(r => { counts[r.run_date] = (counts[r.run_date]||0) + 1; });
+    const days = Object.keys(counts).sort();
+    const today = todayStr();
+    listEl.innerHTML = days.map(d => {
+      const isToday = d === today;
+      const isSelected = d === selectedDate;
+      return `<button class="btn secondary${isSelected?' active-option':''}" style="padding:6px 12px;font-size:12px${(!isSelected && isToday)?';border-color:var(--accent);color:var(--accent);font-weight:700':''}" onclick="${jumpFnName}('${d}')">${d}${isToday?' (Today)':''} · ${counts[d]} run${counts[d]===1?'':'s'}</button>`;
+    }).join('');
+    document.getElementById(emptyElId).style.display = days.length ? 'none' : 'block';
+  }catch(e){ /* non-fatal — the rest of the screen still works */ }
+}
+function jumpToScheduledDayCreate(date){
+  document.getElementById('runDate').value = date;
+  document.getElementById('itemsPackDate').value = date;
+  renderRunsList();
+  renderScheduledDaysList('scheduledDaysListCreate', 'scheduledDaysEmptyCreate', 'jumpToScheduledDayCreate', date);
+}
+function jumpToScheduledDayPreview(date){
+  document.getElementById('previewViewDate').value = date;
+  renderPreviewSummary();
+  renderScheduledDaysList('scheduledDaysListPreview', 'scheduledDaysEmptyPreview', 'jumpToScheduledDayPreview', date);
 }
 /* ============================================================
    LINES — master list driving the Line dropdown on Product Doughs
@@ -3055,7 +3482,13 @@ function toKg(value, unit){
 }
 function caseWeightKg(item){
   if(!item) return 0;
-  return toKg(item.weight_per_pack, item.unit_of_weight) * (parseFloat(item.pieces) || 1);
+  // if this item has a separate "how much of it is dough" figure, use that for the
+  // dough-availability math instead of its full pack weight (e.g. dough + filling/wrapper) —
+  // falls back to the full weight_per_pack when that field is left blank.
+  const doughWeight = (item.dough_weight_per_pack !== null && item.dough_weight_per_pack !== undefined && item.dough_weight_per_pack !== '')
+    ? item.dough_weight_per_pack
+    : item.weight_per_pack;
+  return toKg(doughWeight, item.unit_of_weight) * (parseFloat(item.pieces) || 1);
 }
 function getProductInfo(name){
   return PRODUCTS.find(p => p.name === name);
@@ -3094,14 +3527,22 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
     ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">⚖ Total output: <strong>${fmtNum(totalKg)} kg</strong> · Used: ${fmtNum(usedKg)} kg · Remaining: <strong style="color:${remainingKg<0?'var(--danger)':'var(--text)'}">${fmtNum(remainingKg)} kg</strong></div>`
     : `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">⚖ No Yield/Weight-per-mix on file for "${run.product_name}" — enter Cases manually below.</div>`;
   const totalPackingHrs = items.reduce((s,it)=>s+(parseFloat(it.packing_hrs)||0), 0);
-  const packingHrsInfo = items.length ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">🕐 Total packing hours for this run: <strong>${fmtNum(totalPackingHrs)} hrs</strong> across ${items.length} item(s)</div>` : '';
+  const packingHrsInfo = items.length ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">🕐 Total packing hours for this run: <strong>${fmtHrs(totalPackingHrs)} hrs</strong> across ${items.length} item(s)</div>` : '';
   const confirmBtn = (showConfirmButton && run.status!=='Confirmed')
     ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="confirmProductionRun(${run.id})">✔ Confirm Batches</button>`
     : '';
   const mixesCanEdit = (itemsEditable || showConfirmButton) && run.status!=='Confirmed' && canWrite();
+  const reorderBtns = (itemsEditable && canWrite())
+    ? `<button class="btn secondary" style="padding:4px 8px;font-size:12px" title="Move up within this Line" onclick="moveRunOrder(${run.id}, 'up')">▲</button>
+       <button class="btn secondary" style="padding:4px 8px;font-size:12px" title="Move down within this Line" onclick="moveRunOrder(${run.id}, 'down')">▼</button>`
+    : '';
+  const remarkBlock = (itemsEditable && canWrite())
+    ? `<div style="margin-bottom:8px"><input placeholder="Remark for this run..." value="${(run.remark||'').replace(/"/g,'&quot;')}" style="font-size:12px;padding:4px 8px;width:100%;color:var(--danger);font-weight:700;font-style:italic" onchange="updateRunRemark(${run.id}, this.value)"></div>`
+    : (run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:700;font-style:italic;margin-bottom:8px">📝 ${run.remark}</div>` : '');
   return `<div class="card" style="margin-bottom:12px" data-run-total-kg="${totalKg}" data-run-used-kg="${usedKg}">
     <div class="row" style="align-items:center;margin-bottom:6px">
       <div style="flex:2">
+        ${reorderBtns}
         <span style="display:${mixesCanEdit?'inline-flex':'none'};align-items:center;gap:4px">
           <input type="number" step="any" value="${run.planned_mixes||0}" style="width:70px" onchange="updateRunMixes(${run.id}, this.value)"> batches of
         </span>
@@ -3116,7 +3557,7 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
     ${productInfo}
     ${weightInfo}
     ${packingHrsInfo}
-    ${run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:700;font-style:italic;margin-bottom:8px">📝 ${run.remark}</div>` : ''}
+    ${remarkBlock}
     <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Packing Hrs</th><th>Prod./Exp. Date</th><th>Status</th>${(itemsEditable || showItemConfirmButtons)?'<th></th>':''}</tr></thead>
     <tbody>${items.map(it => {
       const item = ITEMS_BY_NO[it.item_no];
@@ -3138,8 +3579,8 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
             : (it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${it.remark}</div>`:'')}
         </td>
         <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, it.planned_cases)}</td>
-        <td>${(rowEditable && canWrite()) ? `<input type="number" step="1" value="${Math.round(it.planned_cases)}" style="width:80px" onchange="updateRunItemCases(${it.id}, this.value)">` : fmtNum(it.planned_cases)}</td>
-        <td>${it.packing_hrs?fmtNum(it.packing_hrs)+'h':'–'}</td><td>${dateCell}</td><td>${itStatus}</td>
+        <td>${(rowEditable && canWrite()) ? `<input type="number" step="1" value="${Math.round(it.planned_cases)}" style="width:80px" onchange="updateRunItemCases(${it.id}, this.value)">` : fmtNum(it.planned_cases)}${componentShortfallNoteHtml(it.item_no, it.planned_cases)}</td>
+        <td>${it.packing_hrs?fmtHrs(it.packing_hrs)+'h':'–'}</td><td>${dateCell}</td><td>${itStatus}</td>
         ${(itemsEditable || showItemConfirmButtons) ? `<td class="no-print can-write" style="white-space:nowrap">
           <div style="display:flex;gap:6px;flex-wrap:nowrap">
             ${(showItemConfirmButtons && it.status!=='Confirmed') ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="confirmRunItem(${it.id})">✔ Confirm</button>` : ''}
@@ -3178,7 +3619,8 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
       <input type="hidden" id="${gid}_editItemId">
       <button class="btn secondary" id="${gid}_addBtn" onclick="addRunItem(${run.id}, '${gid}', '${run.run_date}')">＋ Add</button>
       <button class="btn secondary" id="${gid}_cancelBtn" style="display:none" onclick="cancelEditRunItemInline('${gid}')">✕ Cancel Edit</button>
-    </div>` : ''}
+    </div>
+    <div id="${gid}_capNote" style="font-size:12px;color:var(--danger);font-weight:600;margin-top:6px"></div>` : ''}
   </div>`;
 }
 function registerRunItemPickCallback(gid, run, allItems){
@@ -3196,8 +3638,24 @@ function registerRunItemPickCallback(gid, run, allItems){
     document.getElementById(gid+'_dateChoiceWrap').style.display = isCompoundStorage ? '' : 'none';
     const cwKg = caseWeightKg(item);
     const remainingKg = totalKg - usedKg;
-    if(cwKg > 0 && remainingKg > 0){
-      document.getElementById(gid+'_cases').value = Math.floor(remainingKg / cwKg);
+    let suggested = null;
+    if(cwKg > 0 && remainingKg > 0){ suggested = Math.floor(remainingKg / cwKg); }
+    const componentCap = maxCasesFromComponents(itemNo);
+    let cappedByComponents = false;
+    if(componentCap !== null && (suggested === null || componentCap < suggested)){
+      suggested = componentCap;
+      cappedByComponents = true;
+    }
+    if(suggested !== null){ document.getElementById(gid+'_cases').value = Math.max(0, suggested); }
+    const capNote = document.getElementById(gid+'_capNote');
+    if(capNote){
+      if(cappedByComponents){
+        const limiting = limitingComponentForItem(itemNo);
+        const sachetPart = limiting ? ` of "${limiting.sachetName}" (stock: ${fmtNum(limiting.stock)})` : ' of sachets';
+        capNote.textContent = `⚠ Capped by component stock (not dough) — only ${fmtNum(componentCap)} cases' worth${sachetPart} on hand`;
+      } else {
+        capNote.textContent = '';
+      }
     }
     recalcRunItemPacking(gid);
   };
@@ -3213,13 +3671,25 @@ function renderRunCardsGroupedByLine(runs, allItems, containerId, prefix, showCo
   const byLine = {};
   cardEntries.forEach(e => { (byLine[e.line] = byLine[e.line]||[]).push(e); });
   const lineNames = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
-  document.getElementById(containerId).innerHTML = lineNames.map(l =>
-    `<div style="font-weight:800;font-size:14px;margin:14px 0 8px">${l}</div>${byLine[l].map(e=>e.html).join('')}`
-  ).join('');
+  document.getElementById(containerId).innerHTML = lineNames.map(l => {
+    const entries = byLine[l];
+    const lineTotalMin = entries.reduce((s,e) => {
+      const p = getProductInfo(e.run.product_name);
+      const mixes = e.run.status === 'Confirmed' ? (e.run.confirmed_mixes||0) : (e.run.planned_mixes||0);
+      return s + (p && p.mixing_min_per_mix ? mixes * p.mixing_min_per_mix : 0);
+    }, 0);
+    const lineTotalHrs = lineTotalMin / 60;
+    const lineRunIds = entries.map(e => e.run.id);
+    const linePackingHrs = allItems.filter(it => lineRunIds.includes(it.run_id))
+      .reduce((s,it) => s + (parseFloat(it.packing_hrs)||0), 0);
+    return `<div style="font-weight:800;font-size:14px;margin:14px 0 2px">${l}</div>
+      <div style="font-size:11px;color:var(--muted);margin:0 0 8px">Production hrs: ${fmtHrs(lineTotalHrs)} · Packing hrs: ${fmtHrs(linePackingHrs)}</div>
+      ${entries.map(e=>e.html).join('')}`;
+  }).join('');
   if(itemsEditable){ cardEntries.forEach(e => registerRunItemPickCallback(e.gid, e.run, allItems)); }
 }
 async function fetchRunsAndItems(date){
-  const runs = await sbGet(`erp_production_runs?select=id,run_date,line,product_name,planned_mixes,confirmed_mixes,status,remark&run_date=eq.${date}&order=id.asc&limit=200`);
+  const runs = await sbGet(`erp_production_runs?select=id,run_date,line,product_name,planned_mixes,confirmed_mixes,status,remark,sort_order&run_date=eq.${date}&order=sort_order.asc.nullslast,id.asc&limit=200`);
   const items = runs.length
     ? await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,machines,cycles,bags_per_cycle,packing_hrs,production_date,expired_date,status,confirmed_cases,remark,date_display_mode&run_id=in.(${runs.map(r=>r.id).join(',')})&order=id.asc&limit=1000`)
     : [];
@@ -3268,9 +3738,73 @@ async function updateRunMixes(runId, value){
   const mixes = parseFloat(value) || 0;
   try{
     await sbUpdate('erp_production_runs', runId, { planned_mixes: mixes });
+    await recalcLastItemCasesForRun(runId, mixes);
     toast('Batches updated');
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
+}
+// By convention the LAST packed item added to a run is "whatever uses up the remaining
+// dough" (the same role it played via the suggested-cases logic when it was first added),
+// so when the run's batches change, only that last item re-suggests its Cases against the
+// new remaining capacity. Earlier items in the run were set for specific orders and are
+// left exactly as they are.
+async function recalcLastItemCasesForRun(runId, mixes){
+  const rows = await sbGet(`erp_production_run_items?select=id,item_no,planned_cases,status&run_id=eq.${runId}&order=id.asc&limit=1000`);
+  const pending = rows.filter(r => r.status !== 'Confirmed');
+  if(!pending.length) return;
+  const lastItem = pending[pending.length - 1];
+  const runRows = await sbGet(`erp_production_runs?select=id,product_name&id=eq.${runId}`);
+  const run = runRows[0];
+  if(!run) return;
+  const p = getProductInfo(run.product_name);
+  if(!p || !p.weight_per_mix_kg) return; // no weight basis to compute a suggestion from
+  const totalKg = mixes * p.weight_per_mix_kg * (p.yield_factor==null?1:p.yield_factor);
+  const otherItems = pending.filter(r => r.id !== lastItem.id);
+  const usedKg = otherItems.reduce((sum,it) => sum + (parseFloat(it.planned_cases)||0) * caseWeightKg(ITEMS_BY_NO[it.item_no]), 0);
+  const remainingKg = totalKg - usedKg;
+  const cwKg = caseWeightKg(ITEMS_BY_NO[lastItem.item_no]);
+  if(cwKg <= 0) return; // unknown pack weight — nothing to compute a suggestion from
+  let suggested = Math.max(0, Math.floor(remainingKg / cwKg));
+  const componentCap = maxCasesFromComponents(lastItem.item_no);
+  // maxCasesFromComponents can itself come back negative (sachet stock can run negative if it
+  // wasn't restocked in time), so the cap has to be re-clamped here too, not just the weight
+  // calc above — otherwise a negative cap overrides the >=0 result and Cases goes negative.
+  if(componentCap !== null && componentCap < suggested) suggested = Math.max(0, componentCap);
+  if(suggested !== Math.round(parseFloat(lastItem.planned_cases) || 0)){
+    await sbUpdate('erp_production_run_items', lastItem.id, { planned_cases: suggested });
+  }
+}
+async function updateRunRemark(runId, value){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  try{
+    await sbUpdate('erp_production_runs', runId, { remark: value.trim() || null });
+    toast('Remark updated');
+    await refreshScheduleScreen();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+// Reorders runs within their own Line group only (order across different Lines isn't
+// meaningful). Normalizes the whole group to its current display order first, then swaps
+// the moved run with its neighbor, so this works correctly even before any sort_order has
+// ever been set (fresh rows are all NULL, sorted by id as a fallback).
+async function moveRunOrder(runId, direction){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const run = RUNS_CACHE.find(r => r.id === runId);
+  if(!run) return;
+  const group = RUNS_CACHE
+    .filter(r => (r.line||'(No Line)') === (run.line||'(No Line)'))
+    .sort((a,b) => (a.sort_order ?? a.id) - (b.sort_order ?? b.id) || a.id - b.id);
+  const idx = group.findIndex(r => r.id === runId);
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if(swapIdx < 0 || swapIdx >= group.length) return; // already at that end
+  const updates = group.map((r,i) => ({ id: r.id, sort_order: i }));
+  const tmp = updates[idx].sort_order;
+  updates[idx].sort_order = updates[swapIdx].sort_order;
+  updates[swapIdx].sort_order = tmp;
+  try{
+    for(const u of updates){ await sbUpdate('erp_production_runs', u.id, { sort_order: u.sort_order }); }
+    toast('Order updated');
+    await refreshScheduleScreen();
+  }catch(e){ toast('Reorder failed: ' + e.message); }
 }
 async function updateRunItemCases(id, value){
   if(!canWrite()){ toast('You have read-only access'); return; }
@@ -3307,7 +3841,7 @@ function itemNarrative(it){
   const specLine = `Item: ${it.item_no}\t${it.item_name||''}\t${[w,pcs].filter(Boolean).join(' ')} = ${fmtNum(it.planned_cases)} cases${box}`;
   let packLine = '';
   if(it.packing_hrs){
-    packLine = `${fmtNum(it.packing_hrs)} packing hrs for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines to pack and ${fmtNum(it.cycles)} cycle (${fmtNum(it.bags_per_cycle)} bags per cycle)`;
+    packLine = `${fmtHrs(it.packing_hrs)} packing hrs for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines to pack and ${fmtNum(it.cycles)} cycle (${fmtNum(it.bags_per_cycle)} bags per cycle)`;
   }
   return `<div style="margin-bottom:10px">
     <div style="font-style:italic">${specLine}</div>
@@ -3332,6 +3866,15 @@ function renderLineSummary(runs, items){
   el.innerHTML = lines.map(l => {
     const runsForLine = byLine[l];
     const totalMixes = runsForLine.reduce((s,r)=>s+(parseFloat(r.status==='Confirmed'?r.confirmed_mixes:r.planned_mixes)||0), 0);
+    const lineTotalMin = runsForLine.reduce((s,r) => {
+      const p = getProductInfo(r.product_name);
+      const mixes = r.status === 'Confirmed' ? (r.confirmed_mixes||0) : (r.planned_mixes||0);
+      return s + (p && p.mixing_min_per_mix ? mixes * p.mixing_min_per_mix : 0);
+    }, 0);
+    const lineTotalHrs = lineTotalMin / 60;
+    const lineRunIds = runsForLine.map(r => r.id);
+    const linePackingHrs = items.filter(it => lineRunIds.includes(it.run_id))
+      .reduce((s,it) => s + (parseFloat(it.packing_hrs)||0), 0);
     const runsHtml = runsForLine.map(run => {
       const runItems = items.filter(it => it.run_id === run.id);
       const p = getProductInfo(run.product_name);
@@ -3354,7 +3897,7 @@ function renderLineSummary(runs, items){
         const dateLabel = formatProdExpDate(it);
         const itStatus = it.status==='Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
         const packingCalc = it.packing_hrs
-          ? `<div>${fmtNum(it.packing_hrs)}h</div><div style="font-size:11px;color:var(--muted);white-space:normal">for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)</div>`
+          ? `<div>${fmtHrs(it.packing_hrs)}h</div><div style="font-size:11px;color:var(--muted);white-space:normal">for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)</div>`
           : '–';
         return `<tr>
           <td>${it.item_no}</td>
@@ -3375,10 +3918,11 @@ function renderLineSummary(runs, items){
       </div>`;
     }).join('');
     return `<div class="card" style="margin-bottom:14px">
-      <div class="row" style="align-items:center;margin-bottom:8px">
+      <div class="row" style="align-items:center;margin-bottom:2px">
         <h3 style="flex:2;margin:0">${l}</h3>
         <span style="font-size:12px;color:var(--muted)">${runsForLine.length} run${runsForLine.length!==1?'s':''} · ${fmtNum(totalMixes)} batches</span>
       </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Production hrs: ${fmtHrs(lineTotalHrs)} · Packing hrs: ${fmtHrs(linePackingHrs)}</div>
       ${runsHtml}
     </div>`;
   }).join('');
@@ -3515,7 +4059,7 @@ function renderSchedNeedList(){
   let rows = SCHED_NEED_DATA.map(r => {
     const c = classifyRow(r, thresholdN);
     return Object.assign({}, r, {_tier: c.tier, _days: c.days});
-  }).filter(r => r._tier !== 'sufficient');
+  }).filter(r => r._tier !== 'sufficient' && r._tier !== 'mto');
 
   if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.item_name||'').toLowerCase().includes(q));
   if(lineFilter) rows = rows.filter(r => (r.line||'').toLowerCase() === lineFilter.toLowerCase());
@@ -3594,7 +4138,13 @@ async function refreshComponents(){
     document.getElementById('sachetEmpty').style.display = rows.length ? 'none' : 'block';
 
     const offset = (COMP_PAGE - 1) * COMP_PAGE_SIZE;
-    const {rows: recent, total} = await sbGetPaged('erp_components_inout?select=id,entry_date,sachet_name,in_qty,out_qty&order=id.desc', offset, COMP_PAGE_SIZE);
+    let compRecentPath = 'erp_components_inout?select=id,entry_date,sachet_name,in_qty,out_qty&order=id.desc';
+    const compSearch = document.getElementById('compRecentSearch')?.value.trim();
+    if(compSearch) compRecentPath += `&sachet_name=ilike.${encodeURIComponent('%'+compSearch+'%')}`;
+    const compTypeFilter = document.getElementById('compRecentTypeFilter')?.value;
+    if(compTypeFilter === 'in') compRecentPath += '&in_qty=gt.0';
+    else if(compTypeFilter === 'out') compRecentPath += '&out_qty=gt.0';
+    const {rows: recent, total} = await sbGetPaged(compRecentPath, offset, COMP_PAGE_SIZE);
     document.getElementById('compRecent').innerHTML = recent.map((r,i) => {
       const rowId = 'comp-detail-'+i;
       const z = (i % 2 === 0) ? ' zrow' : '';
@@ -3621,11 +4171,104 @@ async function refreshComponents(){
 }
 function compPrevPage(){ if(COMP_PAGE > 1){ COMP_PAGE--; refreshComponents(); } }
 function compNextPage(){ COMP_PAGE++; refreshComponents(); }
+function onCompRecentFilterChange(){ COMP_PAGE = 1; refreshComponents(); }
+/* ---- Adjust Sachet Inventory (admin only) — mirrors Inventory Adjust for erp_items ---- */
+function resetComponentAdjustForm(){
+  document.getElementById('compAdjSachet').value = '';
+  document.getElementById('compAdjNewQty').value = '';
+  document.getElementById('compAdjWrap').style.display = 'none';
+}
+async function onCompAdjSachetChange(){
+  const sachet = document.getElementById('compAdjSachet').value;
+  if(!sachet){ document.getElementById('compAdjWrap').style.display = 'none'; return; }
+  try{
+    const rows = await sbGet(`erp_sachet_inventory?select=inventory_qty&sachet_name=eq.${encodeURIComponent(sachet)}&limit=1`);
+    const qty = rows && rows[0] ? Number(rows[0].inventory_qty)||0 : 0;
+    document.getElementById('compAdjCurrentQty').value = fmtNum(qty);
+    document.getElementById('compAdjWrap').dataset.currentQty = qty;
+    document.getElementById('compAdjNewQty').value = qty;
+    document.getElementById('compAdjWrap').style.display = 'flex';
+    recalcCompAdjDelta();
+  }catch(e){ toast('Failed to load current quantity: ' + e.message); }
+}
+function recalcCompAdjDelta(){
+  const current = parseFloat(document.getElementById('compAdjWrap').dataset.currentQty) || 0;
+  const newQty = parseFloat(document.getElementById('compAdjNewQty').value);
+  document.getElementById('compAdjDelta').value = isNaN(newQty) ? '' : fmtNum(newQty - current);
+}
+async function submitComponentAdjust(){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const sachet = document.getElementById('compAdjSachet').value;
+  if(!sachet){ toast('Please select a sachet first'); return; }
+  const current = parseFloat(document.getElementById('compAdjWrap').dataset.currentQty) || 0;
+  const newQty = parseFloat(document.getElementById('compAdjNewQty').value);
+  if(isNaN(newQty)){ toast('Please enter a new quantity'); return; }
+  const delta = newQty - current;
+  if(delta === 0){ toast('New quantity is the same as current — nothing to adjust'); return; }
+  try{
+    await sbInsert('erp_components_inout', [{
+      entry_date: todayStr(), sachet_name: sachet,
+      in_qty: delta > 0 ? delta : 0, out_qty: delta < 0 ? -delta : 0
+    }]);
+    toast('Sachet inventory adjusted');
+    resetComponentAdjustForm();
+    await refreshComponents();
+  }catch(e){ toast('Adjustment failed: ' + e.message); }
+}
 // Auto-deduction: any item that has recipe rows in erp_item_sachet_recipe
 // triggers a sachet deduction proportional to the qty PRODUCED (In Qty),
 // since making a finished-goods kit is what consumes the sachets.
 function itemHasRecipe(itemNo){
   return RECIPE.some(r => r.item_no === itemNo);
+}
+// If this item needs sachets/components to pack, work out the most cases the
+// CURRENT component stock can support — a run might have plenty of dough but
+// still be capped by how many sachets/wrappers are actually on hand.
+function maxCasesFromComponents(itemNo){
+  const recipeRows = RECIPE.filter(r => r.item_no === itemNo);
+  if(!recipeRows.length) return null; // no component recipe — not a limiting factor
+  let maxCases = Infinity;
+  recipeRows.forEach(r => {
+    const pcsPerCase = parseFloat(r.pcs_per_case) || 0;
+    if(pcsPerCase <= 0) return;
+    const stock = SACHET_STOCK[r.sachet_name] || 0;
+    const possible = Math.floor(stock / pcsPerCase);
+    if(possible < maxCases) maxCases = possible;
+  });
+  return Number.isFinite(maxCases) ? maxCases : null;
+}
+// Names the specific sachet/component that bottlenecks maxCasesFromComponents() — a recipe
+// can have several sachets, but only the scarcest one is the actual reason cases got capped.
+function limitingComponentForItem(itemNo){
+  const recipeRows = RECIPE.filter(r => r.item_no === itemNo);
+  if(!recipeRows.length) return null;
+  let limiting = null;
+  recipeRows.forEach(r => {
+    const pcsPerCase = parseFloat(r.pcs_per_case) || 0;
+    if(pcsPerCase <= 0) return;
+    const stock = SACHET_STOCK[r.sachet_name] || 0;
+    const possible = Math.floor(stock / pcsPerCase);
+    if(!limiting || possible < limiting.possible){
+      limiting = { sachetName: r.sachet_name, stock, pcsPerCase, possible };
+    }
+  });
+  return limiting;
+}
+// Shared by Production Schedule item rows and Orders lines: null when the item
+// has no component recipe (not applicable) or stock covers the requested cases.
+function componentShortfallInfo(itemNo, cases){
+  const cap = maxCasesFromComponents(itemNo);
+  if(cap === null) return null;
+  const needed = parseFloat(cases) || 0;
+  if(cap >= needed) return null;
+  const limiting = limitingComponentForItem(itemNo);
+  return { cap, needed, sachetName: limiting ? limiting.sachetName : null, sachetStock: limiting ? limiting.stock : null };
+}
+function componentShortfallNoteHtml(itemNo, cases){
+  const info = componentShortfallInfo(itemNo, cases);
+  if(!info) return '';
+  const sachetPart = info.sachetName ? ` of "${info.sachetName}" (stock: ${fmtNum(info.sachetStock)})` : '';
+  return `<div style="font-size:11px;color:var(--danger);font-weight:700;margin-top:2px">⚠ Components short${sachetPart}: need ${fmtNum(info.needed)} cases, only ${fmtNum(info.cap)} on hand</div>`;
 }
 async function deductComponentsForItem(itemNo, entryDate, producedQty){
   const recipeRows = RECIPE.filter(r => r.item_no === itemNo);
@@ -3710,15 +4353,16 @@ function renderProduceList(){
 /* ============================================================
    MANAGE ITEMS (erp_items CRUD)
    ============================================================ */
-const ITEM_FIELDS = ['itemNo','itemName','itemCname','weightPerPack','unitOfWeight','unit','pieces','unitPerCase','customer','line','storage','fSlDay','rSlDay','box','stockLevel','machinesRunning','cycle','bagsPerCycle','productDough','itemStatus','remark'];
-const ITEM_DB_COLS = {itemNo:'item_no',itemName:'item_name',itemCname:'item_cname',weightPerPack:'weight_per_pack',unitOfWeight:'unit_of_weight',unit:'unit',pieces:'pieces',unitPerCase:'unit_per_case',customer:'customer',line:'line',storage:'storage',fSlDay:'f_sl_day',rSlDay:'r_sl_day',box:'box',stockLevel:'stock_level',machinesRunning:'machines_running',cycle:'cycle',bagsPerCycle:'bags_per_cycle',productDough:'product_dough',itemStatus:'item_status',remark:'remark'};
-const ITEM_INPUT_IDS = {itemNo:'itemNo',itemName:'itemName',itemCname:'itemCname',weightPerPack:'itemWeight',unitOfWeight:'itemUnitW',unit:'itemUnit',pieces:'itemPieces',unitPerCase:'itemUnitCase',customer:'itemCustomer',line:'itemLine',storage:'itemStorage',fSlDay:'itemFSl',rSlDay:'itemRSl',box:'itemBox',stockLevel:'itemStockLevel',machinesRunning:'itemMcRunning',cycle:'itemCycle',bagsPerCycle:'itemBagsCycle',productDough:'itemProductDough',itemStatus:'itemStatus',remark:'itemRemark'};
-const NUMERIC_ITEM_FIELDS = ['weightPerPack','pieces','rSlDay','stockLevel','machinesRunning','bagsPerCycle'];
+const ITEM_FIELDS = ['itemNo','itemName','itemCname','weightPerPack','doughWeightPerPack','unitOfWeight','unit','pieces','unitPerCase','customer','line','storage','fSlDay','rSlDay','box','stockLevel','machinesRunning','cycle','bagsPerCycle','productDough','itemStatus','remark'];
+const ITEM_DB_COLS = {itemNo:'item_no',itemName:'item_name',itemCname:'item_cname',weightPerPack:'weight_per_pack',doughWeightPerPack:'dough_weight_per_pack',unitOfWeight:'unit_of_weight',unit:'unit',pieces:'pieces',unitPerCase:'unit_per_case',customer:'customer',line:'line',storage:'storage',fSlDay:'f_sl_day',rSlDay:'r_sl_day',box:'box',stockLevel:'stock_level',machinesRunning:'machines_running',cycle:'cycle',bagsPerCycle:'bags_per_cycle',productDough:'product_dough',itemStatus:'item_status',remark:'remark'};
+const ITEM_INPUT_IDS = {itemNo:'itemNo',itemName:'itemName',itemCname:'itemCname',weightPerPack:'itemWeight',doughWeightPerPack:'itemDoughWeight',unitOfWeight:'itemUnitW',unit:'itemUnit',pieces:'itemPieces',unitPerCase:'itemUnitCase',customer:'itemCustomer',line:'itemLine',storage:'itemStorage',fSlDay:'itemFSl',rSlDay:'itemRSl',box:'itemBox',stockLevel:'itemStockLevel',machinesRunning:'itemMcRunning',cycle:'itemCycle',bagsPerCycle:'itemBagsCycle',productDough:'itemProductDough',itemStatus:'itemStatus',remark:'itemRemark'};
+const NUMERIC_ITEM_FIELDS = ['weightPerPack','doughWeightPerPack','pieces','rSlDay','stockLevel','machinesRunning','bagsPerCycle'];
 
 function resetItemForm(){
   document.getElementById('itemEditId').value = '';
   document.getElementById('itemFormTitle').textContent = 'Add New Item';
   ITEM_FIELDS.forEach(f => { const el = document.getElementById(ITEM_INPUT_IDS[f]); if(el) el.value=''; });
+  document.getElementById('itemMakeToOrder').checked = false;
 }
 function editItem(id){
   const it = ITEMS.find(i => i.id === id);
@@ -3729,6 +4373,7 @@ function editItem(id){
     const el = document.getElementById(ITEM_INPUT_IDS[f]);
     if(el) el.value = it[ITEM_DB_COLS[f]] ?? '';
   });
+  document.getElementById('itemMakeToOrder').checked = !!it.make_to_order;
   showScreen('items'); window.scrollTo(0,0);
 }
 async function submitItem(){
@@ -3746,6 +4391,7 @@ async function submitItem(){
     else v = v === '' ? null : v;
     patch[ITEM_DB_COLS[f]] = v;
   });
+  patch.make_to_order = document.getElementById('itemMakeToOrder').checked;
   try{
     if(editId){
       await sbUpdate('erp_items', editId, patch);
@@ -3834,6 +4480,7 @@ function renderItemsTable(){
           <div><span class="l">Bags/Cycle</span>${fmtNum(r.bags_per_cycle)}</div>
           <div><span class="l">Product Dough</span>${r.product_dough||'–'}</div>
           <div><span class="l">Item Status</span>${r.item_status||'Active'}</div>
+          <div><span class="l">Dough Weight/Pack</span>${(r.dough_weight_per_pack!=null)?fmtNum(r.dough_weight_per_pack)+(r.unit_of_weight||''):'(uses Weight/Pack)'}</div>
         </div>
       </td>
     </tr>`;
@@ -4343,6 +4990,14 @@ function logImport(msg){
   el.textContent += msg + '\n';
   el.scrollTop = el.scrollHeight;
 }
+// Show exactly what didn't make it in, not just a count — capped per section so one messy
+// file doesn't flood the log; the total count is always shown even when the list is capped.
+function logDetailList(title, list){
+  if(!list.length) return;
+  logImport(title);
+  list.slice(0,50).forEach(d => logImport('  ' + d));
+  if(list.length > 50) logImport(`  ...and ${list.length - 50} more`);
+}
 function parseCSV(text){
   // simple CSV parser, handles quoted fields with commas
   const rows = [];
@@ -4408,19 +5063,25 @@ async function handleInvoiceFile(file){
 
   const out = [];
   let skipped = 0, ambiguous = 0;
+  const skippedDetails = [];    // rows never added — item not found in Manage Items
+  const excludedDetails = [];   // rows never added — CHEP Pallet (09049)
+  const ambiguousDetails = [];  // rows that WERE added, but flagged for a manual check
   for(const r of rows){
     let raw = String(r[38] ?? '').trim(); // item# column
     if(raw === '' || raw === 'ITEM NO.') continue; // blank or a stray repeated header row
     let itemNo = raw;
     if(/^\d+$/.test(itemNo) && itemNo.length < 5) itemNo = itemNo.padStart(5, '0');
-    if(itemNo === '9049' || itemNo === '09049') continue; // CHEP Pallet, not a real product
     let itemName = String(r[39] ?? '').trim();
+    if(itemNo === '9049' || itemNo === '09049'){ excludedDetails.push(`${itemNo} ${itemName||'(no name)'} — CHEP Pallet, not a real product`); continue; }
     const corrected = lookupDupe(itemNo, itemName);
     itemNo = corrected.item_no; itemName = corrected.item_name;
     if(!itemNo) continue;
     const matched = resolveItemByNoAndName(itemNo, itemName);
-    if(!matched){ skipped++; continue; }
-    if((ITEMS_BY_NO_ALL[itemNo]||[]).length > 1 && (matched.item_name||'').trim().toLowerCase() !== itemName.trim().toLowerCase()){ ambiguous++; }
+    if(!matched){ skipped++; skippedDetails.push(`${itemNo} ${itemName||'(no name)'} (qty ${parseFloat(r[36])||0})`); continue; }
+    if((ITEMS_BY_NO_ALL[itemNo]||[]).length > 1 && (matched.item_name||'').trim().toLowerCase() !== itemName.trim().toLowerCase()){
+      ambiguous++;
+      ambiguousDetails.push(`${itemNo}: CSV name "${itemName}" matched to master name "${matched.item_name}"`);
+    }
     out.push({
       ship_date: parseDateLoose(r[8]),
       item_no: itemNo, item_name: itemName,
@@ -4430,11 +5091,19 @@ async function handleInvoiceFile(file){
       customer_no: String(r[26] ?? '').trim()
     });
   }
-  if(!out.length){ logImport('invoice.csv: no rows to import'); return; }
+  if(!out.length){
+    logImport('invoice.csv: no rows to import for PO ' + poCheckValue);
+    logDetailList(`--- Skipped: item not found in Manage Items (${skippedDetails.length}) ---`, skippedDetails);
+    logDetailList(`--- Skipped: intentionally-excluded item# (${excludedDetails.length}) ---`, excludedDetails);
+    return;
+  }
   try{
     await sbInsert('erp_pending_order', out);
     await logImportRun('invoice', file.name, fileHash, out.length);
-    logImport(`✅ invoice.csv import complete: added ${out.length} order(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}${ambiguous?`, ⚠ ${ambiguous} row(s) had a shared item# that couldn't be matched to a name — please double-check those`:''}`);
+    logImport(`✅ invoice.csv import complete: PO ${poCheckValue} — added ${out.length} order(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}${ambiguous?`, ⚠ ${ambiguous} row(s) had a shared item# that couldn't be matched to a name — please double-check those`:''}`);
+    logDetailList(`--- Not added: item not found in Manage Items (${skippedDetails.length}) ---`, skippedDetails);
+    logDetailList(`--- Not added: intentionally-excluded item# (${excludedDetails.length}) ---`, excludedDetails);
+    logDetailList(`--- Added but flagged: ambiguous shared item# — please verify (${ambiguousDetails.length}) ---`, ambiguousDetails);
     toast('Import completed successfully!');
     await refreshPO(); await refreshDashboard(); await refreshProduce();
   }catch(e){ logImport('❌ Import failed: ' + e.message); }
@@ -4461,9 +5130,12 @@ async function handleSalesFile(file){
   const out = [];
   const compTriggers = []; // {itemNo, entryDate, qty} for any item found in erp_item_sachet_recipe
   let skipped = 0, ambiguous = 0;
+  const skippedDetails = [];    // rows never added — item not found in Manage Items
+  const excludedDetails = [];   // rows never added — intentionally-excluded item# (09056/09217/09049)
+  const zeroQtyDetails = [];    // rows never added — qty parsed as 0/blank
+  const ambiguousDetails = [];  // rows that WERE added, but flagged for a manual check
   for(const r of clean){
     const qtyRaw = parseFloat(r[25]); // col26 -> index25
-    if(!qtyRaw) continue;
     const raw18 = String(r[17] ?? '');
     let itemNo = raw18.split(' ')[0].trim();
     let itemName = raw18.slice(itemNo.length + 1).trim();
@@ -4482,31 +5154,46 @@ async function handleSalesFile(file){
       itemNo = itemNo.slice(0, posX);
       if(itemNo === '01345'){ itemNo = '01420'; itemName = 'ENTREE WONTON PORK SHRIMP RAW'; }
     }
-    if(['09056','09217','09049'].includes(itemNo)) continue;
+
+    if(!qtyRaw){ zeroQtyDetails.push(`${itemNo} ${itemName||'(no name)'} — qty column was "${r[25]??''}"`); continue; }
+    if(['09056','09217','09049'].includes(itemNo)){ excludedDetails.push(`${itemNo} ${itemName||'(no name)'} (qty ${qtyRaw})`); continue; }
 
     const corrected = lookupDupe(itemNo, itemName);
     itemNo = corrected.item_no; itemName = corrected.item_name;
-
-    const item = resolveItemByNoAndName(itemNo, itemName);
-    if(!item){ skipped++; continue; }
-    if((ITEMS_BY_NO_ALL[itemNo]||[]).length > 1 && (item.item_name||'').trim().toLowerCase() !== itemName.trim().toLowerCase()){ ambiguous++; }
-    let qty = qtyRaw;
-    if(usePieces && item.pieces){ qty = qtyRaw / item.pieces; }
 
     const dateField = String(r[6] ?? ''); // col7 -> index6, format "xxx yyyy-mm-dd"
     const parts = dateField.split(' ');
     const entryDate = parseDateLoose(parts[1] || dateField);
 
+    const item = resolveItemByNoAndName(itemNo, itemName);
+    if(!item){ skipped++; skippedDetails.push(`${entryDate} — ${itemNo} ${itemName||'(no name)'} (qty ${qtyRaw})`); continue; }
+    if((ITEMS_BY_NO_ALL[itemNo]||[]).length > 1 && (item.item_name||'').trim().toLowerCase() !== itemName.trim().toLowerCase()){
+      ambiguous++;
+      ambiguousDetails.push(`${entryDate} — ${itemNo}: CSV name "${itemName}" matched to master name "${item.item_name}"`);
+    }
+    let qty = qtyRaw;
+    if(usePieces && item.pieces){ qty = qtyRaw / item.pieces; }
+
     out.push({ entry_date: entryDate, item_no: itemNo, item_name: itemName, in_qty: 0, out_qty: qty, lot: null });
 
     if(itemNo === '09510'){ compTriggers.push({itemNo, entryDate, qty}); }
   }
-  if(!out.length){ logImport('itemsalessummary.csv: no rows to import'); return; }
+  if(!out.length){
+    logImport('itemsalessummary.csv: no rows to import');
+    logDetailList(`--- Skipped: item not found in Manage Items (${skippedDetails.length}) ---`, skippedDetails);
+    logDetailList(`--- Skipped: zero/blank quantity (${zeroQtyDetails.length}) ---`, zeroQtyDetails);
+    logDetailList(`--- Skipped: intentionally-excluded item# (${excludedDetails.length}) ---`, excludedDetails);
+    return;
+  }
   try{
     await sbInsert('erp_inout', out);
     for(const t of compTriggers){ await deductComponentsForItem(t.itemNo, t.entryDate, t.qty); }
     await logImportRun('itemsalessummary', file.name, fileHash, out.length);
     logImport(`✅ itemsalessummary.csv import complete: added ${out.length} out-qty record(s)${skipped?`, skipped ${skipped} row(s) (item not found)`:''}${compTriggers.length?`, triggered sachet deduction for ${compTriggers.length} row(s)`:''}${ambiguous?`, ⚠ ${ambiguous} row(s) had a shared item# that couldn't be matched to a name — please double-check those`:''}`);
+    logDetailList(`--- Not added: item not found in Manage Items (${skippedDetails.length}) ---`, skippedDetails);
+    logDetailList(`--- Not added: zero/blank quantity (${zeroQtyDetails.length}) ---`, zeroQtyDetails);
+    logDetailList(`--- Not added: intentionally-excluded item# (${excludedDetails.length}) ---`, excludedDetails);
+    logDetailList(`--- Added but flagged: ambiguous shared item# — please verify (${ambiguousDetails.length}) ---`, ambiguousDetails);
     toast('Import completed successfully!');
     await refreshInOut(); await refreshDashboard(); await refreshProduce(); await refreshComponents();
   }catch(e){ logImport('❌ Import failed: ' + e.message); }
@@ -4592,6 +5279,11 @@ async function updateRunItemDateMode(id, mode){
   }catch(e){ toast('Update failed: ' + e.message); }
 }
 function fmtNum(n){ if(n===null||n===undefined||n==='') return '–'; const v = Number(n); return Number.isInteger(v)?v.toString():v.toFixed(2); }
+// Round to the nearest quarter hour (0, 0.25, 0.5, 0.75, 1, ...) so Production/Packing hour
+// figures read like real shift-planning increments instead of arbitrary decimals like "0.30".
+function fmtHrs(hrs){
+  return (Math.round((parseFloat(hrs)||0) * 4) / 4).toString();
+}
 function parseDateLoose(v){
   if(!v) return todayStr();
   v = String(v).trim();
@@ -4630,7 +5322,7 @@ async function printProductionReport(){
         <h3>${l} — ${fmtNum(totalBatches)} batches total</h3>
         <table><colgroup><col style="width:75%"><col style="width:25%"></colgroup><thead><tr><th>Product Dough</th><th>Batches</th></tr></thead>
         <tbody>${rs.map(r => `<tr><td>${r.product_name}</td><td>${fmtNum(r.status==='Confirmed'?r.confirmed_mixes:r.planned_mixes)}</td></tr>` +
-          (r.remark ? `<tr><td colspan="2" class="pr-detail">Remark: ${r.remark}</td></tr>` : '')).join('')}</tbody></table>
+          (r.remark ? `<tr><td colspan="2" class="pr-detail" style="color:#c0392b;font-weight:700">Remark: ${r.remark}</td></tr>` : '')).join('')}</tbody></table>
       </div>`;
     }).join('')}
   `;
@@ -4659,7 +5351,7 @@ async function printPackagingReport(){
             <tbody>${runItems.length ? runItems.map(it => {
               const item = ITEMS_BY_NO[it.item_no];
               const packingCalc = it.packing_hrs
-                ? `Packing: ${fmtNum(it.packing_hrs)}h for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)`
+                ? `Packing: ${fmtHrs(it.packing_hrs)}h for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)`
                 : '';
               const remarkLine = it.remark ? `<tr><td></td><td colspan="4" class="pr-detail" style="color:#c0392b;font-weight:700;font-style:italic">📝 ${it.remark}</td></tr>` : '';
               return `<tr><td>${it.item_no}</td><td>${it.item_name||''}</td><td>${itemPackDetail(item, it.planned_cases)}</td><td>${fmtNum(it.planned_cases)}</td><td>${formatProdExpDate(it)}</td></tr>` +
@@ -4670,6 +5362,1145 @@ async function printPackagingReport(){
       </div>`;
     }).join('')}
   `;
+  runReportPrint(html);
+}
+
+/* ============================================================
+   SAUCE PRODUCTION — fully independent module (own tables, no
+   sharing with erp_products / erp_flour_* / erp_production_*).
+   Day -> Task is the same two-level shape as Daily Production
+   Schedule's Run -> Items, just renamed: a "Day" is the whole
+   slate of a date's sauce tasks. Production Date is always the
+   Day's schedule_date and Best Before is always production_date +
+   the task's sauce's shelf_life_days — both computed here, never
+   stored, so they can't drift out of sync.
+   ============================================================ */
+let SAUCE_LOCATIONS = [];
+let ALLERGENS = [];
+let SAUCES = [];
+let SAUCE_INGREDIENTS = [];
+let SAUCE_RECIPE = [];
+let SAUCE_REC_DRAFT = [];
+let ALL_SAUCE_TASK_LOCATIONS = [];
+let CURRENT_SAUCE_DAY = null;
+let SAUCE_TASKS_CREATE = [];
+let SAUCE_PREVIEW_DAY = null;
+let SAUCE_PREVIEW_TASKS = [];
+let SAUCE_CONFIRM_DAY = null;
+let SAUCE_CONFIRM_TASKS = [];
+
+async function refreshSauceScreen(){
+  if(!connected || !isAdmin()) return; // Sauce Production is admin-only for now
+  document.getElementById('sauceDayDate').value = document.getElementById('sauceDayDate').value || todayStr();
+  document.getElementById('saucePreviewDate').value = document.getElementById('saucePreviewDate').value || todayStr();
+  document.getElementById('sauceConfirmDate').value = document.getElementById('sauceConfirmDate').value || todayStr();
+  document.getElementById('sauceIngReceiveDate').value = document.getElementById('sauceIngReceiveDate').value || todayStr();
+  try{
+    SAUCE_LOCATIONS = await sbGet('erp_sauce_locations?select=id,name&order=name.asc&limit=200');
+    document.getElementById('sauceTaskLocation').innerHTML = '<option value="">Select location...</option>' + SAUCE_LOCATIONS.map(l=>`<option>${l.name}</option>`).join('');
+
+    ALLERGENS = await sbGet('erp_allergens?select=id,name,color&order=name.asc&limit=100');
+    if(!document.getElementById('sauceEditId').value) renderSauceAllergenChecks([]);
+    renderAllergensTable();
+
+    SAUCES = await sbGetAll('erp_sauces?select=id,name,item_code,package_spec,shelf_life_days,remark,erp_sauce_allergens(allergen_id)&order=name.asc');
+
+    SAUCE_INGREDIENTS = await sbGetAll('erp_sauce_ingredient_inventory?select=id,name,pcs,weight,package_size,unit,kg_per_unit,inventory_qty&order=name.asc');
+
+    SAUCE_RECIPE = await sbGetAll('erp_sauce_recipe?select=id,sauce_id,ingredient_id,qty_per_batch,qty_unit&order=id.asc');
+
+    ALL_SAUCE_TASK_LOCATIONS = (await sbGetAll('erp_sauce_schedule_tasks?select=location&order=id.asc')).map(t=>t.location).filter(Boolean);
+
+    populateSauceRecipeSelects();
+    renderSaucesTable();
+    renderSauceIngredientsTable();
+    renderSauceRecipeTable();
+    renderSauceRecipeBrowse();
+    renderSauceLocationsTable();
+
+    await loadSauceDayForCreate(document.getElementById('sauceDayDate').value);
+    await renderSaucePreview();
+    await renderSauceConfirmTab();
+    await renderSauceScheduledDaysList('scheduledDaysListSauceCreate', 'scheduledDaysEmptySauceCreate', 'jumpToSauceScheduledDayCreate');
+    await renderSauceScheduledDaysList('scheduledDaysListSaucePreview', 'scheduledDaysEmptySaucePreview', 'jumpToSauceScheduledDayPreview');
+  }catch(e){ toast('Failed to load Sauce Production data: ' + e.message); }
+}
+// Only today-and-forward, same convention as Production Schedule's version.
+async function renderSauceScheduledDaysList(listElId, emptyElId, jumpFnName){
+  const listEl = document.getElementById(listElId);
+  if(!listEl) return;
+  try{
+    const days = await sbGetAll(`erp_sauce_schedule_days?select=id,schedule_date&schedule_date=gte.${todayStr()}&order=schedule_date.asc`);
+    if(!days.length){ listEl.innerHTML = ''; document.getElementById(emptyElId).style.display = 'block'; return; }
+    const dayIds = days.map(d=>d.id);
+    const tasks = await sbGetAll(`erp_sauce_schedule_tasks?select=day_id&day_id=in.(${dayIds.join(',')})`);
+    const counts = {};
+    tasks.forEach(t => { counts[t.day_id] = (counts[t.day_id]||0) + 1; });
+    const today = todayStr();
+    listEl.innerHTML = days.map(d => {
+      const isToday = d.schedule_date === today;
+      const n = counts[d.id] || 0;
+      return `<button class="btn secondary" style="padding:6px 12px;font-size:12px${isToday?';border-color:var(--accent);color:var(--accent);font-weight:700':''}" onclick="${jumpFnName}('${d.schedule_date}')">${d.schedule_date}${isToday?' (Today)':''} · ${n} task${n===1?'':'s'}</button>`;
+    }).join('');
+    document.getElementById(emptyElId).style.display = 'none';
+  }catch(e){ /* non-fatal — the rest of the screen still works */ }
+}
+function jumpToSauceScheduledDayCreate(date){
+  document.getElementById('sauceDayDate').value = date;
+  onSauceDayDateChange();
+}
+function jumpToSauceScheduledDayPreview(date){
+  document.getElementById('saucePreviewDate').value = date;
+  renderSaucePreview();
+}
+
+/* ---- Date / Julian ("-DDD") / Best Before helpers ---- */
+function toSauceJulian(dateStr){
+  if(!dateStr) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  if(!y || !m || !d) return '';
+  const startOfYearUTC = Date.UTC(y, 0, 1);
+  const dateUTC = Date.UTC(y, m - 1, d);
+  const dayOfYear = Math.round((dateUTC - startOfYearUTC) / 86400000) + 1;
+  return '-' + String(dayOfYear).padStart(3, '0');
+}
+function addDaysToDateStr(dateStr, days){
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + Number(days));
+  return dt.toISOString().slice(0,10);
+}
+function sauceBestBefore(sauce, productionDate){
+  if(!sauce || sauce.shelf_life_days == null || !productionDate) return null;
+  return addDaysToDateStr(productionDate, sauce.shelf_life_days);
+}
+function sauceAllergenNames(sauce){
+  if(!sauce) return [];
+  const ids = (sauce.erp_sauce_allergens||[]).map(x=>x.allergen_id);
+  return ALLERGENS.filter(a=>ids.includes(a.id)).map(a=>a.name);
+}
+function sauceAllergenObjects(sauce){
+  if(!sauce) return [];
+  const ids = (sauce.erp_sauce_allergens||[]).map(x=>x.allergen_id);
+  return ALLERGENS.filter(a=>ids.includes(a.id));
+}
+function contrastTextColor(hex){
+  if(!hex) return '#fff';
+  const c = hex.replace('#','');
+  if(c.length !== 6) return '#fff';
+  const r = parseInt(c.substr(0,2),16), g = parseInt(c.substr(2,2),16), b = parseInt(c.substr(4,2),16);
+  const lum = (0.299*r + 0.587*g + 0.114*b) / 255;
+  return lum > 0.6 ? '#000' : '#fff';
+}
+function allergenChipHtml(allergen){
+  const color = allergen.color || '#d64545';
+  return `<span class="chip" style="background:${color};color:${contrastTextColor(color)}">${allergen.name}</span>`;
+}
+
+/* ---- Allergens (add/edit/delete + custom color) ---- */
+function resetAllergenForm(){
+  document.getElementById('allergenEditId').value = '';
+  document.getElementById('allergenFormTitle').textContent = 'Add New Allergen';
+  document.getElementById('allergenSubmitBtn').textContent = '＋ Save Allergen';
+  document.getElementById('allergenName').value = '';
+  document.getElementById('allergenColor').value = '#d64545';
+}
+function editAllergen(id){
+  const a = ALLERGENS.find(x => x.id === id);
+  if(!a) return;
+  document.getElementById('allergenEditId').value = id;
+  document.getElementById('allergenFormTitle').textContent = 'Edit Allergen';
+  document.getElementById('allergenSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('allergenName').value = a.name || '';
+  document.getElementById('allergenColor').value = a.color || '#d64545';
+  showScreen('sauce-allergens'); window.scrollTo(0,0);
+}
+async function submitAllergen(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const name = document.getElementById('allergenName').value.trim();
+  if(!name){ toast('Please enter a name'); return; }
+  const color = document.getElementById('allergenColor').value || '#d64545';
+  const editId = document.getElementById('allergenEditId').value;
+  try{
+    if(editId){
+      await sbUpdate('erp_allergens', editId, { name, color });
+      toast('Allergen updated');
+    } else {
+      await sbInsert('erp_allergens', [{ name, color }]);
+      toast('Allergen added');
+    }
+    resetAllergenForm();
+    await refreshSauceScreen();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteAllergen(id){
+  await deleteRow('erp_allergens', id, refreshSauceScreen);
+}
+function renderAllergensTable(){
+  document.getElementById('allergensTable').innerHTML = ALLERGENS.map(a => `<tr>
+    <td>${allergenChipHtml(a)}</td>
+    <td>${a.color||'#d64545'}</td>
+    <td class="no-print" style="white-space:nowrap">
+      <div style="display:flex;gap:6px;flex-wrap:nowrap">
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="editAllergen(${a.id})">✎ Edit</button>
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteAllergen(${a.id})">✕ Delete</button>
+      </div>
+    </td>
+  </tr>`).join('');
+  document.getElementById('allergensEmpty').style.display = ALLERGENS.length ? 'none' : 'block';
+}
+
+/* ---- Weight per mix (derived from the recipe) + packing-time calculation ----
+   Mirrors the Daily Production Schedule packing-hours formula/assumption (1 cycle = 1
+   minute): packing_hrs = total_packs / (bags_per_cycle * machines * cycles * 60), where
+   total_packs = (recipe-derived kg per mix * mixes) / pack_weight. Weight per mix isn't a
+   separate field to maintain — it's summed straight from the recipe (kg rows count as-is;
+   'unit' rows count as-is only when the ingredient's own stock unit is already kg, else via
+   kg_per_unit if set) so it can never drift out of sync with the recipe. */
+function sauceRecipeWeightKg(sauceId){
+  const rows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId));
+  let totalKg = 0, hasUnknown = false;
+  rows.forEach(r => {
+    const qty = parseFloat(r.qty_per_batch) || 0;
+    if(r.qty_unit === 'kg'){ totalKg += qty; return; }
+    const ing = SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id);
+    if(!ing){ hasUnknown = true; return; }
+    if((ing.unit||'').toLowerCase() === 'kg'){ totalKg += qty; }
+    else if(ing.kg_per_unit){ totalKg += qty * ing.kg_per_unit; }
+    else { hasUnknown = true; }
+  });
+  return { totalKg, hasUnknown, hasRows: rows.length > 0 };
+}
+function sauceTaskWeightKg(task){
+  if(!task || !task.sauce_id) return null;
+  const { totalKg, hasUnknown, hasRows } = sauceRecipeWeightKg(task.sauce_id);
+  if(!hasRows) return null;
+  return { totalKg: totalKg * (parseFloat(task.mixes) || 0), perMixKg: totalKg, hasUnknown };
+}
+function calcSaucePackingHrs(task){
+  const w = sauceTaskWeightKg(task);
+  if(!w || !w.totalKg) return null;
+  const packWeightKg = task.pack_weight ? toKg(task.pack_weight, task.pack_weight_unit) : null;
+  if(!packWeightKg) return null;
+  const totalPacks = w.totalKg / packWeightKg;
+  const denom = (task.bags_per_cycle||0) * (task.machines||0) * (task.cycles||0) * 60;
+  if(!denom) return null;
+  return { hrs: totalPacks / denom, totalPacks, totalKg: w.totalKg, hasUnknown: w.hasUnknown };
+}
+function sauceTaskPackingCalcText(task){
+  const calc = calcSaucePackingHrs(task);
+  if(!calc) return '';
+  return `📦 Packing: ${fmtNum(calc.hrs)}h for ${fmtNum(calc.totalKg)} kg / ${fmtNum(calc.totalPacks)} packs, ${fmtNum(task.machines)} machine(s), ${fmtNum(task.cycles)} cycle(s)/min (${fmtNum(task.bags_per_cycle)} bags/cycle)${calc.hasUnknown?' ⚠ some ingredients have no Kg/Unit set — weight may be incomplete':''}`;
+}
+
+/* ---- Confirm-time deduction (mirrors deductFlourForProduct) ---- */
+async function deductSauceIngredientsForSauce(sauceId, entryDate, mixes){
+  const sauce = SAUCES.find(s => s.id === sauceId || String(s.id) === String(sauceId));
+  const rows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId));
+  if(!rows.length){
+    toast(`⚠ No recipe found for "${sauce?sauce.name:'this sauce'}" — no ingredients were deducted`);
+    return;
+  }
+  const inserts = rows.map(r => {
+    const ing = SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id);
+    const perBatch = r.qty_per_batch || 0;
+    let unitsNeeded, note;
+    if(r.qty_unit === 'unit'){
+      // this recipe row is already written in the ingredient's own stock unit — no kg conversion
+      unitsNeeded = mixes * perBatch;
+      note = `Sauce day confirm: ${sauce?sauce.name:''} (${fmtNum(unitsNeeded)} ${ing?.unit||'units'}, recipe already in stock units)`;
+    } else {
+      const kgNeeded = mixes * perBatch;
+      unitsNeeded = (ing && ing.kg_per_unit) ? (kgNeeded / ing.kg_per_unit) : kgNeeded;
+      note = `Sauce day confirm: ${sauce?sauce.name:''} (${fmtNum(kgNeeded)} kg${(ing && !ing.kg_per_unit) ? ' — no kg/unit set, deducted as raw kg' : ''})`;
+    }
+    return { entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: 0, out_qty: unitsNeeded, note };
+  });
+  await sbInsert('erp_sauce_ingredient_inout', inserts);
+}
+
+/* ---- Locations (mirrors Lines) ---- */
+function resetSauceLocationForm(){
+  document.getElementById('sauceLocEditId').value = '';
+  document.getElementById('sauceLocFormTitle').textContent = 'Add New Location';
+  document.getElementById('sauceLocSubmitBtn').textContent = '＋ Save Location';
+  document.getElementById('sauceLocName').value = '';
+}
+function editSauceLocation(id){
+  const l = SAUCE_LOCATIONS.find(x => x.id === id);
+  if(!l) return;
+  document.getElementById('sauceLocEditId').value = id;
+  document.getElementById('sauceLocFormTitle').textContent = 'Edit Location';
+  document.getElementById('sauceLocSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('sauceLocName').value = l.name;
+  showScreen('sauce-locations'); window.scrollTo(0,0);
+}
+async function submitSauceLocation(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const name = document.getElementById('sauceLocName').value.trim();
+  if(!name){ toast('Please enter a location name'); return; }
+  const editId = document.getElementById('sauceLocEditId').value;
+  try{
+    if(editId){
+      const old = SAUCE_LOCATIONS.find(x => x.id === Number(editId));
+      await sbUpdate('erp_sauce_locations', editId, { name });
+      if(old && old.name !== name){
+        const affected = await sbGet(`erp_sauce_schedule_tasks?select=id&location=eq.${encodeURIComponent(old.name)}&limit=5000`);
+        for(const t of affected){ await sbUpdate('erp_sauce_schedule_tasks', t.id, { location: name }); }
+      }
+      toast('Location updated');
+    } else {
+      await sbInsert('erp_sauce_locations', [{ name }]);
+      toast('Location added');
+    }
+    resetSauceLocationForm();
+    await refreshSauceScreen();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteSauceLocation(id){
+  const l = SAUCE_LOCATIONS.find(x => x.id === id);
+  const inUse = l ? ALL_SAUCE_TASK_LOCATIONS.filter(x => x === l.name).length : 0;
+  if(inUse > 0){ toast(`Can't delete — ${inUse} task(s) still use "${l.name}".`); return; }
+  await deleteRow('erp_sauce_locations', id, refreshSauceScreen);
+}
+function renderSauceLocationsTable(){
+  document.getElementById('sauceLocationsTable').innerHTML = SAUCE_LOCATIONS.map(l => {
+    const count = ALL_SAUCE_TASK_LOCATIONS.filter(x => x === l.name).length;
+    return `<tr>
+      <td>${l.name}</td><td>${count}</td>
+      <td class="no-print can-write" style="white-space:nowrap">
+        <div style="display:flex;gap:6px;flex-wrap:nowrap">
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="editSauceLocation(${l.id})">✎ Edit</button>
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteSauceLocation(${l.id})">✕ Delete</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('sauceLocationsEmpty').style.display = SAUCE_LOCATIONS.length ? 'none' : 'block';
+}
+
+/* ---- Allergens + Sauce master ---- */
+function renderSauceAllergenChecks(selectedIds){
+  selectedIds = selectedIds || [];
+  document.getElementById('sauceAllergenChecks').innerHTML = ALLERGENS.map(a => `
+    <label style="display:flex;align-items:center;gap:6px;font-weight:400;width:auto">
+      <input type="checkbox" value="${a.id}" class="sauceAllergenCheck" ${selectedIds.includes(a.id)?'checked':''}>
+      <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${a.color||'#d64545'}"></span>
+      ${a.name}
+    </label>`).join('');
+}
+function getCheckedSauceAllergenIds(){
+  return [...document.querySelectorAll('.sauceAllergenCheck:checked')].map(el => Number(el.value));
+}
+/* ---- Item Code -> erp_items (Manage Items) lookup ----
+   item_code can hold multiple comma-separated codes (e.g. "9149, 9427, 9609") and isn't
+   zero-padded the way erp_items.item_no is (CSV import always zero-pads to 5 digits), so
+   each code is tried as-is, zero-padded, and de-padded before giving up on it. */
+function lookupSauceMatchedItems(itemCode){
+  if(!itemCode || !ITEMS_BY_NO) return [];
+  const codes = itemCode.split(',').map(c => c.trim()).filter(Boolean);
+  const found = [];
+  const seen = new Set();
+  codes.forEach(code => {
+    const candidates = [code, code.padStart(5,'0'), code.replace(/^0+/,'')];
+    let it = null;
+    for(const cand of candidates){ if(ITEMS_BY_NO[cand]){ it = ITEMS_BY_NO[cand]; break; } }
+    if(it && !seen.has(it.item_no)){ seen.add(it.item_no); found.push(it); }
+  });
+  return found;
+}
+function sauceItemDetailGridHtml(it){
+  return `<div class="dash-detail-grid">
+    <div><span class="l">Item #</span>${it.item_no}</div>
+    <div><span class="l">Item Name</span>${it.item_name||'–'}</div>
+    <div><span class="l">Chinese Name</span>${it.item_cname||'–'}</div>
+    <div><span class="l">Customer</span>${it.customer||'–'}</div>
+    <div><span class="l">Line</span>${it.line||'–'}</div>
+    <div><span class="l">Storage</span>${it.storage||'–'}</div>
+    <div><span class="l">Weight/Pack</span>${fmtNum(it.weight_per_pack)} ${it.unit_of_weight||''}</div>
+    <div><span class="l">Stock Level</span>${fmtNum(it.stock_level)}</div>
+    <div><span class="l">Unit</span>${it.unit||'–'}</div>
+    <div><span class="l">Pieces</span>${fmtNum(it.pieces)}</div>
+    <div><span class="l">Unit/Case</span>${it.unit_per_case||'–'}</div>
+    <div><span class="l">Box</span>${it.box||'–'}</div>
+    <div><span class="l">F. SL Day</span>${it.f_sl_day||'–'}</div>
+    <div><span class="l">R. SL Day</span>${fmtNum(it.r_sl_day)}</div>
+    <div><span class="l"># M/C Running</span>${fmtNum(it.machines_running)}</div>
+    <div><span class="l">Cycle</span>${it.cycle||'–'}</div>
+    <div><span class="l">Bags per Cycle</span>${fmtNum(it.bags_per_cycle)}</div>
+  </div>`;
+}
+function renderSauceItemMatchInfo(itemCode, targetElId){
+  const el = document.getElementById(targetElId);
+  if(!el) return;
+  const matches = lookupSauceMatchedItems(itemCode);
+  if(!matches.length){
+    el.innerHTML = (itemCode||'').trim() ? '<p style="color:var(--muted);font-size:12px;margin:4px 0 0">No matching Item # found in Manage Items</p>' : '';
+    return;
+  }
+  el.innerHTML = `<div style="margin-top:4px">${matches.map(it => `<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:6px">${sauceItemDetailGridHtml(it)}</div>`).join('')}</div>`;
+}
+function resetSauceForm(){
+  document.getElementById('sauceEditId').value = '';
+  document.getElementById('sauceFormTitle').textContent = 'Add New Sauce';
+  document.getElementById('sauceSubmitBtn').textContent = '＋ Save Sauce';
+  document.getElementById('sauceName').value = '';
+  document.getElementById('sauceItemCode').value = '';
+  document.getElementById('saucePackageSpec').value = '';
+  document.getElementById('sauceShelfLifeDays').value = '';
+  document.getElementById('sauceRemark').value = '';
+  renderSauceAllergenChecks([]);
+  renderSauceItemMatchInfo('', 'sauceItemMatchInfo');
+}
+function editSauce(id){
+  const s = SAUCES.find(x => x.id === id);
+  if(!s) return;
+  document.getElementById('sauceEditId').value = id;
+  document.getElementById('sauceFormTitle').textContent = 'Edit Sauce';
+  document.getElementById('sauceSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('sauceName').value = s.name || '';
+  document.getElementById('sauceItemCode').value = s.item_code || '';
+  document.getElementById('saucePackageSpec').value = s.package_spec || '';
+  document.getElementById('sauceShelfLifeDays').value = s.shelf_life_days ?? '';
+  document.getElementById('sauceRemark').value = s.remark || '';
+  renderSauceAllergenChecks((s.erp_sauce_allergens||[]).map(x=>x.allergen_id));
+  renderSauceItemMatchInfo(s.item_code || '', 'sauceItemMatchInfo');
+  showScreen('sauce-sauces'); window.scrollTo(0,0);
+}
+async function submitSauce(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const name = document.getElementById('sauceName').value.trim();
+  if(!name){ toast('Please enter a sauce name'); return; }
+  const patch = {
+    name,
+    item_code: document.getElementById('sauceItemCode').value.trim() || null,
+    package_spec: document.getElementById('saucePackageSpec').value.trim() || null,
+    shelf_life_days: document.getElementById('sauceShelfLifeDays').value ? parseInt(document.getElementById('sauceShelfLifeDays').value, 10) : null,
+    remark: document.getElementById('sauceRemark').value.trim() || null
+  };
+  const editId = document.getElementById('sauceEditId').value;
+  const allergenIds = getCheckedSauceAllergenIds();
+  try{
+    let sauceId;
+    if(editId){
+      await sbUpdate('erp_sauces', editId, patch);
+      sauceId = Number(editId);
+      toast('Sauce updated');
+    } else {
+      const rows = await sbInsert('erp_sauces', [patch]);
+      sauceId = rows[0].id;
+      toast('Sauce added');
+    }
+    await sb(`erp_sauce_allergens?sauce_id=eq.${sauceId}`, { method: 'DELETE' });
+    if(allergenIds.length){
+      await sbInsert('erp_sauce_allergens', allergenIds.map(aid => ({ sauce_id: sauceId, allergen_id: aid })));
+    }
+    resetSauceForm();
+    await refreshSauceScreen();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteSauce(id){
+  await deleteRow('erp_sauces', id, refreshSauceScreen);
+}
+function renderSaucesTable(){
+  const q = (document.getElementById('sauceSearch')?.value || '').trim().toLowerCase();
+  let rows = SAUCES;
+  if(q) rows = rows.filter(s => (s.name||'').toLowerCase().includes(q) || (s.item_code||'').toLowerCase().includes(q));
+  document.getElementById('saucesTable').innerHTML = rows.map((s,i) => {
+    const matches = lookupSauceMatchedItems(s.item_code);
+    const linkedLabel = matches.length ? matches.map(m => `${m.item_no} — ${m.item_name||''}`).join(', ') : '–';
+    const rowId = 'sauce-item-detail-' + s.id;
+    const z = (i % 2 === 0) ? ' zrow' : '';
+    return `<tr class="${z}"${matches.length ? ` style="cursor:pointer" onclick="toggleRowDetail('${rowId}')"` : ''}>
+      <td>${s.name}</td><td>${s.item_code||''}</td><td>${s.package_spec||''}</td><td>${s.shelf_life_days ?? ''}</td>
+      <td>${sauceAllergenObjects(s).map(allergenChipHtml).join(' ')}</td>
+      <td>${linkedLabel}</td>
+      <td>${s.remark||''}</td>
+      <td class="no-print" style="white-space:nowrap">
+        <div style="display:flex;gap:6px;flex-wrap:nowrap">
+          <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="event.stopPropagation(); editSauce(${s.id})">✎ Edit</button>
+          <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto;color:var(--danger)" onclick="event.stopPropagation(); deleteSauce(${s.id})">✕ Delete</button>
+        </div>
+      </td>
+    </tr>` + (matches.length ? `<tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="8">
+      ${matches.map(it => sauceItemDetailGridHtml(it)).join('<hr style="margin:8px 0;border-color:var(--line)">')}
+    </td></tr>` : '');
+  }).join('');
+  document.getElementById('saucesEmpty').style.display = rows.length ? 'none' : 'block';
+}
+
+/* ---- Ingredients + Receive Stock ---- */
+function resetSauceIngredientForm(){
+  document.getElementById('sauceIngEditId').value = '';
+  document.getElementById('sauceIngFormTitle').textContent = 'Add New Ingredient';
+  document.getElementById('sauceIngSubmitBtn').textContent = '＋ Save Ingredient';
+  ['sauceIngName','sauceIngPcs','sauceIngWeight','sauceIngPackageSize','sauceIngUnit','sauceIngKgPerUnit'].forEach(id => document.getElementById(id).value = '');
+}
+function editSauceIngredient(id){
+  const i = SAUCE_INGREDIENTS.find(x => x.id === id);
+  if(!i) return;
+  document.getElementById('sauceIngEditId').value = id;
+  document.getElementById('sauceIngFormTitle').textContent = 'Edit Ingredient';
+  document.getElementById('sauceIngSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('sauceIngName').value = i.name || '';
+  document.getElementById('sauceIngPcs').value = i.pcs ?? '';
+  document.getElementById('sauceIngWeight').value = i.weight ?? '';
+  document.getElementById('sauceIngPackageSize').value = i.package_size || '';
+  document.getElementById('sauceIngUnit').value = i.unit || '';
+  document.getElementById('sauceIngKgPerUnit').value = i.kg_per_unit ?? '';
+  showScreen('sauce-ingredients'); window.scrollTo(0,0);
+}
+async function submitSauceIngredient(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const name = document.getElementById('sauceIngName').value.trim();
+  if(!name){ toast('Please enter a name'); return; }
+  const patch = {
+    name,
+    pcs: document.getElementById('sauceIngPcs').value ? parseFloat(document.getElementById('sauceIngPcs').value) : null,
+    weight: document.getElementById('sauceIngWeight').value ? parseFloat(document.getElementById('sauceIngWeight').value) : null,
+    package_size: document.getElementById('sauceIngPackageSize').value.trim() || null,
+    unit: document.getElementById('sauceIngUnit').value.trim() || 'kg',
+    kg_per_unit: document.getElementById('sauceIngKgPerUnit').value ? parseFloat(document.getElementById('sauceIngKgPerUnit').value) : null
+  };
+  const editId = document.getElementById('sauceIngEditId').value;
+  try{
+    if(editId){
+      await sbUpdate('erp_sauce_ingredients', editId, patch);
+      toast('Ingredient updated');
+    } else {
+      await sbInsert('erp_sauce_ingredients', [patch]);
+      toast('Ingredient added');
+    }
+    resetSauceIngredientForm();
+    await refreshSauceScreen();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteSauceIngredient(id){
+  await deleteRow('erp_sauce_ingredients', id, refreshSauceScreen);
+}
+function renderSauceIngredientsTable(){
+  const q = (document.getElementById('sauceIngSearch')?.value || '').trim().toLowerCase();
+  let rows = SAUCE_INGREDIENTS;
+  if(q) rows = rows.filter(i => (i.name||'').toLowerCase().includes(q));
+  document.getElementById('sauceIngredientsTable').innerHTML = rows.map(i => `<tr>
+    <td>${i.name}</td><td>${i.pcs!=null?fmtNum(i.pcs):''}</td><td>${i.weight!=null?fmtNum(i.weight):''}</td>
+    <td>${i.package_size||''}</td><td>${i.unit||''}</td><td>${i.kg_per_unit?fmtNum(i.kg_per_unit):'–'}</td>
+    <td>${fmtNum(i.inventory_qty)} ${i.unit||''}</td>
+    <td class="no-print" style="white-space:nowrap">
+      <div style="display:flex;gap:6px;flex-wrap:nowrap">
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editSauceIngredient(${i.id})">✎ Edit</button>
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto;color:var(--danger)" onclick="deleteSauceIngredient(${i.id})">✕ Delete</button>
+      </div>
+    </td>
+  </tr>`).join('');
+  document.getElementById('sauceIngredientsEmpty').style.display = rows.length ? 'none' : 'block';
+  const sel = document.getElementById('sauceIngReceiveId');
+  if(sel){
+    const keep = sel.value;
+    sel.innerHTML = SAUCE_INGREDIENTS.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+    if([...sel.options].some(o => o.value === keep)) sel.value = keep;
+  }
+}
+async function receiveSauceIngredientStock(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const ingredientId = document.getElementById('sauceIngReceiveId').value;
+  const qty = parseFloat(document.getElementById('sauceIngReceiveQty').value);
+  const date = document.getElementById('sauceIngReceiveDate').value || todayStr();
+  if(!ingredientId){ toast('Please select an ingredient'); return; }
+  if(!qty){ toast('Please enter a quantity'); return; }
+  try{
+    await sbInsert('erp_sauce_ingredient_inout', [{ entry_date: date, ingredient_id: ingredientId, in_qty: qty, out_qty: 0, note: 'Received' }]);
+    toast('Stock received');
+    document.getElementById('sauceIngReceiveQty').value = '';
+    await refreshSauceScreen();
+  }catch(e){ toast('Receive failed: ' + e.message); }
+}
+
+/* ---- Recipes (sauce ingredient qty per batch/mix) ---- */
+function sauceIngredientName(id){ const i = SAUCE_INGREDIENTS.find(x => String(x.id) === String(id)); return i ? i.name : '(unknown)'; }
+function sauceIngredientUnit(id){ const i = SAUCE_INGREDIENTS.find(x => String(x.id) === String(id)); return (i && i.unit) ? i.unit : 'units'; }
+function sauceRecipeSauceName(id){ const s = SAUCES.find(x => String(x.id) === String(id)); return s ? s.name : '(unknown)'; }
+function populateSauceRecipeSelects(){
+  const sauceIdsWithRecipe = new Set(SAUCE_RECIPE.map(r => String(r.sauce_id)));
+  const browseSel = document.getElementById('sauceRecBrowseSauce');
+  const formSel = document.getElementById('sauceRecSauce');
+  const keepBrowse = browseSel.value, keepForm = formSel.value;
+  browseSel.innerHTML = '<option value="">Select a sauce...</option>' + SAUCES.map(s => `<option value="${s.id}">${s.name}${sauceIdsWithRecipe.has(String(s.id))?' ✓ has recipe':''}</option>`).join('');
+  formSel.innerHTML = '<option value="">Select sauce...</option>' + SAUCES.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  if([...browseSel.options].some(o => o.value === keepBrowse)) browseSel.value = keepBrowse;
+  if([...formSel.options].some(o => o.value === keepForm)) formSel.value = keepForm;
+  const ingSel = document.getElementById('sauceRecIngredient');
+  const keepIng = ingSel.value;
+  ingSel.innerHTML = '<option value="">Select ingredient...</option>' + SAUCE_INGREDIENTS.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+  if([...ingSel.options].some(o => o.value === keepIng)) ingSel.value = keepIng;
+}
+function resetSauceRecipeForm(){
+  document.getElementById('sauceRecEditId').value = '';
+  document.getElementById('sauceRecFormTitle').textContent = 'Add Recipe (multiple ingredients)';
+  document.getElementById('sauceRecSubmitBtn').textContent = '✔ Save Recipe';
+  document.getElementById('sauceRecDraftAddRow').style.display = '';
+  document.getElementById('sauceRecSauce').disabled = false;
+  document.getElementById('sauceRecSauce').value = '';
+  document.getElementById('sauceRecIngredient').value = '';
+  document.getElementById('sauceRecQty').value = '';
+  document.getElementById('sauceRecQtyUnit').value = 'unit';
+  SAUCE_REC_DRAFT = [];
+  renderSauceRecDraft();
+}
+function renderSauceRecDraft(){
+  document.getElementById('sauceRecDraftLines').innerHTML = SAUCE_REC_DRAFT.map((l,i) => `<div class="chip" style="margin-right:6px;margin-bottom:6px;display:inline-block">
+    ${l.ingredient_name}: ${fmtNum(l.qty)} (${l.qty_unit==='unit'?'stock unit':'kg'})
+    <span style="cursor:pointer;font-weight:800;margin-left:4px" onclick="removeSauceRecDraftLine(${i})">✕</span>
+  </div>`).join('') || (document.getElementById('sauceRecEditId').value ? '' : '<span style="color:var(--muted);font-size:12px">No ingredients added yet</span>');
+}
+function removeSauceRecDraftLine(i){ SAUCE_REC_DRAFT.splice(i,1); renderSauceRecDraft(); }
+function addSauceRecipeDraftLine(){
+  const sauceId = document.getElementById('sauceRecSauce').value;
+  const ingredientId = document.getElementById('sauceRecIngredient').value;
+  const qty = parseFloat(document.getElementById('sauceRecQty').value);
+  const qtyUnit = document.getElementById('sauceRecQtyUnit').value;
+  if(!sauceId){ toast('Please select a sauce first'); return; }
+  if(!ingredientId){ toast('Please select an ingredient'); return; }
+  if(!qty){ toast('Please enter qty per batch'); return; }
+  if(SAUCE_REC_DRAFT.some(l => String(l.ingredient_id) === String(ingredientId))){ toast('That ingredient is already in the draft'); return; }
+  SAUCE_REC_DRAFT.push({ ingredient_id: ingredientId, ingredient_name: sauceIngredientName(ingredientId), qty, qty_unit: qtyUnit });
+  document.getElementById('sauceRecIngredient').value = '';
+  document.getElementById('sauceRecQty').value = '';
+  document.getElementById('sauceRecSauce').disabled = true; // keep all draft lines on the same sauce
+  renderSauceRecDraft();
+}
+function editSauceRecipe(id){
+  const r = SAUCE_RECIPE.find(x => x.id === id);
+  if(!r) return;
+  SAUCE_REC_DRAFT = [];
+  document.getElementById('sauceRecEditId').value = id;
+  document.getElementById('sauceRecFormTitle').textContent = 'Edit Recipe Row';
+  document.getElementById('sauceRecSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('sauceRecDraftAddRow').style.display = 'none';
+  document.getElementById('sauceRecDraftLines').innerHTML = '';
+  document.getElementById('sauceRecSauce').disabled = false;
+  document.getElementById('sauceRecSauce').value = r.sauce_id;
+  document.getElementById('sauceRecIngredient').value = r.ingredient_id;
+  document.getElementById('sauceRecQty').value = r.qty_per_batch;
+  document.getElementById('sauceRecQtyUnit').value = r.qty_unit || 'unit';
+  showScreen('sauce-recipes'); window.scrollTo(0,0);
+}
+async function saveSauceRecipeDraft(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const editId = document.getElementById('sauceRecEditId').value;
+  if(editId){
+    const sauceId = document.getElementById('sauceRecSauce').value;
+    const ingredientId = document.getElementById('sauceRecIngredient').value;
+    const qty = parseFloat(document.getElementById('sauceRecQty').value);
+    const qtyUnit = document.getElementById('sauceRecQtyUnit').value;
+    if(!sauceId){ toast('Please select a sauce'); return; }
+    if(!ingredientId){ toast('Please select an ingredient'); return; }
+    if(!qty){ toast('Please enter qty per batch'); return; }
+    try{
+      await sbUpdate('erp_sauce_recipe', editId, { sauce_id: sauceId, ingredient_id: ingredientId, qty_per_batch: qty, qty_unit: qtyUnit });
+      toast('Recipe row updated');
+      resetSauceRecipeForm();
+      await refreshSauceScreen();
+    }catch(e){ toast('Save failed: ' + e.message); }
+    return;
+  }
+  const sauceId = document.getElementById('sauceRecSauce').value;
+  if(!sauceId){ toast('Please select a sauce first'); return; }
+  if(!SAUCE_REC_DRAFT.length){ toast('Add at least one ingredient first'); return; }
+  try{
+    const rows = SAUCE_REC_DRAFT.map(l => ({ sauce_id: sauceId, ingredient_id: l.ingredient_id, qty_per_batch: l.qty, qty_unit: l.qty_unit }));
+    await sbInsert('erp_sauce_recipe', rows);
+    toast('Recipe saved (' + rows.length + ' ingredient(s))');
+    resetSauceRecipeForm();
+    await refreshSauceScreen();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteSauceRecipe(id){
+  const keepSauce = document.getElementById('sauceRecBrowseSauce')?.value;
+  await deleteRow('erp_sauce_recipe', id, async () => {
+    await refreshSauceScreen();
+    if(keepSauce){ document.getElementById('sauceRecBrowseSauce').value = keepSauce; renderSauceRecipeBrowse(); }
+  });
+}
+function renderSauceRecipeBrowse(){
+  const sauceId = document.getElementById('sauceRecBrowseSauce').value;
+  const body = document.getElementById('sauceRecBrowseBody');
+  if(!sauceId){ body.innerHTML = ''; return; }
+  const rows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId));
+  const optionsHtml = '<option value="">Select ingredient...</option>' + SAUCE_INGREDIENTS.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+  body.innerHTML = `
+    <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Qty/Batch</th><th>Unit</th><th class="can-write"></th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td>${sauceIngredientName(r.ingredient_id)}</td>
+      <td>${canWrite() ? `<input type="number" step="any" value="${r.qty_per_batch}" style="width:100px" id="sauceRecQtyInput_${r.id}">` : fmtNum(r.qty_per_batch)}</td>
+      <td>${canWrite() ? `<select id="sauceRecUnitInput_${r.id}" style="font-size:12px">
+             <option value="unit" ${(r.qty_unit||'unit')==='unit'?'selected':''}>Already in ${sauceIngredientUnit(r.ingredient_id)}</option>
+             <option value="kg" ${r.qty_unit==='kg'?'selected':''}>kg (needs Kg/Unit to convert)</option>
+           </select>` : ((r.qty_unit==='unit') ? sauceIngredientUnit(r.ingredient_id) : 'kg')}</td>
+      <td class="can-write" style="white-space:nowrap">
+        <div style="display:flex;gap:6px;flex-wrap:nowrap">
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="updateSauceRecipeQty(${r.id}, document.getElementById('sauceRecQtyInput_${r.id}').value, document.getElementById('sauceRecUnitInput_${r.id}').value)">💾 Save</button>
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="renderSauceRecipeBrowse()">✕ Cancel</button>
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="deleteSauceRecipe(${r.id})">🗑 Delete</button>
+        </div>
+      </td>
+    </tr>`).join('') || `<tr><td colspan="4" style="color:var(--muted)">No ingredients in this recipe yet.</td></tr>`}</tbody></table></div>
+    <div class="row can-write" style="align-items:flex-end;margin-top:10px">
+      <div><label>Add Ingredient</label>
+        <select id="sauceRecBrowseIngredient">${optionsHtml}</select>
+      </div>
+      <div style="max-width:130px"><label>Qty/Batch</label><input type="number" step="any" id="sauceRecBrowseQty"></div>
+      <div style="max-width:180px"><label>Unit</label>
+        <select id="sauceRecBrowseUnit">
+          <option value="unit">Already in the ingredient's stock unit</option>
+          <option value="kg">kg (needs Kg/Unit to convert)</option>
+        </select>
+      </div>
+      <button class="btn" onclick="addIngredientToSauceRecipe('${sauceId}')">💾 Save New Ingredient</button>
+      <button class="btn secondary" onclick="document.getElementById('sauceRecBrowseIngredient').value=''; document.getElementById('sauceRecBrowseQty').value='';">✕ Cancel</button>
+    </div>`;
+}
+async function updateSauceRecipeQty(id, value, unit){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const qty = parseFloat(value) || 0;
+  try{
+    await sbUpdate('erp_sauce_recipe', id, { qty_per_batch: qty, qty_unit: unit || 'unit' });
+    toast('Recipe updated');
+    await refreshSauceScreen();
+    renderSauceRecipeBrowse();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+async function addIngredientToSauceRecipe(sauceId){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const ingredientId = document.getElementById('sauceRecBrowseIngredient').value;
+  const qty = parseFloat(document.getElementById('sauceRecBrowseQty').value);
+  const unit = document.getElementById('sauceRecBrowseUnit').value;
+  if(!ingredientId){ toast('Please select an ingredient'); return; }
+  if(!qty){ toast('Please enter qty per batch'); return; }
+  try{
+    await sbInsert('erp_sauce_recipe', [{ sauce_id: sauceId, ingredient_id: ingredientId, qty_per_batch: qty, qty_unit: unit }]);
+    toast('Ingredient added to recipe');
+    await refreshSauceScreen();
+    document.getElementById('sauceRecBrowseSauce').value = sauceId;
+    renderSauceRecipeBrowse();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+function renderSauceRecipeTable(){
+  const q = (document.getElementById('sauceRecSearch')?.value || '').trim().toLowerCase();
+  let rows = SAUCE_RECIPE;
+  if(q) rows = rows.filter(r => sauceRecipeSauceName(r.sauce_id).toLowerCase().includes(q) || sauceIngredientName(r.ingredient_id).toLowerCase().includes(q));
+  document.getElementById('sauceRecTable').innerHTML = rows.map(r => `<tr>
+    <td>${sauceRecipeSauceName(r.sauce_id)}</td><td>${sauceIngredientName(r.ingredient_id)}</td><td>${fmtNum(r.qty_per_batch)}</td>
+    <td>${r.qty_unit==='unit'?sauceIngredientUnit(r.ingredient_id):'kg'}</td>
+    <td class="no-print">
+      <div style="display:flex;gap:6px;flex-wrap:nowrap">
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="editSauceRecipe(${r.id})">✎ Edit</button>
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteSauceRecipe(${r.id})">✕ Delete</button>
+      </div>
+    </td>
+  </tr>`).join('');
+  document.getElementById('sauceRecEmpty').style.display = rows.length ? 'none' : 'block';
+}
+
+/* ---- Daily Sauce Production Schedule: Day + Task (Create tab) ---- */
+async function ensureSauceDay(dateStr){
+  let rows = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,manpower_count,manpower_names,status&schedule_date=eq.${dateStr}`);
+  if(rows.length) return rows[0];
+  rows = await sbInsert('erp_sauce_schedule_days', [{ schedule_date: dateStr }]);
+  return rows[0];
+}
+async function onSauceDayDateChange(){
+  const dateStr = document.getElementById('sauceDayDate').value || todayStr();
+  document.getElementById('sauceDayDate').value = dateStr;
+  await loadSauceDayForCreate(dateStr);
+}
+async function loadSauceDayForCreate(dateStr){
+  const rows = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,manpower_count,manpower_names,status&schedule_date=eq.${dateStr}`);
+  CURRENT_SAUCE_DAY = rows[0] || null;
+  document.getElementById('sauceDayManpowerCount').value = CURRENT_SAUCE_DAY?.manpower_count ?? '';
+  document.getElementById('sauceDayManpowerNames').value = CURRENT_SAUCE_DAY?.manpower_names || '';
+  resetSauceTaskForm();
+  await renderSauceTasksTable();
+}
+async function saveSauceDayHeader(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const dateStr = document.getElementById('sauceDayDate').value || todayStr();
+  const manpowerCount = document.getElementById('sauceDayManpowerCount').value ? parseFloat(document.getElementById('sauceDayManpowerCount').value) : null;
+  const manpowerNames = document.getElementById('sauceDayManpowerNames').value.trim() || null;
+  try{
+    const day = await ensureSauceDay(dateStr);
+    await sbUpdate('erp_sauce_schedule_days', day.id, { manpower_count: manpowerCount, manpower_names: manpowerNames });
+    toast('Day info saved');
+    await loadSauceDayForCreate(dateStr);
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+function searchSauceTaskSauce(){
+  const q = document.getElementById('sauceTaskSauceSearch').value.trim().toLowerCase();
+  const box = document.getElementById('sauceTaskSauceSuggest');
+  document.getElementById('sauceTaskSauceId').value = '';
+  if(!q){ box.style.display = 'none'; return; }
+  const matches = SAUCES.filter(s => (s.name||'').toLowerCase().includes(q)).slice(0,30);
+  if(!matches.length){ box.innerHTML = '<div style="padding:8px 12px;color:var(--muted)">(no match)</div>'; box.style.display = 'block'; return; }
+  box.innerHTML = matches.map(s => `<div onclick="pickSauceTaskSauce(${s.id})">${s.name}</div>`).join('');
+  box.style.display = 'block';
+}
+function pickSauceTaskSauce(id){
+  const s = SAUCES.find(x => x.id === id);
+  if(!s) return;
+  document.getElementById('sauceTaskSauceSearch').value = s.name;
+  document.getElementById('sauceTaskSauceId').value = s.id;
+  document.getElementById('sauceTaskSauceSuggest').style.display = 'none';
+  autofillSauceTaskPackingFromItem(s);
+  recalcSauceTaskPackingHrs();
+  recalcSauceTaskUsageNote();
+}
+// Suggests "Approximately N cases, it's M weeks stock" from this task's recipe-derived
+// total weight (mixes × weight/mix) ÷ the linked item's case weight, and that item's recent
+// average daily Out (from erp_inventory_summary) for the weeks-of-stock estimate. Just a
+// starting suggestion in a plain text field — freely editable afterward, and silently does
+// nothing if there's no linked item or no recipe weight yet to work from.
+async function recalcSauceTaskUsageNote(){
+  const sauceId = document.getElementById('sauceTaskSauceId').value;
+  if(!sauceId) return;
+  const sauce = SAUCES.find(s => s.id === Number(sauceId));
+  if(!sauce) return;
+  const item = lookupSauceMatchedItems(sauce.item_code)[0];
+  if(!item) return;
+  const mixes = parseFloat(document.getElementById('sauceTaskMixes').value) || 0;
+  const { totalKg, hasRows } = sauceRecipeWeightKg(sauce.id);
+  if(!hasRows || !totalKg || !mixes) return;
+  const totalWeightKg = totalKg * mixes;
+  const cwKg = caseWeightKg(item);
+  if(!cwKg) return;
+  const cases = totalWeightKg / cwKg;
+  let weeksTxt = '';
+  try{
+    const rows = await sbGet(`erp_inventory_summary?select=avg_daily_out_7d,avg_daily_out_30d&item_no=eq.${encodeURIComponent(item.item_no)}&limit=1`);
+    const r = rows && rows[0];
+    const dailyOut = r ? (Number(r.avg_daily_out_7d) || Number(r.avg_daily_out_30d) || 0) : 0;
+    if(dailyOut > 0){ weeksTxt = `, it's ${fmtNum(cases / (dailyOut * 7))} weeks stock`; }
+  }catch(e){ /* non-fatal — leave the weeks estimate out if this lookup fails */ }
+  document.getElementById('sauceTaskUsageNote').value = `Approximately ${fmtNum(cases)} cases${weeksTxt}`;
+}
+// Packing data (pack weight, machines, cycle, bags/cycle) already lives on the linked
+// erp_items row (via the sauce's Item Code) — pre-fill from there, same as Daily Production
+// Schedule pre-fills a packed item's machines/cycles/bags-per-cycle from the item master.
+// Still editable afterward; only fires when picking a sauce fresh, not when loading an
+// existing task for edit (so a saved task's own values are never silently overwritten).
+function autofillSauceTaskPackingFromItem(sauce){
+  const matches = lookupSauceMatchedItems(sauce.item_code);
+  const item = matches[0];
+  if(!item) return;
+  if(item.weight_per_pack){
+    document.getElementById('sauceTaskPackWeight').value = item.weight_per_pack;
+    const u = (item.unit_of_weight||'').toLowerCase().trim();
+    document.getElementById('sauceTaskPackWeightUnit').value = ['g','kg','lb'].includes(u) ? u : 'g';
+  }
+  if(item.machines_running) document.getElementById('sauceTaskMachines').value = item.machines_running;
+  if(item.cycle) document.getElementById('sauceTaskCycles').value = item.cycle;
+  if(item.bags_per_cycle) document.getElementById('sauceTaskBagsPerCycle').value = item.bags_per_cycle;
+  document.getElementById('sauceTaskPackNotes').value = itemPackDetail(item);
+}
+// Reads the whole Add/Edit Task form's current values and shows the live-computed packing
+// hours (mirrors recalcRunItemPacking in Daily Production Schedule).
+function recalcSauceTaskPackingHrs(){
+  const sauceId = document.getElementById('sauceTaskSauceId').value;
+  const task = {
+    sauce_id: sauceId ? Number(sauceId) : null,
+    mixes: parseFloat(document.getElementById('sauceTaskMixes').value) || 0,
+    pack_weight: parseFloat(document.getElementById('sauceTaskPackWeight').value) || 0,
+    pack_weight_unit: document.getElementById('sauceTaskPackWeightUnit').value,
+    machines: parseFloat(document.getElementById('sauceTaskMachines').value) || 0,
+    cycles: parseFloat(document.getElementById('sauceTaskCycles').value) || 0,
+    bags_per_cycle: parseFloat(document.getElementById('sauceTaskBagsPerCycle').value) || 0
+  };
+  const disp = document.getElementById('sauceTaskPackingHrsDisplay');
+  if(!task.sauce_id){ disp.value = ''; return; }
+  const calc = calcSaucePackingHrs(task);
+  disp.value = calc ? `${fmtNum(calc.hrs)}h (${fmtNum(calc.totalKg)} kg / ${fmtNum(calc.totalPacks)} packs)${calc.hasUnknown?' ⚠ incomplete recipe weight':''}` : '';
+}
+function resetSauceTaskForm(){
+  document.getElementById('sauceTaskEditId').value = '';
+  document.getElementById('sauceTaskFormTitle').textContent = 'Add Production Task';
+  document.getElementById('sauceTaskSubmitBtn').textContent = '➕ Add Task';
+  document.getElementById('sauceTaskLocation').value = '';
+  document.getElementById('sauceTaskMixes').value = '';
+  document.getElementById('sauceTaskSauceSearch').value = '';
+  document.getElementById('sauceTaskSauceId').value = '';
+  document.getElementById('sauceTaskMachineNotes').value = '';
+  document.getElementById('sauceTaskOperatorNotes').value = '';
+  document.getElementById('sauceTaskPackNotes').value = '';
+  document.getElementById('sauceTaskPackWeight').value = '';
+  document.getElementById('sauceTaskPackWeightUnit').value = 'g';
+  document.getElementById('sauceTaskMachines').value = '';
+  document.getElementById('sauceTaskCycles').value = '';
+  document.getElementById('sauceTaskBagsPerCycle').value = '';
+  document.getElementById('sauceTaskPackingHrsDisplay').value = '';
+  document.getElementById('sauceTaskUsageNote').value = '';
+}
+function editSauceTask(id){
+  const t = SAUCE_TASKS_CREATE.find(x => x.id === id);
+  if(!t) return;
+  document.getElementById('sauceTaskEditId').value = id;
+  document.getElementById('sauceTaskFormTitle').textContent = 'Edit Production Task';
+  document.getElementById('sauceTaskSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('sauceTaskLocation').value = t.location || '';
+  document.getElementById('sauceTaskMixes').value = t.mixes ?? '';
+  const s = SAUCES.find(x => x.id === t.sauce_id);
+  document.getElementById('sauceTaskSauceSearch').value = s ? s.name : '';
+  document.getElementById('sauceTaskSauceId').value = t.sauce_id;
+  document.getElementById('sauceTaskMachineNotes').value = t.machine_notes || '';
+  document.getElementById('sauceTaskOperatorNotes').value = t.operator_notes || '';
+  document.getElementById('sauceTaskPackNotes').value = t.pack_size_notes || '';
+  document.getElementById('sauceTaskPackWeight').value = t.pack_weight ?? '';
+  document.getElementById('sauceTaskPackWeightUnit').value = t.pack_weight_unit || 'g';
+  document.getElementById('sauceTaskMachines').value = t.machines ?? '';
+  document.getElementById('sauceTaskCycles').value = t.cycles ?? '';
+  document.getElementById('sauceTaskBagsPerCycle').value = t.bags_per_cycle ?? '';
+  document.getElementById('sauceTaskUsageNote').value = t.usage_note || '';
+  recalcSauceTaskPackingHrs();
+  window.scrollTo(0,0);
+}
+async function submitSauceTask(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const sauceId = document.getElementById('sauceTaskSauceId').value;
+  if(!sauceId){ toast('Please pick a sauce from the search results'); return; }
+  const dateStr = document.getElementById('sauceDayDate').value || todayStr();
+  const packWeight = document.getElementById('sauceTaskPackWeight').value ? parseFloat(document.getElementById('sauceTaskPackWeight').value) : null;
+  const packWeightUnit = document.getElementById('sauceTaskPackWeightUnit').value;
+  const machines = document.getElementById('sauceTaskMachines').value ? parseFloat(document.getElementById('sauceTaskMachines').value) : null;
+  const cycles = document.getElementById('sauceTaskCycles').value ? parseFloat(document.getElementById('sauceTaskCycles').value) : null;
+  const bagsPerCycle = document.getElementById('sauceTaskBagsPerCycle').value ? parseFloat(document.getElementById('sauceTaskBagsPerCycle').value) : null;
+  const mixes = document.getElementById('sauceTaskMixes').value ? parseFloat(document.getElementById('sauceTaskMixes').value) : null;
+  const packingCalc = calcSaucePackingHrs({ sauce_id: Number(sauceId), mixes: mixes||0, pack_weight: packWeight||0, pack_weight_unit: packWeightUnit, machines: machines||0, cycles: cycles||0, bags_per_cycle: bagsPerCycle||0 });
+  const patch = {
+    location: document.getElementById('sauceTaskLocation').value || null,
+    mixes,
+    sauce_id: Number(sauceId),
+    machine_notes: document.getElementById('sauceTaskMachineNotes').value.trim() || null,
+    operator_notes: document.getElementById('sauceTaskOperatorNotes').value.trim() || null,
+    pack_size_notes: document.getElementById('sauceTaskPackNotes').value.trim() || null,
+    pack_weight: packWeight, pack_weight_unit: packWeightUnit,
+    machines, cycles, bags_per_cycle: bagsPerCycle,
+    packing_hrs: packingCalc ? packingCalc.hrs : null,
+    usage_note: document.getElementById('sauceTaskUsageNote').value.trim() || null
+  };
+  const editId = document.getElementById('sauceTaskEditId').value;
+  try{
+    const day = await ensureSauceDay(dateStr);
+    if(editId){
+      await sbUpdate('erp_sauce_schedule_tasks', editId, patch);
+      toast('Task updated');
+    } else {
+      await sbInsert('erp_sauce_schedule_tasks', [{ day_id: day.id, ...patch }]);
+      toast('Task added');
+    }
+    resetSauceTaskForm();
+    await loadSauceDayForCreate(dateStr);
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteSauceTask(id){
+  const dateStr = document.getElementById('sauceDayDate').value || todayStr();
+  await deleteRow('erp_sauce_schedule_tasks', id, async () => { await loadSauceDayForCreate(dateStr); });
+}
+async function renderSauceTasksTable(){
+  const day = CURRENT_SAUCE_DAY;
+  SAUCE_TASKS_CREATE = day ? await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${day.id}&order=id.asc&limit=200`) : [];
+  document.getElementById('sauceTasksTable').innerHTML = SAUCE_TASKS_CREATE.map(t => {
+    const s = SAUCES.find(x => x.id === t.sauce_id);
+    const prodDate = day.schedule_date;
+    const julian = toSauceJulian(prodDate);
+    const bb = s ? sauceBestBefore(s, prodDate) : null;
+    return `<tr>
+      <td>${t.location||''}</td><td>${fmtNum(t.mixes)}</td><td>${s?s.name:'(sauce deleted)'}</td>
+      <td>Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td>
+      <td>${t.status}</td>
+      <td class="no-print" style="white-space:nowrap">
+        <div style="display:flex;gap:6px;flex-wrap:nowrap">
+          <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="editSauceTask(${t.id})">✎ Edit</button>
+          <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteSauceTask(${t.id})">✕ Delete</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('sauceTasksEmpty').style.display = SAUCE_TASKS_CREATE.length ? 'none' : 'block';
+}
+
+/* ---- Preview tab (grouped by Location) ---- */
+async function renderSaucePreview(){
+  const dateStr = document.getElementById('saucePreviewDate').value || todayStr();
+  document.getElementById('saucePreviewDate').value = dateStr;
+  const days = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,manpower_count,manpower_names,status&schedule_date=eq.${dateStr}`);
+  SAUCE_PREVIEW_DAY = days[0] || null;
+  if(!SAUCE_PREVIEW_DAY){
+    SAUCE_PREVIEW_TASKS = [];
+    document.getElementById('sauceDayInfo').innerHTML = '';
+    document.getElementById('saucePreviewTable').innerHTML = '';
+    document.getElementById('saucePreviewEmpty').style.display = 'block';
+    return;
+  }
+  SAUCE_PREVIEW_TASKS = await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${SAUCE_PREVIEW_DAY.id}&order=location.asc,id.asc&limit=200`);
+  document.getElementById('saucePreviewEmpty').style.display = SAUCE_PREVIEW_TASKS.length ? 'none' : 'block';
+  const statusChip = SAUCE_PREVIEW_DAY.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
+  document.getElementById('sauceDayInfo').innerHTML = `<div class="card">
+    <div class="row" style="align-items:center">
+      <div><strong>Manpower:</strong> ${fmtNum(SAUCE_PREVIEW_DAY.manpower_count)}${SAUCE_PREVIEW_DAY.manpower_names?(' — '+SAUCE_PREVIEW_DAY.manpower_names):''}</div>
+      <div style="flex:1"></div>
+      <div><strong>Status:</strong> ${statusChip}</div>
+    </div>
+  </div>`;
+  const byLoc = {};
+  SAUCE_PREVIEW_TASKS.forEach(t => { const l = t.location || '(No Location)'; (byLoc[l]=byLoc[l]||[]).push(t); });
+  const locs = Object.keys(byLoc).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  document.getElementById('saucePreviewTable').innerHTML = locs.map(l => `
+    <div class="card">
+      <h3>${l}</h3>
+      <div class="tablewrap"><table><thead><tr>
+        <th>Mixes</th><th>Sauce</th><th>Machine/Process</th><th>Operator/Timing</th><th>Pack Size</th><th>Prod. / Best Before</th><th>Usage Note</th><th>Status</th><th class="no-print"></th>
+      </tr></thead><tbody>
+      ${byLoc[l].map(t => {
+        const s = SAUCES.find(x => x.id === t.sauce_id);
+        const prodDate = SAUCE_PREVIEW_DAY.schedule_date;
+        const julian = toSauceJulian(prodDate);
+        const bb = s ? sauceBestBefore(s, prodDate) : null;
+        const allergenTags = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
+        const packingCalc = sauceTaskPackingCalcText(t);
+        const tStatus = t.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
+        return `<tr>
+          <td>${fmtNum(t.mixes)}</td><td>${s?s.name:'(sauce deleted)'}</td>
+          <td>${t.machine_notes||''}</td><td>${t.operator_notes||''}</td><td>${t.pack_size_notes||''}</td>
+          <td>Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td>
+          <td>${t.usage_note||''}</td><td>${tStatus}</td>
+          <td class="no-print"><button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="openSauceLabelPrompt(${t.id},'preview')">🏷️ Print Label</button></td>
+        </tr>` +
+        (packingCalc ? `<tr><td></td><td colspan="8" style="padding-top:0;padding-bottom:8px;font-size:12px;color:var(--muted)">${packingCalc}</td></tr>` : '') +
+        (allergenTags ? `<tr><td></td><td colspan="8" style="padding-top:0;padding-bottom:10px">${allergenTags}</td></tr>` : '');
+      }).join('')}
+      </tbody></table></div>
+    </div>
+  `).join('');
+}
+async function printSauceProductionReport(){
+  if(!SAUCE_PREVIEW_DAY || !SAUCE_PREVIEW_TASKS.length){ toast('No tasks to print for this date'); return; }
+  const day = SAUCE_PREVIEW_DAY;
+  const byLoc = {};
+  SAUCE_PREVIEW_TASKS.forEach(t => { const l = t.location || '(No Location)'; (byLoc[l]=byLoc[l]||[]).push(t); });
+  const locs = Object.keys(byLoc).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  const html = `
+    <h2>Sauce Production Report</h2>
+    <p>Date: ${day.schedule_date} — Manpower: ${fmtNum(day.manpower_count)}${day.manpower_names?(' — '+day.manpower_names):''}</p>
+    ${locs.map(l => {
+      const rs = byLoc[l];
+      return `<div class="pr-line">
+        <h3>${l}</h3>
+        <table><colgroup><col style="width:10%"><col style="width:26%"><col style="width:16%"><col style="width:24%"><col style="width:24%"></colgroup>
+        <thead><tr><th>Mixes</th><th>Sauce</th><th>Allergens</th><th>Prod. / Best Before</th><th>Status</th></tr></thead>
+        <tbody>${rs.map(t => {
+          const s = SAUCES.find(x => x.id === t.sauce_id);
+          const julian = toSauceJulian(day.schedule_date);
+          const bb = s ? sauceBestBefore(s, day.schedule_date) : null;
+          const allergenTags = s ? sauceAllergenNames(s).join(', ') : '';
+          const notesLine = [t.machine_notes, t.operator_notes, t.pack_size_notes].filter(Boolean).join(' — ');
+          return `<tr><td>${fmtNum(t.mixes)}</td><td>${s?s.name:''}</td><td>${allergenTags}</td>
+            <td>Prod: ${day.schedule_date} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td><td>${t.status}</td></tr>` +
+            (notesLine ? `<tr><td></td><td colspan="4" class="pr-detail">${notesLine}</td></tr>` : '') +
+            (t.usage_note ? `<tr><td></td><td colspan="4" class="pr-detail" style="color:#c0392b">${t.usage_note}</td></tr>` : '');
+        }).join('')}</tbody></table>
+      </div>`;
+    }).join('')}
+  `;
+  runReportPrint(html);
+}
+
+/* ---- Confirm Completion tab ---- */
+async function renderSauceConfirmTab(){
+  const dateStr = document.getElementById('sauceConfirmDate').value || todayStr();
+  document.getElementById('sauceConfirmDate').value = dateStr;
+  const days = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,manpower_count,manpower_names,status&schedule_date=eq.${dateStr}`);
+  SAUCE_CONFIRM_DAY = days[0] || null;
+  if(!SAUCE_CONFIRM_DAY || SAUCE_CONFIRM_DAY.status === 'Confirmed'){
+    SAUCE_CONFIRM_TASKS = [];
+    document.getElementById('sauceConfirmDayInfo').innerHTML = '';
+    document.getElementById('sauceConfirmTasksList').innerHTML = '';
+    document.getElementById('sauceConfirmEmpty').style.display = 'block';
+    document.getElementById('sauceConfirmDayBtnWrap').style.display = 'none';
+    return;
+  }
+  SAUCE_CONFIRM_TASKS = await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${SAUCE_CONFIRM_DAY.id}&order=location.asc,id.asc&limit=200`);
+  document.getElementById('sauceConfirmEmpty').style.display = SAUCE_CONFIRM_TASKS.length ? 'none' : 'block';
+  document.getElementById('sauceConfirmDayBtnWrap').style.display = (SAUCE_CONFIRM_TASKS.length && canWrite()) ? '' : 'none';
+  document.getElementById('sauceConfirmDayInfo').innerHTML = `<p><strong>Manpower:</strong> ${fmtNum(SAUCE_CONFIRM_DAY.manpower_count)}${SAUCE_CONFIRM_DAY.manpower_names?(' — '+SAUCE_CONFIRM_DAY.manpower_names):''}</p>`;
+  document.getElementById('sauceConfirmTasksList').innerHTML = `
+    <div class="tablewrap"><table><thead><tr>
+      <th>Location</th><th>Sauce</th><th>Mixes</th><th>Status</th><th class="no-print"></th>
+    </tr></thead><tbody>
+    ${SAUCE_CONFIRM_TASKS.map(t => {
+      const s = SAUCES.find(x => x.id === t.sauce_id);
+      const statusChip = t.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
+      return `<tr>
+        <td>${t.location||''}</td><td>${s?s.name:'(sauce deleted)'}</td>
+        <td>${canWrite() && t.status!=='Confirmed' ? `<input type="number" step="any" value="${t.mixes??''}" style="width:90px" onchange="updateSauceTaskMixes(${t.id}, this.value)">` : fmtNum(t.mixes)}</td>
+        <td>${statusChip}</td>
+        <td class="no-print"><button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="openSauceLabelPrompt(${t.id},'confirm')">🏷️ Print Label</button></td>
+      </tr>`;
+    }).join('')}
+    </tbody></table></div>`;
+}
+async function updateSauceTaskMixes(id, value){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  try{
+    await sbUpdate('erp_sauce_schedule_tasks', id, { mixes: parseFloat(value) || 0 });
+    await renderSauceConfirmTab();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+async function confirmSauceDayBtn(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  if(!SAUCE_CONFIRM_DAY){ toast('No day loaded'); return; }
+  if(!confirm('Confirm this day? This deducts recipe ingredients for every task and cannot be undone.')) return;
+  try{
+    SAUCE_RECIPE = await sbGetAll('erp_sauce_recipe?select=id,sauce_id,ingredient_id,qty_per_batch,qty_unit&order=id.asc');
+    for(const t of SAUCE_CONFIRM_TASKS){
+      if(t.status === 'Confirmed') continue;
+      const mixes = parseFloat(t.mixes) || 0; // mixes can be fractional — don't round
+      if(mixes > 0) await deductSauceIngredientsForSauce(t.sauce_id, SAUCE_CONFIRM_DAY.schedule_date, mixes);
+      await sbUpdate('erp_sauce_schedule_tasks', t.id, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_at: new Date().toISOString() });
+    }
+    await sbUpdate('erp_sauce_schedule_days', SAUCE_CONFIRM_DAY.id, { status: 'Confirmed', confirmed_at: new Date().toISOString() });
+    toast('Day confirmed — ingredient usage recorded');
+    await refreshSauceScreen();
+  }catch(e){ toast('Confirm failed: ' + e.message); }
+}
+
+/* ---- Printable production label (Product Name / Production Date / Best Before / Qty / Lot) ---- */
+function openSauceLabelPrompt(taskId, source){
+  const cache = source === 'confirm' ? { day: SAUCE_CONFIRM_DAY, tasks: SAUCE_CONFIRM_TASKS } : { day: SAUCE_PREVIEW_DAY, tasks: SAUCE_PREVIEW_TASKS };
+  const t = cache.tasks.find(x => x.id === taskId);
+  if(!t || !cache.day) return;
+  const s = SAUCES.find(x => x.id === t.sauce_id);
+  const prodDate = cache.day.schedule_date;
+  const julian = toSauceJulian(prodDate);
+  const bb = s ? sauceBestBefore(s, prodDate) : null;
+  const qty = prompt('Qty for this label (e.g. "8 bags", "1 case"):', t.pack_size_notes || '');
+  if(qty === null) return;
+  printSauceLabel({
+    productName: s ? s.name : '',
+    productionDate: prodDate,
+    bestBefore: bb,
+    qty: qty,
+    lot: `Prod: ${prodDate} (Julian: ${julian})`
+  });
+}
+function printSauceLabel({ productName, productionDate, bestBefore, qty, lot }){
+  const html = `
+    <div class="sauce-label" style="max-width:420px;margin:0 auto;border:2px solid #000;padding:18px">
+      <h2 style="margin-top:0">${productName}</h2>
+      <table style="width:100%;font-size:16px">
+        <tr><td style="font-weight:700;padding:6px 0;width:45%">Production Date:</td><td>${productionDate}</td></tr>
+        <tr><td style="font-weight:700;padding:6px 0">Best Before Date:</td><td>${bestBefore || '–'}</td></tr>
+        <tr><td style="font-weight:700;padding:6px 0">Qty:</td><td>${qty || ''}</td></tr>
+        <tr><td style="font-weight:700;padding:6px 0">Lot:</td><td>${lot}</td></tr>
+      </table>
+    </div>`;
   runReportPrint(html);
 }
 
@@ -4703,7 +6534,7 @@ async function consumeAuthRedirectHash(){
   }catch(e){ return false; }
 }
 // Bump this string whenever you ship a new build — it's the only place it's set.
-const APP_VERSION = 'Ver. 1.0';
+const APP_VERSION = 'Ver. 2.0';
 document.getElementById('appVersion').textContent = APP_VERSION;
 (async function init(){
   try{
