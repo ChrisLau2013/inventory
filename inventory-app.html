@@ -176,15 +176,22 @@
   .btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th,td{padding:8px 6px;text-align:left;border-bottom:1px solid var(--line);white-space:nowrap}
+  /* Sticking a header to the page scroll (top:Npx measured off the nav) turned out fragile —
+     it depends on exactly reproducing the nav's real height, and any mismatch makes the
+     header appear "stuck" partway down the table instead of at the very top. Giving each
+     table its own bounded, independently-scrolling box sidesteps that entirely: top:0 is
+     always correct because it's relative to the table's own scroll container, not the page. */
+  .tablewrap table thead th{position:sticky;top:0;background:var(--panel);z-index:5;box-shadow:0 1px 0 var(--line)}
   th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
   tbody tr:last-child td{border-bottom:none}
-  .tablewrap table:not(#dashTable):not(#produceTable):not(#itemsTableEl):not(#ioRecentTable):not(#compRecentTable):not(#histTable):not(#flourLedgerTableEl):not(#schedNeedTableEl) tbody tr:nth-child(odd){background:var(--chip)}
+  #sauceTasksTable td{vertical-align:top}
+  .tablewrap table:not(#dashTable):not(#produceTable):not(#itemsTableEl):not(#ioRecentTable):not(#compRecentTable):not(#histTable):not(#flourLedgerTableEl):not(#schedNeedTableEl):not(#saucesTableEl) tbody tr:nth-child(odd){background:var(--chip)}
   #dashTable tbody tr.zrow, #produceTable tbody tr.zrow, #itemsTableEl tbody tr.zrow, #schedNeedTableEl tbody tr.zrow,
   #ioRecentTable tbody tr.zrow, #compRecentTable tbody tr.zrow, #histTable tbody tr.zrow, #flourLedgerTableEl tbody tr.zrow,
   #saucesTableEl tbody tr.zrow{background:var(--chip)}
   .dash-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 18px;padding:12px 4px;white-space:normal}
   .dash-detail-grid .l{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:2px}
-  .tablewrap{overflow-x:auto}
+  .tablewrap{overflow:auto;max-height:70vh}
   .chip{display:inline-block;padding:3px 9px;border-radius:99px;background:var(--chip);font-size:11px;font-weight:600;font-family:var(--font-mono);letter-spacing:.01em}
   .chip.warn{background:rgba(200,71,47,.15);color:var(--danger)}
   /* signature: a confirmed/ok chip reads like a stamped seal on a carton, not a flat pill */
@@ -219,7 +226,13 @@
     .dash-filters{position:static}
   }
   @media (max-width:600px){
-    html,body{overflow-x:hidden;max-width:100vw}
+    /* overflow-x:hidden on BOTH html and body (rather than just html) forces body's
+       overflow-y to auto too (per the CSS overflow computed-value rule), turning it into
+       a second independent scroll container nested inside html's. Sticky-positioned
+       elements then measure "stuck" against body, whose own scrollTop never advances
+       (all real scrolling happens on html), so they never actually stick. html alone is
+       enough to stop horizontal overflow — leave body's overflow at its default. */
+    html{overflow-x:hidden;max-width:100vw}
     .kpis, .kpis4{grid-template-columns:repeat(2,1fr) !important}
     /* Every multi-column form row (New Run, Add Item, PO, Items, etc.) stacks to
        one field per line — this is what was causing the crowding/cut-off on phones,
@@ -265,7 +278,7 @@
   .loglines{font-family:ui-monospace,monospace;font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:10px;max-height:220px;overflow:auto;white-space:pre-wrap}
   .print-report{display:none;max-width:800px;margin:0 auto;width:100%;box-sizing:border-box}
   .print-report h2{margin-bottom:2px}
-  .print-report .pr-line{margin-bottom:18px;page-break-inside:avoid}
+  .print-report .pr-line{margin-bottom:18px}
   .print-report .pr-line h3{margin:0 0 6px;border-bottom:2px solid #000;padding-bottom:4px}
   .print-report table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:13px;margin-bottom:4px}
   .print-report th,.print-report td{padding:6px 8px;text-align:left;border-bottom:1px solid #ddd;white-space:normal;word-wrap:break-word;overflow-wrap:break-word;vertical-align:top}
@@ -278,6 +291,9 @@
     .card{box-shadow:none;border:1px solid #ccc}
     body.printing-report .app-shell{display:none!important}
     body.printing-report .print-report{display:block!important}
+    /* Browsers drop background colors by default when printing (ink-saving default) —
+       without this, the allergen chips' colored backgrounds would print as plain text. */
+    .print-report .chip{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
   }
 </style>
 </head>
@@ -304,7 +320,7 @@
       <button data-module="inventory" class="active" onclick="switchModule('inventory')">📦 Inventory</button>
       <button data-module="schedule" onclick="switchModule('schedule')">📅 Production Schedule</button>
       <button data-module="flour" onclick="switchModule('flour')">🌾 Flour Usage</button>
-      <button class="admin-only" data-module="sauce" onclick="switchModule('sauce')">🥫 Sauce Production</button>
+      <button data-module="sauce" onclick="switchModule('sauce')">🥫 Sauce Production</button>
       <button data-module="maintenance" onclick="switchModule('maintenance')">🔧 Maintenance</button>
     </div>
     <nav id="subNav" data-module="inventory">
@@ -326,21 +342,22 @@
       <button data-screen="schedule-create" data-module="schedule" class="active" onclick="showScreen('schedule-create')"><span class="ic">➕</span>Create</button>
       <button data-screen="schedule-preview" data-module="schedule" onclick="showScreen('schedule-preview')"><span class="ic">👁</span>Preview</button>
       <button data-screen="schedule-confirm" data-module="schedule" onclick="showScreen('schedule-confirm')"><span class="ic">✔</span>Confirm Completion</button>
-      <button class="can-write" data-screen="schedule-products" data-module="schedule" onclick="showScreen('schedule-products')"><span class="ic">🏷️</span>Products</button>
+      <button data-screen="schedule-products" data-module="schedule" onclick="showScreen('schedule-products')"><span class="ic">🏷️</span>Products</button>
       <button class="can-write" data-screen="schedule-lines" data-module="schedule" onclick="showScreen('schedule-lines')"><span class="ic">🏭</span>Lines</button>
       <button data-screen="flour-dashboard" data-module="flour" class="active" onclick="showScreen('flour-dashboard')"><span class="ic">📈</span>Dashboard</button>
       <button data-screen="flour-ingredients" data-module="flour" onclick="showScreen('flour-ingredients')"><span class="ic">🌾</span>Ingredients</button>
       <button data-screen="flour-usage-report" data-module="flour" onclick="showScreen('flour-usage-report')"><span class="ic">📊</span>Usage Report</button>
       <button data-screen="flour-recipes" data-module="flour" onclick="showScreen('flour-recipes')"><span class="ic">🔗</span>Recipes</button>
       <button data-screen="flour-ledger" data-module="flour" onclick="showScreen('flour-ledger')"><span class="ic">📜</span>Ledger</button>
-      <button class="admin-only active" data-screen="sauce-create" data-module="sauce" onclick="showScreen('sauce-create')"><span class="ic">➕</span>Create</button>
-      <button class="admin-only" data-screen="sauce-preview" data-module="sauce" onclick="showScreen('sauce-preview')"><span class="ic">👁</span>Preview</button>
-      <button class="admin-only" data-screen="sauce-confirm" data-module="sauce" onclick="showScreen('sauce-confirm')"><span class="ic">✔</span>Confirm Completion</button>
-      <button class="admin-only" data-screen="sauce-sauces" data-module="sauce" onclick="showScreen('sauce-sauces')"><span class="ic">🥫</span>Sauces</button>
-      <button class="admin-only" data-screen="sauce-ingredients" data-module="sauce" onclick="showScreen('sauce-ingredients')"><span class="ic">🌶️</span>Ingredients</button>
-      <button class="admin-only" data-screen="sauce-recipes" data-module="sauce" onclick="showScreen('sauce-recipes')"><span class="ic">🔗</span>Recipes</button>
-      <button class="admin-only can-write" data-screen="sauce-locations" data-module="sauce" onclick="showScreen('sauce-locations')"><span class="ic">🏭</span>Locations</button>
-      <button class="admin-only can-write" data-screen="sauce-allergens" data-module="sauce" onclick="showScreen('sauce-allergens')"><span class="ic">⚠️</span>Allergens</button>
+      <button class="active" data-screen="sauce-create" data-module="sauce" onclick="showScreen('sauce-create')"><span class="ic">➕</span>Create</button>
+      <button data-screen="sauce-preview" data-module="sauce" onclick="showScreen('sauce-preview')"><span class="ic">👁</span>Preview</button>
+      <button data-screen="sauce-confirm" data-module="sauce" onclick="showScreen('sauce-confirm')"><span class="ic">✔</span>Confirm Completion</button>
+      <button class="can-write" data-screen="sauce-sauces" data-module="sauce" onclick="showScreen('sauce-sauces')"><span class="ic">🥫</span>Sauces</button>
+      <button class="can-write" data-screen="sauce-ingredients" data-module="sauce" onclick="showScreen('sauce-ingredients')"><span class="ic">🌶️</span>Ingredients</button>
+      <button class="can-write" data-screen="sauce-recipes" data-module="sauce" onclick="showScreen('sauce-recipes')"><span class="ic">🔗</span>Recipes</button>
+      <button data-screen="sauce-materials" data-module="sauce" onclick="showScreen('sauce-materials')"><span class="ic">🛒</span>Material Plan</button>
+      <button class="can-write" data-screen="sauce-locations" data-module="sauce" onclick="showScreen('sauce-locations')"><span class="ic">🏭</span>Locations</button>
+      <button class="can-write" data-screen="sauce-allergens" data-module="sauce" onclick="showScreen('sauce-allergens')"><span class="ic">⚠️</span>Allergens</button>
     </nav>
     <div class="subnav-readonly-note" id="subNavReadOnlyNote">Read Only — you have view-only access</div>
   </header>
@@ -378,6 +395,18 @@
   <!-- DASHBOARD -->
   <section class="screen" id="screen-dashboard">
     <h2>Inventory Dashboard</h2>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleDashLegend()">
+        <h3 style="margin:0">ℹ️ How are Sufficient / Watch / Caution / Urgent / Out of Stock calculated?</h3>
+        <span id="dashLegendToggleIcon" style="font-size:13px;color:var(--muted)">▸ Click to expand</span>
+      </div>
+      <div id="dashLegendBody" style="display:none;padding:0 16px 16px;font-size:13px;color:var(--muted)">
+        <p style="margin-top:0"><strong>Day of Supply</strong> = Actual Inventory Qty ÷ Average Daily Out. Uses the last 7 days' average Out if there's been any movement in that window; otherwise falls back to the 30-day average. If there's been no Out at all in either window, the item can't be "running out" from current demand, so it's treated as Sufficient no matter how low the qty is.</p>
+        <div class="tablewrap"><table><thead><tr><th>Level</th><th>Rule</th></tr></thead>
+        <tbody id="dashLegendTable"></tbody></table></div>
+        <p style="margin-bottom:0">The day counts above come from the <strong>Warning Threshold</strong> dropdown (currently set below) — change it and this list updates too. Items flagged <strong>Make to Order</strong> are excluded from this classification entirely: they're meant to sit near zero stock between orders, so a low quantity isn't a warning for them.</p>
+      </div>
+    </div>
     <div class="dash-layout">
       <div class="card dash-filters">
         <label>Search</label>
@@ -447,7 +476,7 @@
             <button class="btn secondary" style="padding:4px 10px;font-size:11px" onclick="DASH_TIER_FILTER=null; renderDashboardTable();">✕ Clear</button>
           </div>
           <div class="tablewrap"><table id="dashTable"><thead><tr>
-            <th>Item #</th><th>Item Name</th><th>Item C.Name</th><th>Remark</th>
+            <th>Item #</th><th>Item Name</th><th>Remark</th>
             <th>Act. Inventory Qty</th><th>Pending Qty</th><th>A.P. InventoryQty</th>
             <th>Days of Supply</th><th>Warning Level</th><th>Suggested Action</th>
           </tr></thead><tbody></tbody></table></div>
@@ -476,6 +505,23 @@
       <label>Qty Received</label>
       <input type="number" id="flourReceiveQty" step="any">
       <div class="btnrow"><button class="btn" onclick="submitFlourReceive()">＋ Receive Stock</button></div>
+    </div>
+
+    <div class="card can-write">
+      <h3>Add Expected Delivery</h3>
+      <p style="color:var(--muted);font-size:13px;margin-top:0">Log a delivery that's on its way but hasn't arrived yet. It won't touch stock until you confirm it actually showed up below.</p>
+      <div class="row">
+        <div><label>Ingredient</label><select id="flourExpectedIngredient"><option value="">Select ingredient...</option></select></div>
+        <div><label>Expected Date</label><input type="date" id="flourExpectedDate"></div>
+        <div><label>Expected Qty</label><input type="number" step="any" id="flourExpectedQty"></div>
+      </div>
+      <div class="btnrow"><button class="btn secondary" onclick="submitFlourExpectedDelivery()">＋ Add Expected Delivery</button></div>
+    </div>
+    <div class="section-title">Expected Deliveries (Not Yet Received)</div>
+    <div class="card">
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Expected Date</th><th>Expected Qty</th><th>Received Qty</th><th class="no-print"></th></tr></thead>
+      <tbody id="flourExpectedDeliveryTable"></tbody></table></div>
+      <div class="empty" id="flourExpectedDeliveryEmpty" style="display:none">No expected deliveries pending</div>
     </div>
 
     <div class="card can-write">
@@ -517,7 +563,7 @@
         </select>
         <button class="btn secondary" onclick="clearFlourIngredientFilters()">Clear</button>
       </div>
-      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Supplier</th><th>Stock (Units)</th><th>Kg/Unit</th><th>Stock (Kg)</th><th>Weekly Usage</th><th>Weeks Left</th><th class="no-print"></th></tr></thead>
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Supplier</th><th>Stock (Units)</th><th>Kg/Unit</th><th>Stock (Kg)</th><th>Weekly Usage</th><th>Weeks Left</th><th>Next Delivery</th><th class="no-print"></th></tr></thead>
       <tbody id="flourIngTable"></tbody></table></div>
       <div class="empty" id="flourIngEmpty" style="display:none">No ingredients yet</div>
     </div>
@@ -542,7 +588,7 @@
     <div class="card">
       <h3>📋 Planned Ingredient Demand (Unconfirmed Production Runs)</h3>
       <p style="color:var(--muted);font-size:12px;margin-top:0">Total ingredients needed for every Production Run that's still Planned (from the Create tab), converted from the recipe's kg amounts into stock units. Flags anything you don't have enough of on hand yet.</p>
-      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Current Stock</th><th>Planned Demand</th><th>Shortfall</th><th></th></tr></thead>
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Current Stock</th><th>Planned Demand</th><th>Remaining After Demand</th><th>Shortfall</th><th>Runs Short Starting</th><th></th></tr></thead>
       <tbody id="flourDemandTable"></tbody></table></div>
       <div class="empty" id="flourDemandEmpty" style="display:none">No unconfirmed production runs use flour ingredients right now.</div>
     </div>
@@ -749,6 +795,12 @@
     <h2>Daily Production Schedule — Confirm Completion</h2>
     <p style="color:var(--muted);font-size:13px;margin-top:0">Only Runs need confirming — confirming a run's batches automatically confirms every packed item under it (adds Finished Goods stock + deducts flour) in one step. You can still edit batches, cases, and add/remove items here first.</p>
     <div class="card">
+      <h3 style="margin-top:0">📅 Days Awaiting Confirmation</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Any date — past or upcoming — that still has a run or item awaiting confirmation. Overdue dates are highlighted in red.</p>
+      <div id="scheduledDaysListConfirm" style="display:flex;flex-wrap:wrap;gap:8px"></div>
+      <div class="empty" id="scheduledDaysEmptyConfirm" style="display:none">Nothing awaiting confirmation 🎉</div>
+    </div>
+    <div class="card">
       <div class="row" style="align-items:center">
         <h3 style="flex:2">Awaiting Confirmation</h3>
         <input type="date" id="confirmViewDate" onchange="renderConfirmRunCards()" style="max-width:160px">
@@ -830,18 +882,43 @@
       <h3>Day</h3>
       <div class="row">
         <div><label>Date</label><input type="date" id="sauceDayDate" onchange="onSauceDayDateChange()"></div>
-        <div><label>Manpower Count</label><input type="number" step="any" id="sauceDayManpowerCount"></div>
-        <div><label>Manpower Names</label><input id="sauceDayManpowerNames" placeholder="e.g. Jojo, Thomas, Yi"></div>
       </div>
-      <div class="btnrow"><button class="btn secondary" onclick="saveSauceDayHeader()">💾 Save Day Info</button></div>
     </div>
 
-    <div class="card can-write">
-      <h3 id="sauceTaskFormTitle">Add Production Task</h3>
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleSauceProduceAlert()">
+        <h3 style="margin:0">⚠ Sauces Needing Production</h3>
+        <span id="sauceProduceAlertToggleIcon" style="font-size:13px;color:var(--muted)">▸ Click to expand</span>
+      </div>
+      <div id="sauceProduceAlertBody" style="display:none;padding:0 16px 16px">
+        <p style="color:var(--muted);font-size:12px;margin-top:0">Same stock-alert logic as the Inventory Dashboard (Act. Inventory Qty vs. Avg Daily Out), applied to each sauce via its linked Item #. Inactive items are excluded. Click a row to jump straight to adding a task for it.</p>
+        <div class="filterbar">
+          <input id="sauceAlertSearch" placeholder="Search sauce / item #..." oninput="renderSauceProduceAlertList()">
+          <select id="sauceAlertTierFilter" onchange="renderSauceProduceAlertList()">
+            <option value="">All Alert Levels</option>
+            <option value="watch">Watch</option>
+            <option value="caution">Caution</option>
+            <option value="urgent">Urgent</option>
+            <option value="oos">Out of Stock</option>
+          </select>
+          <select id="sauceAlertCustomerFilter" onchange="renderSauceProduceAlertList()"><option value="">All Customers</option></select>
+        </div>
+        <div class="tablewrap"><table><thead><tr><th>Sauce</th><th>Item #</th><th>Customer</th><th>Act. Inventory Qty</th><th>Avg Daily Out</th><th>Days of Supply</th><th>Alert</th></tr></thead>
+        <tbody id="sauceProduceAlertList"></tbody></table></div>
+        <div class="empty" id="sauceProduceAlertEmpty" style="display:none">No sauces currently need production 🎉</div>
+      </div>
+    </div>
+
+    <div class="card can-write" style="padding:0;overflow:hidden">
+      <div style="padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleSauceTaskForm()">
+        <h3 id="sauceTaskFormTitle" style="margin:0">Add Production Task</h3>
+        <span id="sauceTaskFormToggleIcon" style="font-size:13px;color:var(--muted)">▸ Click to expand</span>
+      </div>
+      <div id="sauceTaskFormBody" style="display:none;padding:0 16px 16px">
       <input type="hidden" id="sauceTaskEditId">
       <div class="row">
         <div><label>Location</label><select id="sauceTaskLocation"><option value="">Select location...</option></select></div>
-        <div><label>Mixes</label><input type="number" step="any" id="sauceTaskMixes" oninput="recalcSauceTaskPackingHrs(); recalcSauceTaskUsageNote()"></div>
+        <div><label>Mixes</label><input type="number" step="any" id="sauceTaskMixes" oninput="recalcSauceTaskPackingHrs(); recalcSauceTaskUsageNote(); checkSauceIngredientAvailability(); updateSauceComponentEstimate()"></div>
         <div><label>Sauce</label>
           <div class="search">
             <input id="sauceTaskSauceSearch" placeholder="Search sauce name..." oninput="searchSauceTaskSauce()" autocomplete="off">
@@ -850,6 +927,8 @@
           <input type="hidden" id="sauceTaskSauceId">
         </div>
       </div>
+      <div id="sauceTaskIngredientNote"></div>
+      <div id="sauceTaskComponentEstimate"></div>
       <label>Machine / Process Notes</label>
       <textarea id="sauceTaskMachineNotes" rows="2" placeholder="e.g. #4 Kettle, dipping cup machine, 50 packs/min"></textarea>
       <label>Operator / Timing Notes</label>
@@ -873,6 +952,7 @@
         <button class="btn" id="sauceTaskSubmitBtn" onclick="submitSauceTask()">➕ Add Task</button>
         <button class="btn secondary" onclick="resetSauceTaskForm()">Clear / Cancel Edit</button>
       </div>
+      </div>
     </div>
 
     <div class="card">
@@ -881,6 +961,7 @@
         <th>Location</th><th>Mixes</th><th>Sauce</th><th>Prod. / Best Before</th><th>Status</th><th></th>
       </tr></thead><tbody id="sauceTasksTable"></tbody></table></div>
       <div class="empty" id="sauceTasksEmpty" style="display:none">No tasks added for this date yet</div>
+      <div id="sauceTasksPackingTotal" style="font-size:12px;color:var(--muted);margin-top:8px"></div>
     </div>
   </section>
 
@@ -909,7 +990,7 @@
   <!-- SAUCE PRODUCTION: CONFIRM COMPLETION -->
   <section class="screen" id="screen-sauce-confirm">
     <h2>Sauce Production Schedule — Confirm Completion</h2>
-    <p style="color:var(--muted);font-size:13px;margin-top:0">Confirming a day deducts every task's recipe ingredients (mixes × recipe) in one step, dated to the day's own date. You can still edit mixes here first.</p>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Confirming a task deducts its recipe ingredients (mixes × recipe) and, if a finished goods quantity is entered, records it into Finished Goods In/Out against the sauce's linked Item #. You can adjust mixes and the finished goods quantity here first.</p>
     <div class="card">
       <div class="row" style="align-items:center">
         <h3 style="flex:2">Awaiting Confirmation</h3>
@@ -918,9 +999,6 @@
       <div id="sauceConfirmDayInfo"></div>
       <div id="sauceConfirmTasksList"></div>
       <div class="empty" id="sauceConfirmEmpty" style="display:none">Nothing left to confirm for this date 🎉</div>
-      <div class="btnrow can-write" id="sauceConfirmDayBtnWrap" style="display:none">
-        <button class="btn" onclick="confirmSauceDayBtn()">✔ Confirm Day</button>
-      </div>
     </div>
   </section>
 
@@ -936,6 +1014,9 @@
         <div><label>Item Code</label><input id="sauceItemCode" placeholder="e.g. 9637" oninput="renderSauceItemMatchInfo(this.value,'sauceItemMatchInfo')"></div>
       </div>
       <div id="sauceItemMatchInfo"></div>
+      <label>Linked Component / Sachet (optional)</label>
+      <select id="sauceComponentSachet"><option value="">(not a component — sold/tracked as its own item)</option></select>
+      <p style="color:var(--muted);font-size:12px;margin-top:4px">Some sauces are really a packaging component (e.g. a seasoning sachet sealed into another product) rather than a sellable item on their own. Link it here and confirming production will add the qty into Components (Sachets) stock instead of/alongside Finished Goods.</p>
       <div class="row">
         <div><label>Package Spec</label><input id="saucePackageSpec" placeholder="e.g. K750"></div>
         <div><label>Shelf-life (days)</label><input type="number" id="sauceShelfLifeDays" placeholder="e.g. 120"></div>
@@ -977,26 +1058,20 @@
         <div><label>Unit</label><input id="sauceIngUnit" placeholder="e.g. kg"></div>
         <div><label>Kg per Unit</label><input type="number" step="any" id="sauceIngKgPerUnit" placeholder="for unit conversion, optional"></div>
       </div>
+      <label>Produced By (optional)</label>
+      <select id="sauceIngProducedBy"><option value="">(raw ingredient — not produced in-house)</option></select>
+      <p style="color:var(--muted);font-size:12px;margin-top:4px">If this "ingredient" is actually another sauce you make first (e.g. "Hon's Chili Oil Solids" comes from producing "Hon's Chili Oil K150"), link it here — when it's running low, the app will point you to that sauce instead of just showing a shortfall.</p>
       <div class="btnrow">
         <button class="btn" id="sauceIngSubmitBtn" onclick="submitSauceIngredient()">＋ Save Ingredient</button>
         <button class="btn secondary" onclick="resetSauceIngredientForm()">Clear / Cancel Edit</button>
       </div>
-    </div>
-    <div class="card can-write">
-      <h3>Receive Stock</h3>
-      <div class="row">
-        <div><label>Date</label><input type="date" id="sauceIngReceiveDate"></div>
-        <div><label>Ingredient</label><select id="sauceIngReceiveId"></select></div>
-        <div><label>Qty</label><input type="number" step="any" id="sauceIngReceiveQty"></div>
-      </div>
-      <div class="btnrow"><button class="btn secondary" onclick="receiveSauceIngredientStock()">📥 Receive</button></div>
     </div>
     <div class="card">
       <div class="filterbar">
         <input id="sauceIngSearch" placeholder="Search ingredient..." oninput="renderSauceIngredientsTable()">
       </div>
       <div class="tablewrap"><table><thead><tr>
-        <th>Ingredient</th><th>Pcs</th><th>Weight</th><th>Package Size</th><th>Unit</th><th>Kg/Unit</th><th>Stock Qty</th><th></th>
+        <th>Ingredient</th><th>Pcs</th><th>Weight</th><th>Package Size</th><th>Unit</th><th>Kg/Unit</th><th>Produced By</th><th></th>
       </tr></thead><tbody id="sauceIngredientsTable"></tbody></table></div>
       <div class="empty" id="sauceIngredientsEmpty" style="display:none">No ingredients yet</div>
     </div>
@@ -1008,12 +1083,24 @@
     <p style="color:var(--muted);font-size:13px;margin-top:0">Ingredients consumed per batch/mix of each sauce.</p>
     <div class="card">
       <h3>Browse / Edit a Sauce's Recipe</h3>
-      <label>Sauce</label>
-      <select id="sauceRecBrowseSauce" onchange="renderSauceRecipeBrowse()"></select>
+      <div class="row" style="align-items:flex-end">
+        <div style="flex:1"><label>Sauce</label>
+          <div class="search">
+            <input id="sauceRecBrowseSauceSearch" placeholder="Search sauce name..." oninput="searchSauceRecBrowseSauce()" autocomplete="off">
+            <div class="suggest" id="sauceRecBrowseSauceSuggest" style="display:none"></div>
+          </div>
+          <input type="hidden" id="sauceRecBrowseSauce">
+        </div>
+        <div class="can-write"><button class="btn secondary" style="color:var(--danger)" onclick="deleteSauceRecipeAll()">🗑 Delete Entire Recipe</button></div>
+      </div>
       <div id="sauceRecBrowseBody" style="margin-top:12px"></div>
     </div>
-    <div class="card can-write">
-      <h3 id="sauceRecFormTitle">Add Recipe (multiple ingredients)</h3>
+    <div class="card can-write" style="padding:0;overflow:hidden">
+      <div style="padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleSauceRecipeForm()">
+        <h3 id="sauceRecFormTitle" style="margin:0">Add Recipe (multiple ingredients)</h3>
+        <span id="sauceRecFormToggleIcon" style="font-size:13px;color:var(--muted)">▸ Click to expand</span>
+      </div>
+      <div id="sauceRecFormBody" style="display:none;padding:0 16px 16px">
       <input type="hidden" id="sauceRecEditId">
       <label>Sauce</label>
       <select id="sauceRecSauce"></select>
@@ -1031,6 +1118,7 @@
         <button class="btn" id="sauceRecSubmitBtn" onclick="saveSauceRecipeDraft()">✔ Save Recipe</button>
         <button class="btn secondary" onclick="resetSauceRecipeForm()">Clear / Cancel Edit</button>
       </div>
+      </div>
     </div>
     <div class="card">
       <div class="filterbar">
@@ -1039,6 +1127,33 @@
       <div class="tablewrap"><table><thead><tr><th>Sauce</th><th>Ingredient</th><th>Qty/Batch</th><th>Unit</th><th class="no-print"></th></tr></thead>
       <tbody id="sauceRecTable"></tbody></table></div>
       <div class="empty" id="sauceRecEmpty" style="display:none">No recipes defined yet</div>
+    </div>
+  </section>
+
+  <!-- SAUCE PRODUCTION: MATERIAL PLAN -->
+  <section class="screen" id="screen-sauce-materials">
+    <h2>Sauce Production — Material Plan</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">What's scheduled each day this week, and the total ingredients it adds up to — so Purchasing can order ahead for next week's production. Not a stock count, just demand from the schedule.</p>
+    <div class="card">
+      <div class="row" style="align-items:flex-end">
+        <div><label>Week of (Monday)</label><input type="date" id="materialWeekStart" onchange="renderSauceMaterialPlan()"></div>
+        <div><button class="btn secondary" onclick="jumpToMaterialWeek(0)">This Week</button></div>
+        <div><button class="btn secondary" onclick="jumpToMaterialWeek(-7)">◂ Prev Week</button></div>
+        <div><button class="btn secondary" onclick="jumpToMaterialWeek(7)">Next Week ▸</button></div>
+      </div>
+    </div>
+    <div class="section-title">Day by Day</div>
+    <p style="color:var(--muted);font-size:12px;margin-top:-6px">Click a day to see just that day's ingredients; click it again to go back to the whole week.</p>
+    <div id="materialDaysList" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px"></div>
+    <div class="section-title" id="materialDemandTitle">Total Ingredients Needed This Week</div>
+    <div class="card">
+      <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Qty Needed</th></tr></thead>
+      <tbody id="materialDemandTable"></tbody></table></div>
+      <div class="empty" id="materialDemandEmpty" style="display:none">Nothing scheduled this week yet</div>
+    </div>
+    <div class="btnrow no-print">
+      <button class="btn secondary" onclick="printSauceMaterialPlan()">🖨 Print Material Plan</button>
+      <button class="btn secondary" onclick="exportSauceMaterialPlanExcel()">📥 Export to Excel</button>
     </div>
   </section>
 
@@ -1072,7 +1187,7 @@
       <input type="hidden" id="allergenEditId">
       <div class="row">
         <div><label>Name</label><input id="allergenName" placeholder="e.g. Sesame"></div>
-        <div><label>Color</label><input type="color" id="allergenColor" value="#d64545"></div>
+        <div><label>Color</label><input type="color" id="allergenColor" value="#d64545" style="width:60px;height:40px;padding:2px"></div>
       </div>
       <div class="btnrow">
         <button class="btn" id="allergenSubmitBtn" onclick="submitAllergen()">＋ Save Allergen</button>
@@ -1169,6 +1284,30 @@
   <section class="screen" id="screen-components">
     <h2>Components (Sachets)</h2>
     <div class="card can-write">
+      <h3 id="sachetFormTitle">Add New Component</h3>
+      <input type="hidden" id="sachetEditId">
+      <div class="row">
+        <div><label>Component Name</label><input id="sachetName" placeholder="e.g. Soy Sauce Sachet 10g"></div>
+        <div><label>Unit Weight</label><input type="number" step="any" id="sachetUnitWeight" placeholder="e.g. 10"></div>
+        <div><label>Unit</label>
+          <select id="sachetUnitWeightUnit" style="width:auto">
+            <option value="g">g</option><option value="kg">kg</option><option value="lb">lb</option>
+          </select>
+        </div>
+      </div>
+      <div class="btnrow">
+        <button class="btn" id="sachetSubmitBtn" onclick="submitSachetMaster()">＋ Add Component</button>
+        <button class="btn secondary" onclick="resetSachetMasterForm()">✕ Cancel</button>
+      </div>
+    </div>
+    <div class="section-title">Manage Components</div>
+    <div class="card">
+      <div class="tablewrap"><table><thead><tr><th>Component Name</th><th>Unit Weight</th><th></th></tr></thead>
+      <tbody id="sachetMasterTable"></tbody></table></div>
+      <div class="empty" id="sachetMasterEmpty" style="display:none">No components yet</div>
+    </div>
+    <div class="card can-write">
+      <h3>Record Sachet Movement</h3>
       <label>Date</label>
       <input type="date" id="compDate">
       <label>Sachet Name</label>
@@ -1182,6 +1321,7 @@
       <div class="tablewrap"><table><thead><tr><th>Sachet Name</th><th>Inventory Qty</th></tr></thead>
       <tbody id="sachetTable"></tbody></table></div>
       <div class="empty" id="sachetEmpty" style="display:none">No data yet</div>
+      <div class="btnrow no-print"><button class="btn secondary" onclick="printSachetInventoryReport()">🖨 Print Inventory</button></div>
     </div>
     <div class="card admin-only">
       <h3>Adjust Sachet Inventory</h3>
@@ -1242,7 +1382,7 @@
       </div>
       <div>
         <div class="card">
-          <div class="tablewrap"><table id="produceTable"><thead><tr><th>Item #</th><th>Item Name</th><th>Available Qty</th><th>Customer</th><th>Line</th></tr></thead>
+          <div class="tablewrap"><table id="produceTable"><thead><tr><th>Item #</th><th>Item Name</th><th>Act. Inventory Qty</th><th>Available Qty</th><th>Customer</th><th>Line</th></tr></thead>
           <tbody id="produceList"></tbody></table></div>
           <div class="empty" id="produceEmpty" style="display:none">Nothing needs production right now 🎉</div>
         </div>
@@ -1253,8 +1393,12 @@
   <!-- MANAGE ITEMS -->
   <section class="screen" id="screen-items">
     <h2>Manage Items</h2>
-    <div class="card can-write">
-      <h3 id="itemFormTitle">Add New Item</h3>
+    <div class="card can-write" style="padding:0;overflow:hidden">
+      <div style="padding:16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between" onclick="toggleItemForm()">
+        <h3 id="itemFormTitle" style="margin:0">Add New Item</h3>
+        <span id="itemFormToggleIcon" style="font-size:13px;color:var(--muted)">▸ Click to expand</span>
+      </div>
+      <div id="itemFormBody" style="display:none;padding:0 16px 16px">
       <input type="hidden" id="itemEditId">
       <div class="row">
         <div><label>Item #</label><input id="itemNo" placeholder="e.g. 01055"></div>
@@ -1312,6 +1456,7 @@
         <button class="btn" onclick="submitItem()">＋ Save Item</button>
         <button class="btn secondary" onclick="resetItemForm()">Clear / Cancel Edit</button>
       </div>
+      </div>
     </div>
     <div class="dash-layout">
       <div class="card dash-filters">
@@ -1322,6 +1467,7 @@
         <label>Filter by Customer</label>
         <select id="itemsFilterCustomer" onchange="renderItemsTable()"><option value="">All Customers</option></select>
         <button class="btn secondary" onclick="clearItemsFilters()">Clear Filters</button>
+        <button class="btn secondary admin-only" onclick="bulkSetMakeToOrderFiltered()">🏷️ Set Filtered Items to Make to Order</button>
       </div>
       <div>
         <div class="card">
@@ -1824,12 +1970,15 @@ function isAdmin(){ return !!(CURRENT_USER && CURRENT_USER.role === 'admin'); }
 async function afterLogin(){
   document.body.classList.remove('logged-out');
   document.getElementById('logoutBtn').style.display = '';
-  await fetchProfile();
   connected = true;
   document.getElementById('connDot').classList.add('on');
   document.getElementById('connText').textContent = 'Connected';
-  await loadCaches();
-  await refreshAll();
+  // fetchProfile and loadCaches don't depend on each other, so run them together instead of
+  // back-to-back — and stop there instead of also eagerly refreshing all 13 screens: showScreen
+  // below already triggers that one screen's own refresh, and every other screen refreshes
+  // itself the same way the moment you navigate to it (see SCREEN_REFRESH_FN), so pre-loading
+  // them all here was just adding round trips before the user could see anything.
+  await Promise.all([fetchProfile(), loadCaches()]);
   const firstAllowed = isScreenAllowed('dashboard') ? 'dashboard' : (getAllScreensList().find(s => isScreenAllowed(s.screen))?.screen || 'account');
   showScreen(firstAllowed);
 }
@@ -1990,6 +2139,7 @@ const SCREEN_REFRESH_FN = {
   'flour-recipes': refreshFlourScreen, 'flour-ledger': refreshFlourScreen,
   'sauce-create': refreshSauceScreen, 'sauce-preview': refreshSauceScreen, 'sauce-confirm': refreshSauceScreen,
   'sauce-sauces': refreshSauceScreen, 'sauce-ingredients': refreshSauceScreen, 'sauce-recipes': refreshSauceScreen,
+  'sauce-materials': refreshSauceScreen,
   'sauce-locations': refreshSauceScreen, 'sauce-allergens': refreshSauceScreen,
 };
 
@@ -2009,13 +2159,16 @@ function searchItems(inputId, suggestId, hiddenNoId, hiddenNameId, onPickFn, exc
   ).slice(0,20);
   if(!matches.length){ box.style.display='none'; return; }
   box.innerHTML = matches.map(it =>
-    `<div onclick="pickItem('${inputId}','${suggestId}','${hiddenNoId}','${hiddenNameId}','${it.item_no.replace(/'/g,"\\'")}'${onPickFn?`,'${onPickFn}'`:''})">
+    `<div onclick="pickItem('${inputId}','${suggestId}','${hiddenNoId}','${hiddenNameId}','${it.item_no.replace(/'/g,"\\'")}','${(it.item_name||'').replace(/'/g,"\\'")}'${onPickFn?`,'${onPickFn}'`:''})">
       <strong>${it.item_no}</strong> — ${it.item_name}
     </div>`).join('');
   box.style.display = 'block';
 }
-function pickItem(inputId, suggestId, hiddenNoId, hiddenNameId, itemNo, onPickFn){
-  const it = ITEMS_BY_NO[itemNo];
+function pickItem(inputId, suggestId, hiddenNoId, hiddenNameId, itemNo, itemName, onPickFn){
+  // item_no alone can be ambiguous when the same number is shared by more than one real
+  // item (see Duplicated Items) — resolve using the name of the suggestion actually
+  // clicked, not just ITEMS_BY_NO's arbitrary last-one-wins entry for that number.
+  const it = resolveItemByNoAndName(itemNo, itemName) || ITEMS_BY_NO[itemNo];
   if(!it) return;
   document.getElementById(inputId).value = it.item_no + ' — ' + it.item_name;
   document.getElementById(hiddenNoId).value = it.item_no;
@@ -2032,28 +2185,30 @@ document.addEventListener('click', (e)=>{
    Caches
    ============================================================ */
 async function loadCaches(){
-  ITEMS = await sbGet('erp_items?select=*&order=item_no.asc&limit=2000');
+  // These five queries are all independent of each other — fire them together instead of
+  // one after another so login only waits for the slowest one, not the sum of all five.
+  const [items, dupes, recipe, sachetInv, sachets] = await Promise.all([
+    sbGet('erp_items?select=*&order=item_no.asc&limit=2000'),
+    sbGet('erp_duplicated_items?select=id,item_no,item_name,correct_item_no,correct_item_name&limit=5000'),
+    sbGet('erp_item_sachet_recipe?select=id,item_no,item_name,sachet_name,pcs_per_case&limit=5000'),
+    sbGet('erp_sachet_inventory?select=sachet_name,inventory_qty&limit=1000').catch(()=>[]), // non-fatal — case suggestions just skip the component check
+    sbGet('erp_sachets?select=id,sachet_name,unit_weight,unit_weight_unit&order=sachet_name.asc&limit=1000')
+  ]);
+  ITEMS = items;
   ITEMS_BY_NO = {}; ITEMS_BY_NO_ALL = {};
   ITEMS.forEach(it => {
     ITEMS_BY_NO[it.item_no] = it; // last-one-wins, kept for existing single-item lookups
     (ITEMS_BY_NO_ALL[it.item_no] = ITEMS_BY_NO_ALL[it.item_no] || []).push(it);
   });
-  DUPES = await sbGet('erp_duplicated_items?select=id,item_no,item_name,correct_item_no,correct_item_name&limit=5000');
-  RECIPE = await sbGet('erp_item_sachet_recipe?select=id,item_no,item_name,sachet_name,pcs_per_case&limit=5000');
+  DUPES = dupes;
+  RECIPE = recipe;
   SACHET_STOCK = {};
-  try{
-    const sachetInv = await sbGet('erp_sachet_inventory?select=sachet_name,inventory_qty&limit=1000');
-    sachetInv.forEach(s => { SACHET_STOCK[s.sachet_name] = Number(s.inventory_qty)||0; });
-  }catch(e){ /* non-fatal — case suggestions just skip the component check */ }
-  SACHETS = await sbGet('erp_sachets?select=sachet_name&order=sachet_name.asc&limit=1000');
+  sachetInv.forEach(s => { SACHET_STOCK[s.sachet_name] = Number(s.inventory_qty)||0; });
+  SACHETS = sachets;
   const optionsHtml = '<option value="">Select sachet...</option>' + SACHETS.map(s=>`<option>${s.sachet_name}</option>`).join('');
   document.getElementById('compSachet').innerHTML = optionsHtml;
   document.getElementById('recSachet').innerHTML = optionsHtml;
   document.getElementById('compAdjSachet').innerHTML = optionsHtml;
-}
-
-async function refreshAll(){
-  await Promise.all([refreshDashboard(), refreshInOut(), refreshPO(), refreshComponents(), refreshProduce(), refreshItemsScreen(), refreshRecipesScreen(), refreshDupesScreen(), refreshUsersScreen(), refreshFlourScreen(), refreshScheduleScreen(), refreshAdjustScreen(), refreshSauceScreen()]);
 }
 
 /* ============================================================
@@ -2147,6 +2302,27 @@ function tierChip(tier){
   const m = TIER_META[tier];
   return `<span class="tier-chip ${m.cls}">${m.label}</span>`;
 }
+function toggleDashLegend(){
+  const body = document.getElementById('dashLegendBody');
+  const icon = document.getElementById('dashLegendToggleIcon');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▸ Click to expand' : '▾ Click to collapse';
+}
+// Mirrors classifyRow()'s exact thresholds so this legend can never drift out of sync with
+// the real classification logic — recalculated whenever the Warning Threshold dropdown changes.
+function renderDashLegend(){
+  const el = document.getElementById('dashLegendTable');
+  if(!el) return;
+  const n = parseInt(document.getElementById('dashThreshold').value, 10) || 7;
+  el.innerHTML = `
+    <tr><td>${tierChip('oos')}</td><td>Actual Inventory Qty is 0 or less</td></tr>
+    <tr><td>${tierChip('urgent')}</td><td>Day of Supply ≤ ${n} days</td></tr>
+    <tr><td>${tierChip('caution')}</td><td>Day of Supply ${n}–${n*2} days</td></tr>
+    <tr><td>${tierChip('watch')}</td><td>Day of Supply ${n*2}–${n*4} days</td></tr>
+    <tr><td>${tierChip('sufficient')}</td><td>Day of Supply more than ${n*4} days, or no recent Out at all</td></tr>
+  `;
+}
 function renderDashboardTable(){
   const q = document.getElementById('dashSearch').value.trim().toLowerCase();
   const lineFilter = document.getElementById('dashFilterLine').value;
@@ -2154,6 +2330,7 @@ function renderDashboardTable(){
   const sortField = document.getElementById('dashSortField').value;
   const sortDir = document.getElementById('dashSortDir').value;
   const thresholdN = parseInt(document.getElementById('dashThreshold').value, 10) || 7;
+  renderDashLegend();
 
   // classify every item once against the whole (unfiltered) dataset for accurate KPIs/matrix
   const classified = DASH_DATA.map(r => {
@@ -2242,14 +2419,14 @@ function renderDashboardTable(){
     const daysLabel = r._tier==='oos' ? 'Out of stock' : (isFinite(r._days) ? Math.floor(r._days)+'d' : '—');
     const action = r._overstock ? 'Overstocked — pause purchasing / promote' : (TIER_META[r._tier].action || '—');
     return `<tr class="${z}" style="cursor:pointer" onclick="toggleDashDetail('${rowId}')">
-      <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.item_cname||''}</td><td>${r.remark||''}</td>
+      <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.remark||''}</td>
       <td>${fmtNum(r.act_inventory_qty)}</td><td>${fmtNum(r.pending_qty)}</td><td>${fmtNum(r.ap_inventory_qty)}</td>
       <td>${daysLabel}</td>
       <td>${tierChip(r._tier)}${r._overstock?' <span class="tier-chip tier-caution">Overstock</span>':''}</td>
       <td style="white-space:normal;min-width:160px">${action}</td>
     </tr>
     <tr id="${rowId}" class="dash-detail-row${z}" style="display:none">
-      <td colspan="10">
+      <td colspan="9">
         <div class="dash-detail-grid">
           <div><span class="l">Customer</span>${r.customer||'–'}</div>
           <div><span class="l">Line</span>${r.line||'–'}</div>
@@ -2444,6 +2621,13 @@ async function submitPOOrder(){
   }catch(e){ toast('Create order failed: ' + e.message); }
 }
 const PRIORITY_CUSTOMERS = ['costco','loblaw','walmart'];
+// Substring match, not exact — real customer names are often fuller than the bare keyword
+// ("Costco Wholesale", "Loblaws Inc", "Walmart Canada"), and an exact-equality check would
+// silently fail to flag those as priority customers.
+function isPriorityCustomerName(name){
+  const n = (name||'').trim().toLowerCase();
+  return PRIORITY_CUSTOMERS.some(p => n.includes(p));
+}
 async function refreshPO(){
   if(!connected) return;
   try{
@@ -2452,7 +2636,7 @@ async function refreshPO(){
     // warning until the whole order is confirmed shipped — they'd otherwise vanish once
     // their ship date passes.
     const overdueMajor = await sbGet('erp_pending_order?select=id,ship_date,item_no,item_name,qty,customer,customer_no,po_no,status&ship_date=lt.' + todayStr() + '&status=eq.Pending&order=ship_date.asc&limit=2000');
-    const overdueMajorFiltered = overdueMajor.filter(r => PRIORITY_CUSTOMERS.includes((r.customer||'').trim().toLowerCase()));
+    const overdueMajorFiltered = overdueMajor.filter(r => isPriorityCustomerName(r.customer));
     const seen = new Set();
     PO_DATA = [...upcoming, ...overdueMajorFiltered].filter(r => { if(seen.has(r.id)) return false; seen.add(r.id); return true; });
     renderPOTable();
@@ -2477,7 +2661,7 @@ function renderPOTable(){
     const shippedCount = lines.filter(l=>l.status==='Shipped').length;
     const orderStatus = shippedCount===0 ? 'Pending' : (shippedCount===lines.length ? 'Shipped' : 'Partially Shipped');
     const isOverdue = h.ship_date < todayStr() && shippedCount < lines.length;
-    const isPriorityCustomer = PRIORITY_CUSTOMERS.includes((h.customer||'').trim().toLowerCase());
+    const isPriorityCustomer = isPriorityCustomerName(h.customer);
     const statusChip = orderStatus==='Shipped' ? `<span class="chip ok">Shipped</span>`
       : orderStatus==='Partially Shipped' ? `<span class="chip warn">Partially Shipped</span>`
       : `<span class="chip">Pending</span>`;
@@ -2626,6 +2810,7 @@ async function deletePOOrder(key){
    ============================================================ */
 let FLOUR_INGREDIENTS = [];
 let FLOUR_WEEKLY_USAGE = {}; // ingredient_id -> qty used in the last 7 days
+let FLOUR_EXPECTED_DELIVERIES = []; // pending (not yet received) erp_flour_expected_delivery rows
 let FLOUR_RECIPE = [];
 let FLOUR_LEDGER_PAGE = 1;
 const FLOUR_LEDGER_PAGE_SIZE = 15;
@@ -2689,8 +2874,11 @@ async function refreshFlourScreen(){
     const optionsHtml = '<option value="">Select ingredient...</option>' + FLOUR_INGREDIENTS.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
     document.getElementById('flourReceiveIngredient').innerHTML = optionsHtml;
     document.getElementById('flourRecIngredient').innerHTML = optionsHtml;
+    document.getElementById('flourExpectedIngredient').innerHTML = optionsHtml;
     populateFlourSupplierOptions();
     populateFlourIngredientFilters();
+    FLOUR_EXPECTED_DELIVERIES = await sbGet('erp_flour_expected_delivery?select=*&status=eq.Pending&order=expected_date.asc&limit=500');
+    renderFlourExpectedDeliveryTable();
     renderFlourIngredientTable();
 
     FLOUR_RECIPE = await sbGet('erp_flour_recipe?select=id,product_name,ingredient_id,qty_per_batch,qty_unit&order=product_name.asc&limit=2000');
@@ -2728,32 +2916,47 @@ async function renderFlourDashboard(){
 
   // ---- Planned ingredient demand from unconfirmed Production Runs ----
   try{
-    const plannedRuns = await sbGet(`erp_production_runs?select=product_name,planned_mixes&status=eq.Planned&limit=2000`);
-    const mixesByProduct = {};
-    plannedRuns.forEach(r => { mixesByProduct[r.product_name] = (mixesByProduct[r.product_name]||0) + (parseFloat(r.planned_mixes)||0); });
-    const demandByIngredient = {}; // ingredient_id -> units needed
+    const plannedRuns = await sbGet(`erp_production_runs?select=product_name,planned_mixes,run_date&status=eq.Planned&order=run_date.asc&limit=2000`);
+    const demandByIngredient = {}; // ingredient_id -> total units needed
+    const demandByIngredientDate = {}; // ingredient_id -> { run_date -> units needed that day }
     const demandUnreliable = {}; // ingredient_id -> true if any contributing row fell back to raw kg
-    FLOUR_RECIPE.forEach(rec => {
-      const mixes = mixesByProduct[rec.product_name];
-      if(!mixes) return;
-      const ing = FLOUR_INGREDIENTS.find(i => i.id === rec.ingredient_id);
-      const perBatch = rec.qty_per_batch || 0;
-      let unitsNeeded;
-      if(rec.qty_unit === 'unit'){
-        unitsNeeded = mixes * perBatch; // already in the ingredient's stock unit
-      } else {
-        const kgNeeded = mixes * perBatch;
-        if(ing && ing.kg_per_unit){ unitsNeeded = kgNeeded / ing.kg_per_unit; }
-        else { unitsNeeded = kgNeeded; demandUnreliable[rec.ingredient_id] = true; }
-      }
-      demandByIngredient[rec.ingredient_id] = (demandByIngredient[rec.ingredient_id]||0) + unitsNeeded;
+    plannedRuns.forEach(run => {
+      const mixes = parseFloat(run.planned_mixes) || 0;
+      if(!mixes || !run.run_date) return;
+      FLOUR_RECIPE.filter(rec => rec.product_name === run.product_name).forEach(rec => {
+        const ing = FLOUR_INGREDIENTS.find(i => i.id === rec.ingredient_id);
+        const perBatch = rec.qty_per_batch || 0;
+        let unitsNeeded;
+        if(rec.qty_unit === 'unit'){
+          unitsNeeded = mixes * perBatch; // already in the ingredient's stock unit
+        } else {
+          const kgNeeded = mixes * perBatch;
+          if(ing && ing.kg_per_unit){ unitsNeeded = kgNeeded / ing.kg_per_unit; }
+          else { unitsNeeded = kgNeeded; demandUnreliable[rec.ingredient_id] = true; }
+        }
+        demandByIngredient[rec.ingredient_id] = (demandByIngredient[rec.ingredient_id]||0) + unitsNeeded;
+        const byDate = demandByIngredientDate[rec.ingredient_id] = demandByIngredientDate[rec.ingredient_id] || {};
+        byDate[run.run_date] = (byDate[run.run_date]||0) + unitsNeeded;
+      });
     });
+    // Walks each ingredient's demand chronologically against current stock to find the
+    // first planned run date where cumulative demand would take it below zero.
+    function findShortDate(byDate, stock){
+      let remaining = stock;
+      for(const d of Object.keys(byDate).sort()){
+        remaining -= byDate[d];
+        if(remaining < 0) return d;
+      }
+      return null;
+    }
     const demandRows = Object.entries(demandByIngredient).map(([ingId, demand]) => {
       const ing = FLOUR_INGREDIENTS.find(i => i.id === Number(ingId) || i.id === ingId);
       const stock = ing ? (Number(ing.inventory_qty)||0) : 0;
       const hasConv = !demandUnreliable[ingId];
       const shortfall = hasConv ? Math.max(0, demand - stock) : null;
-      return { ing, demand, stock, shortfall, hasConv };
+      const remaining = hasConv ? (stock - demand) : null;
+      const shortDate = hasConv ? findShortDate(demandByIngredientDate[ingId]||{}, stock) : null;
+      return { ing, demand, stock, shortfall, remaining, shortDate, hasConv };
     }).filter(r => r.ing).sort((a,b) => (b.shortfall||0) - (a.shortfall||0));
     const needOrder = demandRows.filter(r => r.shortfall > 0);
     document.getElementById('flourKpiOrder').textContent = needOrder.length;
@@ -2761,7 +2964,9 @@ async function renderFlourDashboard(){
       <td>${r.ing.name}${!r.hasConv?' <span class="chip warn" title="No Kg/Unit set on this ingredient — demand shown in kg, not stock units">⚠ kg only</span>':''}</td>
       <td>${fmtNum(r.stock)} ${r.ing.unit||''}</td>
       <td>${r.hasConv ? `${fmtNum(r.demand)} ${r.ing.unit||''}` : `${fmtNum(r.demand)} kg`}</td>
+      <td style="${r.hasConv && r.remaining<0?'color:var(--danger);font-weight:700':''}">${r.hasConv ? `${fmtNum(r.remaining)} ${r.ing.unit||''}` : '–'}</td>
       <td style="${r.shortfall>0?'color:var(--danger);font-weight:700':''}">${r.hasConv ? (r.shortfall>0?fmtNum(r.shortfall)+' '+(r.ing.unit||''):'–') : '–'}</td>
+      <td style="${r.shortDate?'color:var(--danger);font-weight:700':''}">${r.shortDate || '–'}</td>
       <td>${!r.hasConv ? '<span class="chip">Set Kg/Unit to check</span>' : (r.shortfall>0?'<span class="chip warn">⚠ Order needed</span>':'<span class="chip ok">OK</span>')}</td>
     </tr>`).join('');
     document.getElementById('flourDemandEmpty').style.display = demandRows.length ? 'none' : 'block';
@@ -2889,6 +3094,9 @@ function renderFlourIngredientTable(){
     const lowReorder = i.reorder_level!=null && Number(i.inventory_qty) <= i.reorder_level;
     const lowWeeks = weeksLeft!=null && weeksLeft < 1;
     const low = lowReorder || lowWeeks;
+    // Nearest upcoming Pending delivery for this ingredient (list is already sorted by
+    // expected_date ascending, so the first match is the soonest one).
+    const nextDelivery = FLOUR_EXPECTED_DELIVERIES.find(d => d.ingredient_id === i.id);
     return `<tr>
     <td>${i.name}</td><td>${i.supplier||''}</td>
     <td style="${low?'color:var(--danger);font-weight:700':''}">${fmtNum(i.inventory_qty)} ${i.unit||''}${low?' ⚠':''}</td>
@@ -2896,6 +3104,7 @@ function renderFlourIngredientTable(){
     <td>${kgTotal!=null?fmtNum(kgTotal)+' kg':'–'}</td>
     <td>${weeklyUsage>0?fmtNum(weeklyUsage)+' '+(i.unit||''):'–'}</td>
     <td style="${lowWeeks?'color:var(--danger);font-weight:700':''}">${weeksLeft!=null?fmtNum(weeksLeft):'–'}${lowWeeks?' ⚠':''}</td>
+    <td>${nextDelivery ? `${nextDelivery.expected_date}<br>${fmtNum(nextDelivery.expected_qty)} ${i.unit||''}` : '–'}</td>
     <td class="no-print" style="white-space:nowrap">
       <div style="display:flex;gap:6px;flex-wrap:nowrap">
         <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editFlourIngredient(${i.id})">✎ Edit</button>
@@ -2922,6 +3131,63 @@ async function submitFlourReceive(){
     FLOUR_LEDGER_PAGE = 1;
     await refreshFlourScreen();
   }catch(e){ toast('Receive failed: ' + e.message); }
+}
+
+/* ---- Expected Deliveries: log what's incoming, confirm it once it actually arrives ---- */
+async function submitFlourExpectedDelivery(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const ingredientId = document.getElementById('flourExpectedIngredient').value;
+  const date = document.getElementById('flourExpectedDate').value;
+  const qty = parseFloat(document.getElementById('flourExpectedQty').value);
+  if(!ingredientId){ toast('Please select an ingredient'); return; }
+  if(!date){ toast('Please enter an expected date'); return; }
+  if(!qty){ toast('Please enter an expected quantity'); return; }
+  try{
+    await sbInsert('erp_flour_expected_delivery', [{ ingredient_id: ingredientId, expected_date: date, expected_qty: qty }]);
+    toast('Expected delivery added');
+    document.getElementById('flourExpectedQty').value = '';
+    await refreshFlourScreen();
+  }catch(e){ toast('Add failed: ' + e.message); }
+}
+function renderFlourExpectedDeliveryTable(){
+  const rows = FLOUR_EXPECTED_DELIVERIES;
+  document.getElementById('flourExpectedDeliveryTable').innerHTML = rows.map(r => {
+    const ing = FLOUR_INGREDIENTS.find(i => i.id === r.ingredient_id);
+    return `<tr>
+      <td>${ing?ing.name:'(unknown)'}</td>
+      <td>${r.expected_date}</td>
+      <td>${fmtNum(r.expected_qty)} ${ing?.unit||''}</td>
+      <td>${canWrite() ? `<input type="number" step="any" value="${r.expected_qty}" id="flourExpectedRecvQty_${r.id}" style="width:100px">` : '–'}</td>
+      <td class="no-print can-write" style="white-space:nowrap">
+        <div style="display:flex;gap:6px;flex-wrap:nowrap">
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="confirmFlourExpectedDelivery(${r.id})">✔ Confirm Received</button>
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteRow('erp_flour_expected_delivery',${r.id},refreshFlourScreen)">✕ Delete</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('flourExpectedDeliveryEmpty').style.display = rows.length ? 'none' : 'block';
+}
+// Confirming is what actually adds the qty to stock (via erp_flour_inout) — the received
+// qty is editable here in case what showed up differs from what was expected.
+async function confirmFlourExpectedDelivery(id){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const r = FLOUR_EXPECTED_DELIVERIES.find(x => x.id === id);
+  if(!r){ toast('Delivery not found — try refreshing'); return; }
+  const qtyInput = document.getElementById('flourExpectedRecvQty_'+id);
+  const receivedQty = qtyInput ? (parseFloat(qtyInput.value) || 0) : (parseFloat(r.expected_qty) || 0);
+  if(!receivedQty){ toast('Please enter a received quantity'); return; }
+  if(!confirm(`Confirm receipt of ${fmtNum(receivedQty)}? This adds to stock and cannot be undone.`)) return;
+  try{
+    await sbInsert('erp_flour_inout', [{
+      entry_date: todayStr(), ingredient_id: r.ingredient_id, in_qty: receivedQty, out_qty: 0,
+      note: `Received (expected ${r.expected_date}, ${fmtNum(r.expected_qty)})`
+    }]);
+    await sbUpdate('erp_flour_expected_delivery', id, { status: 'Received', received_qty: receivedQty, received_date: todayStr(), received_at: new Date().toISOString() });
+    toast('Delivery received — stock updated');
+    FLOUR_LEDGER_PAGE = 1;
+    await refreshFlourScreen();
+  }catch(e){ toast('Confirm failed: ' + e.message); }
 }
 
 /* ---- Ledger (paginated, own screen) ---- */
@@ -3216,7 +3482,12 @@ async function refreshScheduleScreen(){
   document.getElementById('confirmViewDate').value = document.getElementById('confirmViewDate').value || todayStr();
   try{
     LINES = await sbGet('erp_lines?select=id,name&order=name.asc&limit=500');
-    document.getElementById('prodLine').innerHTML = '<option value="">(none)</option>' + LINES.map(l=>`<option>${l.name}</option>`).join('');
+    // Rebuilding these options wipes out whatever was selected (e.g. editProduct() just set
+    // this ahead of the background refresh showScreen() kicks off) — keep and restore it.
+    const prodLineSel = document.getElementById('prodLine');
+    const keepProdLine = prodLineSel.value;
+    prodLineSel.innerHTML = '<option value="">(none)</option>' + LINES.map(l=>`<option>${l.name}</option>`).join('');
+    if(keepProdLine && LINES.some(l=>l.name===keepProdLine)) prodLineSel.value = keepProdLine;
 
     PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil&order=name.asc&limit=1000');
     document.getElementById('runProduct').innerHTML = buildProductOptionsHtml();
@@ -3230,6 +3501,7 @@ async function refreshScheduleScreen(){
     await renderRunsList();
     await renderPreviewSummary();
     await renderConfirmRunCards();
+    await renderConfirmScheduledDaysList();
     await renderScheduledDaysList('scheduledDaysListCreate', 'scheduledDaysEmptyCreate', 'jumpToScheduledDayCreate', document.getElementById('itemsPackDate').value);
     await renderScheduledDaysList('scheduledDaysListPreview', 'scheduledDaysEmptyPreview', 'jumpToScheduledDayPreview', document.getElementById('previewViewDate').value);
   }catch(e){ toast('Failed to load schedule data: ' + e.message); }
@@ -3262,6 +3534,50 @@ function jumpToScheduledDayPreview(date){
   document.getElementById('previewViewDate').value = date;
   renderPreviewSummary();
   renderScheduledDaysList('scheduledDaysListPreview', 'scheduledDaysEmptyPreview', 'jumpToScheduledDayPreview', date);
+}
+// Unlike the two lists above (every scheduled day, confirmed or not), this one only surfaces
+// days that still have something left to confirm — same "pending" definition renderConfirmRunCards
+// uses (run itself not confirmed, or run confirmed but one of its items still isn't). Deliberately
+// NOT date-floored at today: an overdue day from last week that never got confirmed is exactly
+// the kind of thing this list needs to keep surfacing, not just today-and-forward.
+async function renderConfirmScheduledDaysList(){
+  const listEl = document.getElementById('scheduledDaysListConfirm');
+  if(!listEl) return;
+  try{
+    const runs = await sbGetAll(`erp_production_runs?select=id,run_date,status&order=run_date.asc`);
+    if(!runs.length){ listEl.innerHTML = ''; document.getElementById('scheduledDaysEmptyConfirm').style.display = 'block'; return; }
+    const runIds = runs.map(r=>r.id);
+    const items = await sbGetAll(`erp_production_run_items?select=id,run_id,status&run_id=in.(${runIds.join(',')})`);
+    const itemsByRun = {};
+    items.forEach(it => { (itemsByRun[it.run_id] = itemsByRun[it.run_id]||[]).push(it); });
+    const pendingRuns = runs.filter(r => {
+      if(r.status !== 'Confirmed') return true;
+      return (itemsByRun[r.id]||[]).some(it => it.status !== 'Confirmed');
+    });
+    if(!pendingRuns.length){ listEl.innerHTML = ''; document.getElementById('scheduledDaysEmptyConfirm').style.display = 'block'; return; }
+    const runCounts = {}, itemCounts = {};
+    pendingRuns.forEach(r => {
+      runCounts[r.run_date] = (runCounts[r.run_date]||0) + 1;
+      const pendingItems = (itemsByRun[r.id]||[]).filter(it => it.status !== 'Confirmed').length;
+      itemCounts[r.run_date] = (itemCounts[r.run_date]||0) + pendingItems;
+    });
+    const days = Object.keys(runCounts).sort();
+    const today = todayStr();
+    listEl.innerHTML = days.map(d => {
+      const isToday = d === today;
+      const isOverdue = d < today;
+      const nRuns = runCounts[d];
+      const nItems = itemCounts[d] || 0;
+      const highlight = isToday ? ';border-color:var(--accent);color:var(--accent);font-weight:700'
+        : isOverdue ? ';border-color:var(--danger);color:var(--danger);font-weight:700' : '';
+      return `<button class="btn secondary" style="padding:6px 12px;font-size:12px${highlight}" onclick="jumpToConfirmScheduledDay('${d}')">${d}${isToday?' (Today)':''}${isOverdue?' (Overdue)':''} · ${nRuns} run${nRuns===1?'':'s'}${nItems?` · ${nItems} item${nItems===1?'':'s'}`:''} pending</button>`;
+    }).join('');
+    document.getElementById('scheduledDaysEmptyConfirm').style.display = 'none';
+  }catch(e){ /* non-fatal — the rest of the screen still works */ }
+}
+function jumpToConfirmScheduledDay(date){
+  document.getElementById('confirmViewDate').value = date;
+  renderConfirmRunCards();
 }
 /* ============================================================
    LINES — master list driving the Line dropdown on Product Doughs
@@ -3502,6 +3818,23 @@ function runTotalOutputKg(run){
 function runUsedKg(items){
   return items.reduce((sum,it) => sum + (parseFloat(it.planned_cases)||0) * caseWeightKg(ITEMS_BY_NO[it.item_no]), 0);
 }
+// Once every item under a confirmed run has also been individually confirmed, compare what
+// actually came out (confirmed_cases, converted to dough-weight-equivalent kg) against the
+// dough that went in (confirmed_mixes x weight_per_mix_kg) — the ACTUAL yield achieved,
+// directly comparable to the product's own configured Yield factor. Returns null until both
+// the run and every one of its items are confirmed, or when there's no weight basis to compute from.
+function runActualYield(run, items, p){
+  p = p || getProductInfo(run.product_name);
+  if(run.status !== 'Confirmed' || !p || !p.weight_per_mix_kg || !run.confirmed_mixes) return null;
+  if(!items.length || items.some(it => it.status !== 'Confirmed')) return null;
+  const inputKg = run.confirmed_mixes * p.weight_per_mix_kg;
+  if(inputKg <= 0) return null;
+  const outputKg = items.reduce((sum,it) => {
+    const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
+    return sum + (parseFloat(it.confirmed_cases)||0) * caseWeightKg(item);
+  }, 0);
+  return outputKg / inputKg;
+}
 
 function itemPackDetail(item, cases){
   if(!item) return '';
@@ -3514,11 +3847,14 @@ function itemPackDetail(item, cases){
 }
 function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const showItemConfirmButtons = showConfirmButton; // items get their own Confirm action wherever runs can be confirmed
-  const statusChip = run.status === 'Confirmed' ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)} batches)</span>` : `<span class="chip">Planned</span>`;
+  const p = getProductInfo(run.product_name);
+  const actualYield = runActualYield(run, items, p);
+  const statusChip = run.status === 'Confirmed'
+    ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)} batches${actualYield!=null?`, Yield: ${fmtNum(actualYield)}`:''})</span>`
+    : `<span class="chip">Planned</span>`;
   const totalKg = runTotalOutputKg(run);
   const usedKg = runUsedKg(items);
   const remainingKg = totalKg - usedKg;
-  const p = getProductInfo(run.product_name);
   const mixTimeMin = p && p.mixing_min_per_mix ? (run.planned_mixes||0) * p.mixing_min_per_mix : null;
   const productInfo = p
     ? `<div style="font-size:12px;color:var(--muted);margin-bottom:4px">📋 Weight/mix: <strong>${fmtNum(p.weight_per_mix_kg)} kg</strong> · Yield: <strong>${fmtNum(p.yield_factor)}</strong>${mixTimeMin!=null?` · Mixing time: <strong>${fmtNum(mixTimeMin)} min</strong> (${fmtNum(p.mixing_min_per_mix)} min/mix)`:''}</div>`
@@ -3560,19 +3896,30 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
     ${remarkBlock}
     <div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Packing Hrs</th><th>Prod./Exp. Date</th><th>Status</th>${(itemsEditable || showItemConfirmButtons)?'<th></th>':''}</tr></thead>
     <tbody>${items.map(it => {
-      const item = ITEMS_BY_NO[it.item_no];
+      const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
       const dateLabel = formatProdExpDate(it);
       const itStatus = it.status==='Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
       const rowEditable = (itemsEditable || showItemConfirmButtons) && it.status!=='Confirmed';
+      // Only items actually tracking an expiry date (Cooler/Freezer) get an editable date —
+      // a plain "Prod: ..." item's date is just the run's own date, not meant to be
+      // overridden per item. Everything has to live inside one white-space:normal wrapper,
+      // or it inherits the table's default nowrap and overflows into the next column.
       const dateCell = rowEditable
-        ? `<div style="white-space:normal">${dateLabel}</div>
-           <select style="margin-top:4px;font-size:11px;padding:2px 4px" onchange="updateRunItemDateMode(${it.id}, this.value)">
-             <option value="full" ${((it.date_display_mode||'full')==='full')?'selected':''}>Date + Julian</option>
-             <option value="julian" ${(it.date_display_mode==='julian')?'selected':''}>Julian only</option>
-           </select>`
+        ? `<div style="white-space:normal;min-width:140px">
+             <div>${dateLabel}</div>
+             ${it.expired_date ? `<input type="date" value="${it.expired_date}" style="margin-top:4px;font-size:11px;padding:2px 4px;width:100%" onchange="updateRunItemProdExpDate(${it.id}, this.value, 'expired_date')">` : ''}
+             <select style="margin-top:4px;font-size:11px;padding:2px 4px;width:100%" onchange="updateRunItemDateMode(${it.id}, this.value)">
+               <option value="full" ${((it.date_display_mode||'full')==='full')?'selected':''}>Date + Julian</option>
+               <option value="julian" ${(it.date_display_mode==='julian')?'selected':''}>Julian only</option>
+             </select>
+           </div>`
         : `<div style="white-space:normal">${dateLabel}</div>`;
+      const itemReorderBtns = (itemsEditable && canWrite() && it.status!=='Confirmed')
+        ? `<button class="btn secondary" style="padding:2px 6px;font-size:11px" title="Move up" onclick="moveRunItemOrder('${gid}', ${it.id}, 'up')">▲</button>
+           <button class="btn secondary" style="padding:2px 6px;font-size:11px" title="Move down" onclick="moveRunItemOrder('${gid}', ${it.id}, 'down')">▼</button>`
+        : '';
       return `<tr>
-        <td>${it.item_no}</td>
+        <td style="white-space:nowrap">${itemReorderBtns} ${it.item_no}</td>
         <td>${it.item_name||''}
           ${(rowEditable && canWrite())
             ? `<input placeholder="Remark..." value="${(it.remark||'').replace(/"/g,'&quot;')}" style="display:block;margin-top:4px;font-size:11px;padding:3px 6px;width:100%;color:var(--danger);font-weight:700;font-style:italic" onchange="updateRunItemRemark(${it.id}, this.value)">`
@@ -3620,7 +3967,8 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
       <button class="btn secondary" id="${gid}_addBtn" onclick="addRunItem(${run.id}, '${gid}', '${run.run_date}')">＋ Add</button>
       <button class="btn secondary" id="${gid}_cancelBtn" style="display:none" onclick="cancelEditRunItemInline('${gid}')">✕ Cancel Edit</button>
     </div>
-    <div id="${gid}_capNote" style="font-size:12px;color:var(--danger);font-weight:600;margin-top:6px"></div>` : ''}
+    <div id="${gid}_capNote" style="font-size:12px;color:var(--danger);font-weight:600;margin-top:6px"></div>
+    <div id="${gid}_itemDetail" style="margin-top:6px"></div>` : ''}
   </div>`;
 }
 function registerRunItemPickCallback(gid, run, allItems){
@@ -3628,11 +3976,17 @@ function registerRunItemPickCallback(gid, run, allItems){
   const usedKg = runUsedKg(allItems.filter(it => it.run_id === run.id));
   window['onRunItemPicked_'+gid] = function(){
     const itemNo = document.getElementById(gid+'_no').value;
-    const item = ITEMS_BY_NO[itemNo];
+    const itemName = document.getElementById(gid+'_name').value;
+    // Resolve using the picked suggestion's name too — item_no alone can match more than
+    // one real item (see Duplicated Items), and ITEMS_BY_NO only keeps the last one loaded.
+    const item = resolveItemByNoAndName(itemNo, itemName) || ITEMS_BY_NO[itemNo];
     if(!item) return;
+    const detailEl = document.getElementById(gid+'_itemDetail');
+    if(detailEl) detailEl.innerHTML = `<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px">${sauceItemDetailGridHtml(item)}</div>`;
     document.getElementById(gid+'_machines').value = item.machines_running || '';
     document.getElementById(gid+'_cycles').value = item.cycle || '';
     document.getElementById(gid+'_bpc').value = item.bags_per_cycle || '';
+    document.getElementById(gid+'_remark').value = item.remark || '';
     const storage = (item.storage || '').toLowerCase();
     const isCompoundStorage = storage.includes('freezer') && storage.includes('cooler');
     document.getElementById(gid+'_dateChoiceWrap').style.display = isCompoundStorage ? '' : 'none';
@@ -3691,7 +4045,7 @@ function renderRunCardsGroupedByLine(runs, allItems, containerId, prefix, showCo
 async function fetchRunsAndItems(date){
   const runs = await sbGet(`erp_production_runs?select=id,run_date,line,product_name,planned_mixes,confirmed_mixes,status,remark,sort_order&run_date=eq.${date}&order=sort_order.asc.nullslast,id.asc&limit=200`);
   const items = runs.length
-    ? await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,machines,cycles,bags_per_cycle,packing_hrs,production_date,expired_date,status,confirmed_cases,remark,date_display_mode&run_id=in.(${runs.map(r=>r.id).join(',')})&order=id.asc&limit=1000`)
+    ? await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,machines,cycles,bags_per_cycle,packing_hrs,production_date,expired_date,status,confirmed_cases,remark,date_display_mode,sort_order&run_id=in.(${runs.map(r=>r.id).join(',')})&order=sort_order.asc.nullslast,id.asc&limit=1000`)
     : [];
   return { runs, items };
 }
@@ -3749,7 +4103,7 @@ async function updateRunMixes(runId, value){
 // new remaining capacity. Earlier items in the run were set for specific orders and are
 // left exactly as they are.
 async function recalcLastItemCasesForRun(runId, mixes){
-  const rows = await sbGet(`erp_production_run_items?select=id,item_no,planned_cases,status&run_id=eq.${runId}&order=id.asc&limit=1000`);
+  const rows = await sbGet(`erp_production_run_items?select=id,item_no,planned_cases,machines,cycles,bags_per_cycle,status&run_id=eq.${runId}&order=sort_order.asc.nullslast,id.asc&limit=1000`);
   const pending = rows.filter(r => r.status !== 'Confirmed');
   if(!pending.length) return;
   const lastItem = pending[pending.length - 1];
@@ -3771,7 +4125,11 @@ async function recalcLastItemCasesForRun(runId, mixes){
   // calc above — otherwise a negative cap overrides the >=0 result and Cases goes negative.
   if(componentCap !== null && componentCap < suggested) suggested = Math.max(0, componentCap);
   if(suggested !== Math.round(parseFloat(lastItem.planned_cases) || 0)){
-    await sbUpdate('erp_production_run_items', lastItem.id, { planned_cases: suggested });
+    // Cases changed, so this item's packing_hrs (stored from whatever Cases it had before)
+    // is now stale too — recompute it the same way the Add/Edit form does, or "Total packing
+    // hours for this run" would keep showing the old figure after a batches change.
+    const newPackingHrs = computePackingHrs(suggested, ITEMS_BY_NO[lastItem.item_no], lastItem.machines, lastItem.cycles, lastItem.bags_per_cycle);
+    await sbUpdate('erp_production_run_items', lastItem.id, { planned_cases: suggested, packing_hrs: newPackingHrs });
   }
 }
 async function updateRunRemark(runId, value){
@@ -3806,11 +4164,37 @@ async function moveRunOrder(runId, direction){
     await refreshScheduleScreen();
   }catch(e){ toast('Reorder failed: ' + e.message); }
 }
+// Reorders packed items within their own run only — mirrors moveRunOrder, but the group is
+// this run's items (from RUN_ITEMS_CACHE, keyed by the card's gid) instead of runs in a Line.
+async function moveRunItemOrder(gid, itemId, direction){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const group = (RUN_ITEMS_CACHE[gid] || [])
+    .slice()
+    .sort((a,b) => (a.sort_order ?? a.id) - (b.sort_order ?? b.id) || a.id - b.id);
+  const idx = group.findIndex(it => it.id === itemId);
+  if(idx === -1) return;
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if(swapIdx < 0 || swapIdx >= group.length) return; // already at that end
+  const updates = group.map((it,i) => ({ id: it.id, sort_order: i }));
+  const tmp = updates[idx].sort_order;
+  updates[idx].sort_order = updates[swapIdx].sort_order;
+  updates[swapIdx].sort_order = tmp;
+  try{
+    for(const u of updates){ await sbUpdate('erp_production_run_items', u.id, { sort_order: u.sort_order }); }
+    toast('Order updated');
+    await refreshScheduleScreen();
+  }catch(e){ toast('Reorder failed: ' + e.message); }
+}
 async function updateRunItemCases(id, value){
   if(!canWrite()){ toast('You have read-only access'); return; }
   const cases = Math.round(parseFloat(value) || 0);
   try{
-    await sbUpdate('erp_production_run_items', id, { planned_cases: cases });
+    // Cases changed manually here too — recompute packing_hrs the same way the batches-driven
+    // auto-recalc does, so "Total packing hours for this run" doesn't go stale.
+    const rows = await sbGet(`erp_production_run_items?select=item_no,machines,cycles,bags_per_cycle&id=eq.${id}`);
+    const it = rows[0];
+    const newPackingHrs = it ? computePackingHrs(cases, ITEMS_BY_NO[it.item_no], it.machines, it.cycles, it.bags_per_cycle) : null;
+    await sbUpdate('erp_production_run_items', id, { planned_cases: cases, packing_hrs: newPackingHrs });
     toast('Cases updated');
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
@@ -3834,7 +4218,7 @@ function runHeaderNarrative(run){
   return `<strong>${fmtNum(mixes)} mixes of ${run.product_name}${detail}</strong>`;
 }
 function itemNarrative(it){
-  const item = ITEMS_BY_NO[it.item_no];
+  const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
   const w = item && item.weight_per_pack ? `${fmtNum(item.weight_per_pack)}${item.unit_of_weight||''}` : '';
   const pcs = item && item.pieces ? `x ${fmtNum(item.pieces)} ${item.unit||'pouch'}` : '';
   const box = item && item.box ? ` (${item.box})` : '';
@@ -3880,7 +4264,10 @@ function renderLineSummary(runs, items){
       const p = getProductInfo(run.product_name);
       const mixes = run.status === 'Confirmed' ? (run.confirmed_mixes||0) : (run.planned_mixes||0);
       const mixTimeMin = p && p.mixing_min_per_mix ? mixes * p.mixing_min_per_mix : null;
-      const statusChip = run.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
+      const actualYield = runActualYield(run, runItems, p);
+      const statusChip = run.status === 'Confirmed'
+        ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)} batches${actualYield!=null?`, Yield: ${fmtNum(actualYield)}`:''})</span>`
+        : `<span class="chip">Planned</span>`;
       const runInfoBlock = `<div style="margin-bottom:6px">
         <strong>${fmtNum(mixes)} batches of ${run.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}</strong>
         <span style="font-weight:400;color:var(--muted);font-size:12px;margin-left:8px">
@@ -3893,7 +4280,7 @@ function renderLineSummary(runs, items){
         return `<div style="margin-bottom:16px">${runInfoBlock}<div style="color:var(--muted);font-size:12px;padding-left:12px">(no items packed yet)</div></div>`;
       }
       const itemRows = runItems.map(it => {
-        const item = ITEMS_BY_NO[it.item_no];
+        const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
         const dateLabel = formatProdExpDate(it);
         const itStatus = it.status==='Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
         const packingCalc = it.packing_hrs
@@ -3927,6 +4314,16 @@ function renderLineSummary(runs, items){
     </div>`;
   }).join('');
 }
+// Shared by the live Add/Edit-item preview and recalcLastItemCasesForRun's after-the-fact
+// recompute when Cases changes without going through this form (e.g. a batches change).
+function computePackingHrs(cases, item, machines, cycles, bagsPerCycle){
+  if(!(cases > 0 && machines > 0 && bagsPerCycle > 0)) return null;
+  const piecesPerCase = item ? (parseFloat(item.pieces) || 1) : 1;
+  const totalBags = cases * piecesPerCase;
+  const totalCycles = totalBags / bagsPerCycle;
+  const minutes = totalCycles / (machines * (cycles || 1));
+  return minutes / 60;
+}
 function recalcRunItemPacking(gid){
   const itemNo = document.getElementById(gid+'_no').value;
   const item = ITEMS_BY_NO[itemNo];
@@ -3934,15 +4331,8 @@ function recalcRunItemPacking(gid){
   const machines = parseFloat(document.getElementById(gid+'_machines').value) || 0;
   const cycles = parseFloat(document.getElementById(gid+'_cycles').value) || 1;
   const bagsPerCycle = parseFloat(document.getElementById(gid+'_bpc').value) || 0;
-  const piecesPerCase = item ? (parseFloat(item.pieces) || 1) : 1;
-  let hrs = '';
-  if(cases > 0 && machines > 0 && bagsPerCycle > 0){
-    const totalBags = cases * piecesPerCase;
-    const totalCycles = totalBags / bagsPerCycle;
-    const minutes = totalCycles / (machines * cycles);
-    hrs = (minutes/60).toFixed(2);
-  }
-  document.getElementById(gid+'_hrs').value = hrs ? hrs+' hrs' : '';
+  const hrs = computePackingHrs(cases, item, machines, cycles, bagsPerCycle);
+  document.getElementById(gid+'_hrs').value = hrs!=null ? hrs.toFixed(2)+' hrs' : '';
 }
 function editRunItemInline(itemId, gid){
   const rows = RUN_ITEMS_CACHE || {};
@@ -3958,7 +4348,9 @@ function editRunItemInline(itemId, gid){
   document.getElementById(gid+'_bpc').value = it.bags_per_cycle ?? '';
   document.getElementById(gid+'_remark').value = it.remark || '';
   document.getElementById(gid+'_datemode').value = it.date_display_mode || 'full';
-  const item = ITEMS_BY_NO[it.item_no];
+  const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
+  const detailEl = document.getElementById(gid+'_itemDetail');
+  if(detailEl) detailEl.innerHTML = item ? `<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px">${sauceItemDetailGridHtml(item)}</div>` : '';
   const storage = (item?.storage || '').toLowerCase();
   const isCompoundStorage = storage.includes('freezer') && storage.includes('cooler');
   document.getElementById(gid+'_dateChoiceWrap').style.display = isCompoundStorage ? '' : 'none';
@@ -3976,6 +4368,8 @@ function cancelEditRunItemInline(gid){
   document.getElementById(gid+'_addBtn').textContent = '＋ Add';
   document.getElementById(gid+'_cancelBtn').style.display = 'none';
   document.getElementById(gid+'_dateChoiceWrap').style.display = 'none';
+  const detailEl = document.getElementById(gid+'_itemDetail');
+  if(detailEl) detailEl.innerHTML = '';
 }
 async function addRunItem(runId, gid, runDate){
   if(!canWrite()){ toast('You have read-only access'); return; }
@@ -3984,7 +4378,7 @@ async function addRunItem(runId, gid, runDate){
   const cases = Math.round(parseFloat(document.getElementById(gid+'_cases').value) || 0);
   if(!itemNo){ toast('Please select an item first'); return; }
   if(!cases){ toast('Please enter planned cases'); return; }
-  const item = ITEMS_BY_NO[itemNo];
+  const item = resolveItemByNoAndName(itemNo, itemName) || ITEMS_BY_NO[itemNo];
   const machines = parseFloat(document.getElementById(gid+'_machines').value) || null;
   const cycles = parseFloat(document.getElementById(gid+'_cycles').value) || null;
   const bagsPerCycle = parseFloat(document.getElementById(gid+'_bpc').value) || null;
@@ -4108,6 +4502,49 @@ function toggleCompRecent(){
   body.style.display = open ? 'none' : 'block';
   icon.textContent = open ? '▸ Click to expand' : '▾ Click to collapse';
 }
+/* ---- Manage Components (erp_sachets master: name + unit weight) ---- */
+function resetSachetMasterForm(){
+  document.getElementById('sachetEditId').value = '';
+  document.getElementById('sachetFormTitle').textContent = 'Add New Component';
+  document.getElementById('sachetSubmitBtn').textContent = '＋ Add Component';
+  document.getElementById('sachetName').value = '';
+  document.getElementById('sachetUnitWeight').value = '';
+  document.getElementById('sachetUnitWeightUnit').value = 'g';
+}
+function editSachetMaster(id){
+  const s = SACHETS.find(x => x.id === id);
+  if(!s) return;
+  document.getElementById('sachetEditId').value = id;
+  document.getElementById('sachetFormTitle').textContent = 'Edit Component';
+  document.getElementById('sachetSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('sachetName').value = s.sachet_name || '';
+  document.getElementById('sachetUnitWeight').value = s.unit_weight ?? '';
+  document.getElementById('sachetUnitWeightUnit').value = s.unit_weight_unit || 'g';
+  window.scrollTo(0,0);
+}
+async function submitSachetMaster(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const name = document.getElementById('sachetName').value.trim();
+  if(!name){ toast('Please enter a component name'); return; }
+  const weightStr = document.getElementById('sachetUnitWeight').value;
+  const unit = document.getElementById('sachetUnitWeightUnit').value || 'g';
+  const editId = document.getElementById('sachetEditId').value;
+  const payload = { sachet_name: name, unit_weight: weightStr ? parseFloat(weightStr) : null, unit_weight_unit: unit };
+  try{
+    if(editId){
+      await sbUpdate('erp_sachets', editId, payload);
+      toast('Component updated');
+    } else {
+      await sbInsert('erp_sachets', [payload]);
+      toast('Component added');
+    }
+    resetSachetMasterForm();
+    await refreshComponents();
+  }catch(e){ toast('Save failed: ' + e.message); }
+}
+async function deleteSachetMaster(id){
+  await deleteRow('erp_sachets', id, refreshComponents);
+}
 async function submitComponent(){
   if(!canWrite()){ toast('You have read-only access'); return; }
   const sachet = document.getElementById('compSachet').value;
@@ -4131,8 +4568,22 @@ async function refreshComponents(){
   if(!connected) return;
   document.getElementById('compDate').value = document.getElementById('compDate').value || todayStr();
   try{
+    SACHETS = await sbGet('erp_sachets?select=id,sachet_name,unit_weight,unit_weight_unit&order=sachet_name.asc&limit=1000');
+    document.getElementById('sachetMasterTable').innerHTML = SACHETS.map(s => `<tr>
+      <td>${s.sachet_name}</td>
+      <td>${s.unit_weight!=null ? fmtNum(s.unit_weight)+' '+(s.unit_weight_unit||'g') : '–'}</td>
+      <td class="no-print" style="white-space:nowrap">
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="editSachetMaster(${s.id})">✎ Edit</button>
+        <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteSachetMaster(${s.id})">✕ Delete</button>
+      </td>
+    </tr>`).join('');
+    document.getElementById('sachetMasterEmpty').style.display = SACHETS.length ? 'none' : 'block';
+    const optionsHtml = '<option value="">Select sachet...</option>' + SACHETS.map(s=>`<option>${s.sachet_name}</option>`).join('');
+    document.getElementById('compSachet').innerHTML = optionsHtml;
+    document.getElementById('compAdjSachet').innerHTML = optionsHtml;
+
     const rows = await sbGet('erp_sachet_inventory?select=sachet_name,inventory_qty&order=sachet_name.asc&limit=500');
-    document.getElementById('sachetTable').innerHTML = rows.map(r=>`<tr>
+    document.getElementById('sachetTable').innerHTML = rows.map(r => `<tr>
       <td>${r.sachet_name}</td><td>${fmtNum(r.inventory_qty)}</td>
     </tr>`).join('');
     document.getElementById('sachetEmpty').style.display = rows.length ? 'none' : 'block';
@@ -4168,6 +4619,19 @@ async function refreshComponents(){
     document.getElementById('compPrevBtn').disabled = COMP_PAGE <= 1;
     document.getElementById('compNextBtn').disabled = COMP_PAGE >= totalPages;
   }catch(e){ toast('Failed to load sachet inventory: ' + e.message); }
+}
+async function printSachetInventoryReport(){
+  const rows = await sbGet('erp_sachet_inventory?select=sachet_name,inventory_qty&order=sachet_name.asc&limit=500');
+  if(!rows.length){ toast('No inventory data to print'); return; }
+  const html = `
+    <h2>Components (Sachets) — Live Inventory</h2>
+    <p>Date: ${todayStr()}</p>
+    <table><colgroup><col style="width:70%"><col style="width:30%"></colgroup>
+      <thead><tr><th>Sachet Name</th><th>Inventory Qty</th></tr></thead>
+      <tbody>${rows.map(r => `<tr><td>${r.sachet_name}</td><td>${fmtNum(r.inventory_qty)}</td></tr>`).join('')}</tbody>
+    </table>
+  `;
+  runReportPrint(html);
 }
 function compPrevPage(){ if(COMP_PAGE > 1){ COMP_PAGE--; refreshComponents(); } }
 function compNextPage(){ COMP_PAGE++; refreshComponents(); }
@@ -4290,7 +4754,7 @@ let PRODUCE_PENDING_BY_ITEM = {};
 async function refreshProduce(){
   if(!connected) return;
   try{
-    PRODUCE_DATA = await sbGet('erp_inventory_summary?select=item_no,item_name,customer,line,ap_inventory_qty&ap_inventory_qty=lt.0&order=ap_inventory_qty.asc&limit=500');
+    PRODUCE_DATA = await sbGet('erp_inventory_summary?select=item_no,item_name,customer,line,act_inventory_qty,ap_inventory_qty&ap_inventory_qty=lt.0&order=ap_inventory_qty.asc&limit=500');
     PRODUCE_PENDING_BY_ITEM = {};
     if(PRODUCE_DATA.length){
       const pending = await sbGet('erp_pending_order?select=item_no,ship_date,qty,customer,po_no&ship_date=gte.' + todayStr() + '&order=ship_date.asc&limit=3000');
@@ -4343,10 +4807,11 @@ function renderProduceList(){
       : '(no pending orders scheduled)';
     return `<tr class="${z}" style="cursor:pointer" onclick="document.getElementById('${rowId}').style.display = document.getElementById('${rowId}').style.display==='table-row'?'none':'table-row'">
       <td>${r.item_no}</td><td>${r.item_name||''}</td>
+      <td>${fmtNum(r.act_inventory_qty)}</td>
       <td><span class="chip warn">${fmtNum(r.ap_inventory_qty)}</span></td>
       <td>${r.customer||''}</td><td>${r.line||''}</td>
     </tr>
-    <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="5" style="font-size:12px">${detail}</td></tr>`;
+    <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="6" style="font-size:12px">${detail}</td></tr>`;
   }).join('');
 }
 
@@ -4364,6 +4829,13 @@ function resetItemForm(){
   ITEM_FIELDS.forEach(f => { const el = document.getElementById(ITEM_INPUT_IDS[f]); if(el) el.value=''; });
   document.getElementById('itemMakeToOrder').checked = false;
 }
+function toggleItemForm(){
+  const body = document.getElementById('itemFormBody');
+  const icon = document.getElementById('itemFormToggleIcon');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▸ Click to expand' : '▾ Click to collapse';
+}
 function editItem(id){
   const it = ITEMS.find(i => i.id === id);
   if(!it) return;
@@ -4374,6 +4846,8 @@ function editItem(id){
     if(el) el.value = it[ITEM_DB_COLS[f]] ?? '';
   });
   document.getElementById('itemMakeToOrder').checked = !!it.make_to_order;
+  document.getElementById('itemFormBody').style.display = 'block';
+  document.getElementById('itemFormToggleIcon').textContent = '▾ Click to collapse';
   showScreen('items'); window.scrollTo(0,0);
 }
 async function submitItem(){
@@ -4441,7 +4915,7 @@ function clearItemsFilters(){
   document.getElementById('itemsFilterCustomer').value = '';
   renderItemsTable();
 }
-function renderItemsTable(){
+function filterItemsList(){
   const q = (document.getElementById('itemsSearch')?.value || '').trim().toLowerCase();
   const lineFilter = document.getElementById('itemsFilterLine')?.value || '';
   const custFilter = document.getElementById('itemsFilterCustomer')?.value || '';
@@ -4449,7 +4923,24 @@ function renderItemsTable(){
   if(q) rows = rows.filter(r => (r.item_no||'').toLowerCase().includes(q) || (r.item_name||'').toLowerCase().includes(q));
   if(lineFilter) rows = rows.filter(r => (r.line||'').toLowerCase() === lineFilter.toLowerCase());
   if(custFilter) rows = rows.filter(r => (r.customer||'').toLowerCase() === custFilter.toLowerCase());
-  rows = rows.slice(0,400);
+  return rows;
+}
+// Applies to whatever's currently visible under Search/Line/Customer — e.g. filter by
+// Customer "US" then click this to flip every one of those items to Make to Order in one go,
+// instead of opening each item's edit form individually.
+async function bulkSetMakeToOrderFiltered(){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const rows = filterItemsList().filter(r => !r.make_to_order);
+  if(!rows.length){ toast('No matching items need updating — none match the current filters, or they\'re already Make to Order'); return; }
+  if(!confirm(`Set ${rows.length} item(s) matching the current filters to Make to Order?`)) return;
+  try{
+    for(const r of rows){ await sbUpdate('erp_items', r.id, { make_to_order: true }); }
+    toast(`${rows.length} item(s) set to Make to Order`);
+    await loadCaches(); await refreshItemsScreen(); await refreshDashboard();
+  }catch(e){ toast('Bulk update failed: ' + e.message); }
+}
+function renderItemsTable(){
+  const rows = filterItemsList().slice(0,400);
   document.getElementById('itemsTable').innerHTML = rows.map((r,i)=>{
     const rowId = 'item-detail-'+i;
     const z = (i % 2 === 0) ? ' zrow' : '';
@@ -4664,10 +5155,17 @@ function resetInventoryAdjustForm(){
 }
 async function onAdjItemPicked(){
   const itemNo = document.getElementById('adjItemNo').value;
+  const itemName = document.getElementById('adjItemName').value;
   if(!itemNo){ document.getElementById('adjCurrentWrap').style.display = 'none'; return; }
   try{
-    const rows = await sbGet(`erp_inventory_summary?select=act_inventory_qty&item_no=eq.${encodeURIComponent(itemNo)}&limit=1`);
-    const qty = rows && rows[0] ? Number(rows[0].act_inventory_qty)||0 : 0;
+    // item_no alone isn't a reliable key — the same item_no can be shared by genuinely
+    // different items (see the Duplicated Items screen) as well as split across several
+    // erp_inventory_summary rows for the one real item (e.g. by customer). Matching on
+    // item_no + item_name together (like resolveItemByNoAndName/lookupDupe do elsewhere)
+    // keeps this scoped to the actual item just picked, then sums whatever rows remain
+    // since the adjustment this form writes is item-scoped, not customer-scoped.
+    const rows = await sbGet(`erp_inventory_summary?select=act_inventory_qty&item_no=eq.${encodeURIComponent(itemNo)}&item_name=eq.${encodeURIComponent(itemName)}`);
+    const qty = (rows||[]).reduce((sum,r) => sum + (Number(r.act_inventory_qty)||0), 0);
     document.getElementById('adjCurrentQty').value = fmtNum(qty);
     document.getElementById('adjCurrentWrap').dataset.currentQty = qty;
     document.getElementById('adjNewQty').value = qty;
@@ -4787,15 +5285,15 @@ function renderUsersTable(){
   <tr id="${rowId}" style="display:none"><td colspan="5">
     <div style="padding:10px;border:1px solid var(--line);border-radius:9px">
       <label style="display:flex;align-items:center;gap:6px;font-weight:600">
-        <input type="checkbox" id="${rowId}_full" ${isFull?'checked':''} onchange="document.getElementById('${rowId}_grid').style.display=this.checked?'none':'grid'">
+        <input type="checkbox" id="${rowId}_full" ${isFull?'checked':''} style="width:auto;flex:0 0 auto" onchange="document.getElementById('${rowId}_grid').style.display=this.checked?'none':'grid'">
         Full access (every screen their role allows)
       </label>
       <div id="${rowId}_grid" style="display:${isFull?'none':'grid'};grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 16px;margin-top:10px">
         ${Object.keys(byModule).map(m => `<div>
           <div style="font-weight:700;font-size:12px;margin-bottom:4px;text-transform:capitalize">${m}</div>
           ${byModule[m].map(s => `<label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:3px">
-            <input type="checkbox" value="${s.screen}" ${(!isFull && allowed.includes(s.screen))?'checked':''} class="${rowId}_cb">
-            ${s.label}
+            <input type="checkbox" value="${s.screen}" ${(!isFull && allowed.includes(s.screen))?'checked':''} class="${rowId}_cb" style="width:auto;flex:0 0 auto">
+            <span style="flex:0 0 auto">${s.label}</span>
           </label>`).join('')}
         </div>`).join('')}
       </div>
@@ -5019,6 +5517,11 @@ function parseCSV(text){
   if(field.length || row.length){ row.push(field); rows.push(row); }
   return rows.filter(r => r.length > 1 || (r[0]||'').trim() !== '');
 }
+// parseFloat("1,827") is 1, not 1827 — it stops at the first non-numeric character, so any
+// CSV column using thousands separators (invoice QTY, sales QTY, etc.) needs commas stripped first.
+function parseCsvNumber(v){
+  return parseFloat(String(v ?? '').replace(/,/g,''));
+}
 function lookupDupe(itemNo, itemName){
   const hit = DUPES.find(d => d.item_no === itemNo && d.item_name === itemName);
   return hit ? {item_no: hit.correct_item_no, item_name: hit.correct_item_name} : {item_no: itemNo, item_name: itemName};
@@ -5077,7 +5580,7 @@ async function handleInvoiceFile(file){
     itemNo = corrected.item_no; itemName = corrected.item_name;
     if(!itemNo) continue;
     const matched = resolveItemByNoAndName(itemNo, itemName);
-    if(!matched){ skipped++; skippedDetails.push(`${itemNo} ${itemName||'(no name)'} (qty ${parseFloat(r[36])||0})`); continue; }
+    if(!matched){ skipped++; skippedDetails.push(`${itemNo} ${itemName||'(no name)'} (qty ${parseCsvNumber(r[36])||0})`); continue; }
     if((ITEMS_BY_NO_ALL[itemNo]||[]).length > 1 && (matched.item_name||'').trim().toLowerCase() !== itemName.trim().toLowerCase()){
       ambiguous++;
       ambiguousDetails.push(`${itemNo}: CSV name "${itemName}" matched to master name "${matched.item_name}"`);
@@ -5085,7 +5588,7 @@ async function handleInvoiceFile(file){
     out.push({
       ship_date: parseDateLoose(r[8]),
       item_no: itemNo, item_name: itemName,
-      qty: parseFloat(r[36]) || 0,
+      qty: parseCsvNumber(r[36]) || 0,
       customer: String(r[9] ?? '').trim(),
       po_no: poCheckValue,
       customer_no: String(r[26] ?? '').trim()
@@ -5135,7 +5638,7 @@ async function handleSalesFile(file){
   const zeroQtyDetails = [];    // rows never added — qty parsed as 0/blank
   const ambiguousDetails = [];  // rows that WERE added, but flagged for a manual check
   for(const r of clean){
-    const qtyRaw = parseFloat(r[25]); // col26 -> index25
+    const qtyRaw = parseCsvNumber(r[25]); // col26 -> index25
     const raw18 = String(r[17] ?? '');
     let itemNo = raw18.split(' ')[0].trim();
     let itemName = raw18.slice(itemNo.length + 1).trim();
@@ -5261,8 +5764,27 @@ function toJulianDate(dateStr){
 // Shared Prod./Exp. Date formatter used everywhere (Create, Preview, Confirm, Packaging
 // report). Each item stores its own display preference ("full" date+Julian, or "julian"
 // only), since this varies item by item rather than being one global setting.
+function toMMDDYY(dateStr){
+  if(!dateStr) return '';
+  const [y, m, d] = dateStr.split('-');
+  if(!y || !m || !d) return '';
+  return `${m}${d}${y.slice(-2)}`;
+}
 function formatProdExpDate(it){
   if(!it.expired_date && !it.production_date) return '–';
+  // Item #9612 uses a special customer-required label/format instead of the
+  // usual "Exp:"/"Prod:" + Julian display: raw MMDDYY digits, no slashes.
+  // Best Before is always production date + the item's own R.SL Day (Manage
+  // Items), not the run item's stored expired_date (which is only populated
+  // for Cooler-storage items and this item may not be one).
+  if(parseInt(it.item_no, 10) === 9612 && it.production_date){
+    const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
+    const rsl = parseFloat(item?.r_sl_day) || 0;
+    const bbDate = addDaysToDateStr(it.production_date, rsl);
+    const prod = toMMDDYY(it.production_date);
+    const bb = toMMDDYY(bbDate);
+    return `${prod} VL BB: ${bb}`;
+  }
   const mode = it.date_display_mode || 'full';
   // Julian date is always derived from the actual PRODUCTION date, never the
   // (calculated) expiry date — production_date is now always set on every item.
@@ -5275,6 +5797,14 @@ async function updateRunItemDateMode(id, mode){
   if(!canWrite()){ toast('You have read-only access'); return; }
   try{
     await sbUpdate('erp_production_run_items', id, { date_display_mode: mode });
+    await refreshScheduleScreen();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+async function updateRunItemProdExpDate(id, value, field){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  try{
+    await sbUpdate('erp_production_run_items', id, { [field]: value || null });
+    toast('Date updated');
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
@@ -5333,8 +5863,14 @@ async function printPackagingReport(){
   const { runs, items } = await fetchRunsAndItems(date);
   if(!runs.length){ toast('No runs to print for this date'); return; }
   const byLine = {};
-  runs.forEach(r => { const l = r.line || '(No Line)'; (byLine[l]=byLine[l]||[]).push(r); });
+  runs.forEach(r => {
+    const runItems = items.filter(it => it.run_id === r.id);
+    if(!runItems.length) return; // nothing packed yet — leave this run off the packaging report
+    const l = r.line || '(No Line)';
+    (byLine[l]=byLine[l]||[]).push(r);
+  });
   const lines = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  if(!lines.length){ toast('No packed items to print for this date'); return; }
   const html = `
     <h2>Packaging Team Report</h2>
     <p>Date: ${date}</p>
@@ -5348,15 +5884,15 @@ async function printPackagingReport(){
           return `<div style="margin-bottom:10px">
             <div style="font-weight:700;font-style:italic;margin-bottom:4px">${r.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}</div>
             <table><colgroup><col style="width:10%"><col style="width:26%"><col style="width:30%"><col style="width:10%"><col style="width:24%"></colgroup><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Prod./Exp. Date</th></tr></thead>
-            <tbody>${runItems.length ? runItems.map(it => {
-              const item = ITEMS_BY_NO[it.item_no];
+            <tbody>${runItems.map(it => {
+              const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
               const packingCalc = it.packing_hrs
                 ? `Packing: ${fmtHrs(it.packing_hrs)}h for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)`
                 : '';
               const remarkLine = it.remark ? `<tr><td></td><td colspan="4" class="pr-detail" style="color:#c0392b;font-weight:700;font-style:italic">📝 ${it.remark}</td></tr>` : '';
               return `<tr><td>${it.item_no}</td><td>${it.item_name||''}</td><td>${itemPackDetail(item, it.planned_cases)}</td><td>${fmtNum(it.planned_cases)}</td><td>${formatProdExpDate(it)}</td></tr>` +
                 (packingCalc ? `<tr><td></td><td colspan="4" class="pr-detail">${packingCalc}</td></tr>` : '') + remarkLine;
-            }).join('') : `<tr><td colspan="5">(no items packed yet)</td></tr>`}</tbody></table>
+            }).join('')}</tbody></table>
           </div>`;
         }).join('')}
       </div>`;
@@ -5388,13 +5924,15 @@ let SAUCE_PREVIEW_DAY = null;
 let SAUCE_PREVIEW_TASKS = [];
 let SAUCE_CONFIRM_DAY = null;
 let SAUCE_CONFIRM_TASKS = [];
+let SAUCE_STOCK_BY_ITEM_NO = {};
 
 async function refreshSauceScreen(){
-  if(!connected || !isAdmin()) return; // Sauce Production is admin-only for now
+  if(!connected) return; // access now follows the same pattern as Daily Production Schedule —
+  // module + operational screens visible to everyone, management screens gated by can-write
   document.getElementById('sauceDayDate').value = document.getElementById('sauceDayDate').value || todayStr();
   document.getElementById('saucePreviewDate').value = document.getElementById('saucePreviewDate').value || todayStr();
   document.getElementById('sauceConfirmDate').value = document.getElementById('sauceConfirmDate').value || todayStr();
-  document.getElementById('sauceIngReceiveDate').value = document.getElementById('sauceIngReceiveDate').value || todayStr();
+  document.getElementById('materialWeekStart').value = document.getElementById('materialWeekStart').value || mondayOfWeek(todayStr());
   try{
     SAUCE_LOCATIONS = await sbGet('erp_sauce_locations?select=id,name&order=name.asc&limit=200');
     document.getElementById('sauceTaskLocation').innerHTML = '<option value="">Select location...</option>' + SAUCE_LOCATIONS.map(l=>`<option>${l.name}</option>`).join('');
@@ -5403,26 +5941,35 @@ async function refreshSauceScreen(){
     if(!document.getElementById('sauceEditId').value) renderSauceAllergenChecks([]);
     renderAllergensTable();
 
-    SAUCES = await sbGetAll('erp_sauces?select=id,name,item_code,package_spec,shelf_life_days,remark,erp_sauce_allergens(allergen_id)&order=name.asc');
+    SAUCES = await sbGetAll('erp_sauces?select=id,name,item_code,component_sachet_name,package_spec,shelf_life_days,remark,erp_sauce_allergens(allergen_id)&order=name.asc');
 
-    SAUCE_INGREDIENTS = await sbGetAll('erp_sauce_ingredient_inventory?select=id,name,pcs,weight,package_size,unit,kg_per_unit,inventory_qty&order=name.asc');
+    SAUCE_INGREDIENTS = await sbGetAll('erp_sauce_ingredient_inventory?select=id,name,pcs,weight,package_size,unit,kg_per_unit,produced_by_sauce_id,inventory_qty&order=name.asc');
 
     SAUCE_RECIPE = await sbGetAll('erp_sauce_recipe?select=id,sauce_id,ingredient_id,qty_per_batch,qty_unit&order=id.asc');
 
     ALL_SAUCE_TASK_LOCATIONS = (await sbGetAll('erp_sauce_schedule_tasks?select=location&order=id.asc')).map(t=>t.location).filter(Boolean);
 
+    const stockRows = await sbGetAll('erp_inventory_summary?select=item_no,customer,act_inventory_qty,avg_daily_out_7d,avg_daily_out_30d,stock_level');
+    SAUCE_STOCK_BY_ITEM_NO = {};
+    stockRows.forEach(r => { SAUCE_STOCK_BY_ITEM_NO[r.item_no] = r; });
+
     populateSauceRecipeSelects();
+    populateSauceIngProducedByOptions();
+    populateSauceComponentSachetOptions();
     renderSaucesTable();
     renderSauceIngredientsTable();
     renderSauceRecipeTable();
     renderSauceRecipeBrowse();
     renderSauceLocationsTable();
+    populateSauceAlertCustomerFilter();
+    renderSauceProduceAlertList();
 
     await loadSauceDayForCreate(document.getElementById('sauceDayDate').value);
     await renderSaucePreview();
     await renderSauceConfirmTab();
     await renderSauceScheduledDaysList('scheduledDaysListSauceCreate', 'scheduledDaysEmptySauceCreate', 'jumpToSauceScheduledDayCreate');
     await renderSauceScheduledDaysList('scheduledDaysListSaucePreview', 'scheduledDaysEmptySaucePreview', 'jumpToSauceScheduledDayPreview');
+    await renderSauceMaterialPlan();
   }catch(e){ toast('Failed to load Sauce Production data: ' + e.message); }
 }
 // Only today-and-forward, same convention as Production Schedule's version.
@@ -5436,8 +5983,10 @@ async function renderSauceScheduledDaysList(listElId, emptyElId, jumpFnName){
     const tasks = await sbGetAll(`erp_sauce_schedule_tasks?select=day_id&day_id=in.(${dayIds.join(',')})`);
     const counts = {};
     tasks.forEach(t => { counts[t.day_id] = (counts[t.day_id]||0) + 1; });
+    const daysWithTasks = days.filter(d => counts[d.id] > 0);
+    if(!daysWithTasks.length){ listEl.innerHTML = ''; document.getElementById(emptyElId).style.display = 'block'; return; }
     const today = todayStr();
-    listEl.innerHTML = days.map(d => {
+    listEl.innerHTML = daysWithTasks.map(d => {
       const isToday = d.schedule_date === today;
       const n = counts[d.id] || 0;
       return `<button class="btn secondary" style="padding:6px 12px;font-size:12px${isToday?';border-color:var(--accent);color:var(--accent);font-weight:700':''}" onclick="${jumpFnName}('${d.schedule_date}')">${d.schedule_date}${isToday?' (Today)':''} · ${n} task${n===1?'':'s'}</button>`;
@@ -5590,7 +6139,7 @@ function calcSaucePackingHrs(task){
 function sauceTaskPackingCalcText(task){
   const calc = calcSaucePackingHrs(task);
   if(!calc) return '';
-  return `📦 Packing: ${fmtNum(calc.hrs)}h for ${fmtNum(calc.totalKg)} kg / ${fmtNum(calc.totalPacks)} packs, ${fmtNum(task.machines)} machine(s), ${fmtNum(task.cycles)} cycle(s)/min (${fmtNum(task.bags_per_cycle)} bags/cycle)${calc.hasUnknown?' ⚠ some ingredients have no Kg/Unit set — weight may be incomplete':''}`;
+  return `📦 Packing: ${fmtHrs(calc.hrs)}h for ${fmtNum(calc.totalKg)} kg / ${fmtNum(calc.totalPacks)} packs, ${fmtNum(task.machines)} machine(s), ${fmtNum(task.cycles)} cycle(s)/min (${fmtNum(task.bags_per_cycle)} bags/cycle)${calc.hasUnknown?' ⚠ some ingredients have no Kg/Unit set — weight may be incomplete':''}`;
 }
 
 /* ---- Confirm-time deduction (mirrors deductFlourForProduct) ---- */
@@ -5617,6 +6166,508 @@ async function deductSauceIngredientsForSauce(sauceId, entryDate, mixes){
     return { entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: 0, out_qty: unitsNeeded, note };
   });
   await sbInsert('erp_sauce_ingredient_inout', inserts);
+}
+
+/* ---- Material Plan: what a week of scheduled tasks adds up to, so Purchasing can order
+   ahead — this is demand from the schedule, not a stock count (we don't track sauce
+   ingredient stock levels for now). ---- */
+function mondayOfWeek(dateStr){
+  const d = new Date((dateStr||todayStr()) + 'T00:00:00');
+  const day = d.getDay(); // 0=Sun..6=Sat
+  const diff = (day === 0 ? -6 : 1 - day);
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0,10);
+}
+function addDaysStr(dateStr, n){
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0,10);
+}
+function jumpToMaterialWeek(offsetDays){
+  const base = offsetDays === 0 ? todayStr() : (document.getElementById('materialWeekStart').value || todayStr());
+  document.getElementById('materialWeekStart').value = offsetDays === 0 ? mondayOfWeek(base) : addDaysStr(mondayOfWeek(base), offsetDays);
+  renderSauceMaterialPlan();
+}
+let MATERIAL_WEEK_DAYS = []; // [{date, dayName, tasks:[{sauceId, mixes}]}] for the currently-loaded week
+let MATERIAL_WEEK_DEMAND = []; // [{ing, kgQty, unitQty}] for whatever's currently selected (a day, or the whole week)
+let MATERIAL_SELECTED_DATE = null; // single-select: a "yyyy-mm-dd" from the loaded week, or null for the whole week
+function toggleMaterialDay(date){
+  MATERIAL_SELECTED_DATE = (MATERIAL_SELECTED_DATE === date) ? null : date; // click again to deselect
+  renderSauceMaterialPlan();
+}
+async function renderSauceMaterialPlan(){
+  const daysListEl = document.getElementById('materialDaysList');
+  if(!daysListEl) return;
+  const weekStart = mondayOfWeek(document.getElementById('materialWeekStart').value || todayStr());
+  document.getElementById('materialWeekStart').value = weekStart;
+  const weekEnd = addDaysStr(weekStart, 6);
+  const days = await sbGetAll(`erp_sauce_schedule_days?select=id,schedule_date&schedule_date=gte.${weekStart}&schedule_date=lte.${weekEnd}&order=schedule_date.asc`);
+  const dayIds = days.map(d=>d.id);
+  const tasks = dayIds.length
+    ? await sbGetAll(`erp_sauce_schedule_tasks?select=day_id,sauce_id,mixes,confirmed_mixes,status&day_id=in.(${dayIds.join(',')})`)
+    : [];
+  const dateByDayId = {};
+  days.forEach(d => { dateByDayId[d.id] = d.schedule_date; });
+  const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  MATERIAL_WEEK_DAYS = dayNames.map((name,i) => ({ date: addDaysStr(weekStart,i), dayName: name, tasks: [] }));
+  const tasksByDate = {}; MATERIAL_WEEK_DAYS.forEach(d => tasksByDate[d.date] = d.tasks);
+  tasks.forEach(t => {
+    const date = dateByDayId[t.day_id];
+    if(!date || !tasksByDate[date]) return;
+    const mixes = t.status === 'Confirmed' ? (parseFloat(t.confirmed_mixes)||0) : (parseFloat(t.mixes)||0);
+    tasksByDate[date].push({ sauceId: t.sauce_id, mixes });
+  });
+  // A selected day that fell out of the currently-loaded week (e.g. after Prev/Next Week) no
+  // longer means anything — fall back to showing the whole week instead of a stale selection.
+  if(MATERIAL_SELECTED_DATE && !tasksByDate.hasOwnProperty(MATERIAL_SELECTED_DATE)) MATERIAL_SELECTED_DATE = null;
+  daysListEl.innerHTML = MATERIAL_WEEK_DAYS.map(d => {
+    const rows = d.tasks.length
+      ? `<div>${d.tasks.map(t => `${fmtNum(t.mixes)} × ${sauceRecipeSauceName(t.sauceId)}`).join('<br>')}</div>`
+      : `<div style="color:var(--muted);font-size:12px">Nothing scheduled</div>`;
+    const isSelected = d.date === MATERIAL_SELECTED_DATE;
+    return `<div class="card" style="cursor:pointer${isSelected?';border:2px solid var(--accent)':''}" onclick="toggleMaterialDay('${d.date}')">
+      <strong>${d.dayName} — ${d.date}${d.date===todayStr()?' (Today)':''}</strong>
+      <div style="margin-top:6px;font-size:13px">${rows}</div>
+    </div>`;
+  }).join('');
+  // Ingredient demand: just the selected day if one's picked, otherwise the whole week.
+  const demandTasks = MATERIAL_SELECTED_DATE ? tasks.filter(t => dateByDayId[t.day_id] === MATERIAL_SELECTED_DATE) : tasks;
+  const demandById = {}; // ingredient_id -> {kgQty, unitQty}
+  demandTasks.forEach(t => {
+    const mixes = t.status === 'Confirmed' ? (parseFloat(t.confirmed_mixes)||0) : (parseFloat(t.mixes)||0);
+    if(mixes <= 0) return;
+    SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(t.sauce_id)).forEach(r => {
+      const need = mixes * (parseFloat(r.qty_per_batch)||0);
+      const bucket = demandById[r.ingredient_id] = demandById[r.ingredient_id] || { kgQty: 0, unitQty: 0 };
+      if(r.qty_unit === 'unit') bucket.unitQty += need; else bucket.kgQty += need;
+    });
+  });
+  MATERIAL_WEEK_DEMAND = Object.keys(demandById).map(id => {
+    const ing = SAUCE_INGREDIENTS.find(i => String(i.id) === id);
+    return { ing, ...demandById[id] };
+  }).sort((a,b) => (a.ing?a.ing.name:'').localeCompare(b.ing?b.ing.name:''));
+  document.getElementById('materialDemandTitle').textContent = MATERIAL_SELECTED_DATE
+    ? `Ingredients Needed — ${MATERIAL_SELECTED_DATE}`
+    : 'Total Ingredients Needed This Week';
+  document.getElementById('materialDemandTable').innerHTML = MATERIAL_WEEK_DEMAND.map(row => {
+    const parts = [];
+    if(row.kgQty > 0) parts.push(`${fmtNum(row.kgQty)} kg`);
+    if(row.unitQty > 0) parts.push(`${fmtNum(row.unitQty)} ${row.ing?.unit||'units'}`);
+    return `<tr><td>${row.ing ? row.ing.name : '(unknown ingredient)'}</td><td>${parts.join(' + ') || '–'}</td></tr>`;
+  }).join('');
+  document.getElementById('materialDemandEmpty').style.display = MATERIAL_WEEK_DEMAND.length ? 'none' : 'block';
+}
+// Per-day, per-sauce breakdown: for each day, each sauce scheduled that day gets its own
+// mini ingredient table (qty = that sauce's mixes x its recipe's qty/batch) — so whoever's
+// running that day's sauces can see exactly what to pull for each one, not just a jumbled
+// weekly total.
+function printSauceMaterialPlan(){
+  if(!MATERIAL_WEEK_DAYS.some(d => d.tasks.some(t => (parseFloat(t.mixes)||0) > 0))){ toast('Nothing scheduled this week to print'); return; }
+  const weekStart = document.getElementById('materialWeekStart').value;
+  const dayBlocks = MATERIAL_WEEK_DAYS.map(d => {
+    const tasksWithMixes = d.tasks.filter(t => (parseFloat(t.mixes)||0) > 0);
+    if(!tasksWithMixes.length){
+      return `<div class="pr-line"><h3>${d.dayName} — ${d.date}</h3><p style="color:#666">(nothing scheduled)</p></div>`;
+    }
+    const sauceBlocks = tasksWithMixes.map(t => {
+      const sauceName = sauceRecipeSauceName(t.sauceId);
+      const ingRows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(t.sauceId)).map(r => {
+        const ing = SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id);
+        const need = (parseFloat(t.mixes)||0) * (parseFloat(r.qty_per_batch)||0);
+        const unit = r.qty_unit === 'unit' ? (ing?.unit || 'units') : 'kg';
+        return `<tr><td>${ing?ing.name:'(unknown)'}</td><td>${fmtNum(need)}</td><td>${unit}</td></tr>`;
+      }).join('');
+      return `<div style="margin-bottom:10px">
+        <div style="font-weight:700;margin-bottom:4px">${fmtNum(t.mixes)} × ${sauceName}</div>
+        ${ingRows
+          ? `<table><colgroup><col style="width:60%"><col style="width:20%"><col style="width:20%"></colgroup><thead><tr><th>Ingredient</th><th>Qty</th><th>Unit</th></tr></thead><tbody>${ingRows}</tbody></table>`
+          : `<p style="color:#666;font-size:12px;margin:0">No recipe defined for this sauce.</p>`}
+      </div>`;
+    }).join('');
+    return `<div class="pr-line"><h3>${d.dayName} — ${d.date}</h3>${sauceBlocks}</div>`;
+  }).join('');
+  const html = `
+    <h2>Sauce Production — Material Plan</h2>
+    <p>Week of ${weekStart}</p>
+    ${dayBlocks}
+  `;
+  runReportPrint(html);
+}
+
+/* ============================================================
+   Minimal, dependency-free XLSX writer — hand-rolled STORE-only ZIP +
+   OOXML spreadsheet parts (no external library; this app is a single
+   self-contained file with no build step and no CDN scripts).
+   ============================================================ */
+function xlsxEscape(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
+}
+function xlsxColLetter(n){ // 1-based column index -> "A", "B", ... "AA"
+  let s = '';
+  while(n > 0){ const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); }
+  return s;
+}
+const XLSX_CRC_TABLE = (() => {
+  const table = [];
+  for(let n = 0; n < 256; n++){
+    let c = n;
+    for(let k = 0; k < 8; k++){ c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1); }
+    table[n] = c >>> 0;
+  }
+  return table;
+})();
+function xlsxCrc32(bytes){
+  let crc = 0xFFFFFFFF;
+  for(let i = 0; i < bytes.length; i++){ crc = (crc >>> 8) ^ XLSX_CRC_TABLE[(crc ^ bytes[i]) & 0xFF]; }
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function xlsxDosDateTime(d){
+  const dosTime = ((d.getHours() & 0x1F) << 11) | ((d.getMinutes() & 0x3F) << 5) | ((Math.floor(d.getSeconds() / 2)) & 0x1F);
+  const dosDate = (((d.getFullYear() - 1980) & 0x7F) << 9) | (((d.getMonth() + 1) & 0xF) << 5) | (d.getDate() & 0x1F);
+  return { dosTime, dosDate };
+}
+function xlsxBuildZip(files){ // files: [{name, data: Uint8Array}]
+  const enc = new TextEncoder();
+  const { dosTime, dosDate } = xlsxDosDateTime(new Date());
+  const chunks = [];
+  const central = [];
+  let offset = 0;
+  for(const f of files){
+    const nameBytes = enc.encode(f.name);
+    const data = f.data;
+    const crc = xlsxCrc32(data);
+    const localHeader = new Uint8Array(30 + nameBytes.length);
+    const lv = new DataView(localHeader.buffer);
+    lv.setUint32(0, 0x04034b50, true);
+    lv.setUint16(4, 20, true);
+    lv.setUint16(6, 0, true);
+    lv.setUint16(8, 0, true); // compression = store
+    lv.setUint16(10, dosTime, true);
+    lv.setUint16(12, dosDate, true);
+    lv.setUint32(14, crc, true);
+    lv.setUint32(18, data.length, true);
+    lv.setUint32(22, data.length, true);
+    lv.setUint16(26, nameBytes.length, true);
+    lv.setUint16(28, 0, true);
+    localHeader.set(nameBytes, 30);
+    chunks.push(localHeader, data);
+
+    const centralHeader = new Uint8Array(46 + nameBytes.length);
+    const cv = new DataView(centralHeader.buffer);
+    cv.setUint32(0, 0x02014b50, true);
+    cv.setUint16(4, 20, true);
+    cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0, true);
+    cv.setUint16(10, 0, true);
+    cv.setUint16(12, dosTime, true);
+    cv.setUint16(14, dosDate, true);
+    cv.setUint32(16, crc, true);
+    cv.setUint32(20, data.length, true);
+    cv.setUint32(24, data.length, true);
+    cv.setUint16(28, nameBytes.length, true);
+    cv.setUint16(30, 0, true);
+    cv.setUint16(32, 0, true);
+    cv.setUint16(34, 0, true);
+    cv.setUint16(36, 0, true);
+    cv.setUint32(38, 0, true);
+    cv.setUint32(42, offset, true);
+    centralHeader.set(nameBytes, 46);
+    central.push(centralHeader);
+
+    offset += localHeader.length + data.length;
+  }
+  const centralStart = offset;
+  let centralSize = 0;
+  central.forEach(c => { centralSize += c.length; });
+
+  const end = new Uint8Array(22);
+  const ev = new DataView(end.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(4, 0, true);
+  ev.setUint16(6, 0, true);
+  ev.setUint16(8, files.length, true);
+  ev.setUint16(10, files.length, true);
+  ev.setUint32(12, centralSize, true);
+  ev.setUint32(16, centralStart, true);
+  ev.setUint16(20, 0, true);
+
+  const all = [...chunks, ...central, end];
+  const total = all.reduce((s, a) => s + a.length, 0);
+  const out = new Uint8Array(total);
+  let p = 0;
+  for(const a of all){ out.set(a, p); p += a.length; }
+  return out;
+}
+// sheets: [{ name, colWidths, rows: [ [cell,...] ], merges: ["A1:I1", ...] }]
+// each cell is a primitive (string/number) or { v, style } — style 0=normal, 1=bold, 2=title
+function xlsxBuildWorkbook(sheets){
+  const enc = new TextEncoder();
+  const contentTypesParts = [];
+  const workbookRelsParts = [];
+  const workbookSheetsXml = [];
+  const sheetFiles = [];
+
+  sheets.forEach((sheet, idx) => {
+    const sheetNum = idx + 1;
+    const rowsXml = sheet.rows.map((row, rIdx) => {
+      const r = rIdx + 1;
+      const cellsXml = row.map((cell, cIdx) => {
+        const col = xlsxColLetter(cIdx + 1);
+        const ref = col + r;
+        let v = cell, style = 0;
+        if(cell && typeof cell === 'object' && 'v' in cell){ v = cell.v; style = cell.style || 0; }
+        // Always emit an explicit s="N" — even for style 0 — since Excel does not reliably
+        // fall back to cellXfs[0] (our bordered default) when the s attribute is just omitted.
+        if(v === '' || v === null || v === undefined) return `<c r="${ref}" s="${style}"/>`;
+        if(typeof v === 'number' && isFinite(v)) return `<c r="${ref}" s="${style}"><v>${v}</v></c>`;
+        return `<c r="${ref}" t="inlineStr" s="${style}"><is><t xml:space="preserve">${xlsxEscape(v)}</t></is></c>`;
+      }).join('');
+      return `<row r="${r}">${cellsXml}</row>`;
+    }).join('');
+    const mergeXml = (sheet.merges && sheet.merges.length)
+      ? `<mergeCells count="${sheet.merges.length}">${sheet.merges.map(m => `<mergeCell ref="${m}"/>`).join('')}</mergeCells>`
+      : '';
+    const colsXml = sheet.colWidths
+      ? `<cols>${sheet.colWidths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols>`
+      : '';
+    const viewsXml = sheet.freezeRows
+      ? `<sheetViews><sheetView workbookViewId="0"><pane ySplit="${sheet.freezeRows}" topLeftCell="A${sheet.freezeRows+1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>`
+      : '';
+    const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+      `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+      viewsXml + colsXml + `<sheetData>${rowsXml}</sheetData>${mergeXml}</worksheet>`;
+    sheetFiles.push({ name: `xl/worksheets/sheet${sheetNum}.xml`, data: enc.encode(sheetXml) });
+    contentTypesParts.push(`<Override PartName="/xl/worksheets/sheet${sheetNum}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`);
+    workbookRelsParts.push(`<Relationship Id="rId${sheetNum}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${sheetNum}.xml"/>`);
+    workbookSheetsXml.push(`<sheet name="${xlsxEscape(sheet.name)}" sheetId="${sheetNum}" r:id="rId${sheetNum}"/>`);
+  });
+  const stylesRelId = sheets.length + 1;
+  workbookRelsParts.push(`<Relationship Id="rId${stylesRelId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>`);
+
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+    `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
+    `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
+    `<Default Extension="xml" ContentType="application/xml"/>` +
+    `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
+    `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` +
+    contentTypesParts.join('') + `</Types>`;
+  const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>` +
+    `</Relationships>`;
+  const workbookXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+    `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
+    `<sheets>${workbookSheetsXml.join('')}</sheets></workbook>`;
+  const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+    `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
+    workbookRelsParts.join('') + `</Relationships>`;
+  const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+    `<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+    // Built-in numFmtId 2 is fixed at "0.00" — custom formats need an id >= 164, declared here.
+    `<numFmts count="1"><numFmt numFmtId="164" formatCode="0.000"/></numFmts>` +
+    `<fonts count="5">` +
+    `<font><sz val="11"/><name val="Calibri"/></font>` +
+    `<font><b/><sz val="11"/><name val="Calibri"/></font>` +
+    `<font><b/><sz val="14"/><name val="Calibri"/></font>` +
+    `<font><b/><i/><sz val="11"/><color rgb="FF1F4E79"/><name val="Calibri"/></font>` +
+    `<font><b/><sz val="16"/><color rgb="FFFF0000"/><name val="Calibri"/></font>` +
+    `</fonts>` +
+    `<fills count="3">` +
+    `<fill><patternFill patternType="none"/></fill>` +
+    `<fill><patternFill patternType="gray125"/></fill>` +
+    `<fill><patternFill patternType="solid"><fgColor rgb="FFDCE6F1"/><bgColor indexed="64"/></patternFill></fill>` +
+    `</fills>` +
+    `<borders count="3">` +
+    `<border><left/><right/><top/><bottom/><diagonal/></border>` +
+    `<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top style="thin"><color indexed="64"/></top><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>` +
+    `<border><left style="thin"><color indexed="64"/></left><right style="thin"><color indexed="64"/></right><top/><bottom style="thin"><color indexed="64"/></bottom><diagonal/></border>` +
+    `</borders>` +
+    `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
+    // Index 0 is reserved as the untouched "Normal" style — Excel ignores formatting declared
+    // there regardless of what the xf actually says, so every real style below starts at 1.
+    // 1: default bordered cell (General format — ingredient name / unit text)
+    // 2: task header row (bold italic blue, bordered left/right/bottom only)
+    // 3: title (big bold, no border — merged banner row)
+    // 4: column header row (bold + light-blue fill + bordered)
+    // 5: Qty value (bordered, 3-decimal number format)
+    // 6: day-group header ("Received ingredients before: ...") — bold, big, red, no border
+    `<cellXfs count="7">` +
+    `<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
+    `<xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1"/>` +
+    `<xf numFmtId="0" fontId="3" fillId="0" borderId="2" xfId="0" applyFont="1" applyBorder="1"/>` +
+    `<xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
+    `<xf numFmtId="0" fontId="1" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1"/>` +
+    `<xf numFmtId="164" fontId="0" fillId="0" borderId="1" xfId="0" applyNumberFormat="1" applyBorder="1"/>` +
+    `<xf numFmtId="0" fontId="4" fillId="0" borderId="0" xfId="0" applyFont="1"/>` +
+    `</cellXfs>` +
+    `<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>` +
+    `</styleSheet>`;
+
+  const files = [
+    { name: '[Content_Types].xml', data: enc.encode(contentTypes) },
+    { name: '_rels/.rels', data: enc.encode(rootRels) },
+    { name: 'xl/workbook.xml', data: enc.encode(workbookXml) },
+    { name: 'xl/_rels/workbook.xml.rels', data: enc.encode(workbookRels) },
+    { name: 'xl/styles.xml', data: enc.encode(stylesXml) },
+    ...sheetFiles
+  ];
+  return xlsxBuildZip(files);
+}
+function safeSheetName(name){
+  return String(name).replace(/[:\\\/?*\[\]]/g, '-').slice(0,31) || 'Sheet';
+}
+function fmtMMDDYYYY(dateStr){
+  const [y,m,d] = dateStr.split('-');
+  return `${m}-${d}-${y}`;
+}
+function dayNameOf(dateStr){
+  const d = new Date(dateStr + 'T00:00:00');
+  return ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][d.getDay()];
+}
+function fmtMixesLabel(n){
+  return Number(n.toFixed(2)).toString();
+}
+// Exports the whole week's schedule as an .xlsx matching the plant's existing "Sauce
+// Ingredients Checklist" format: one detail sheet listing every task's own ingredient
+// breakdown in schedule order, plus one weekly-total summary sheet per location, each
+// grouped into "Received ingredients at X before: DATE" blocks by the earliest day that
+// week each ingredient is actually needed.
+async function exportSauceMaterialPlanExcel(){
+  const weekStart = mondayOfWeek(document.getElementById('materialWeekStart').value || todayStr());
+  const weekEnd = addDaysStr(weekStart, 6);
+  const days = await sbGetAll(`erp_sauce_schedule_days?select=id,schedule_date&schedule_date=gte.${weekStart}&schedule_date=lte.${weekEnd}&order=schedule_date.asc`);
+  const dayIds = days.map(d=>d.id);
+  if(!dayIds.length){ toast('Nothing scheduled this week to export'); return; }
+  const rawTasks = await sbGetAll(`erp_sauce_schedule_tasks?select=id,day_id,sauce_id,mixes,confirmed_mixes,status,location&day_id=in.(${dayIds.join(',')})&order=id.asc`);
+  const dateByDayId = {}; days.forEach(d => { dateByDayId[d.id] = d.schedule_date; });
+  const tasks = rawTasks
+    .filter(t => t.status !== 'Cancelled')
+    .map(t => ({ ...t, date: dateByDayId[t.day_id], mixes: t.status === 'Confirmed' ? (parseFloat(t.confirmed_mixes)||0) : (parseFloat(t.mixes)||0) }))
+    .filter(t => t.date && t.mixes > 0)
+    .sort((a,b) => a.date.localeCompare(b.date) || a.id - b.id);
+  if(!tasks.length){ toast('Nothing scheduled this week to export'); return; }
+
+  const HEADER_ROW = [{v:'Ingredients', style:4},{v:'Qty', style:4},{v:'Unit', style:4}];
+  const COL_WIDTHS = [50,15,8];
+  function ingRow(ing, qty){
+    return [{v:ing.name, style:1}, {v:qty, style:5}, {v:ing.unit || '', style:1}];
+  }
+
+  // ---- Detail sheet: whole week, grouped Day -> Task -> Ingredients, in schedule order.
+  // "Received ingredients before: DATE" repeats every time the day changes (this is when that
+  // day's tasks actually need their ingredients on hand), and each task gets its own
+  // "N mixes SauceName Ingredients CheckList" block with its own Ingredients/Qty/Unit table.
+  const detailRows = [];
+  const detailMerges = [];
+  detailRows.push([{v:`Week ${fmtMMDDYYYY(weekStart)} Sauce Production Ingredients Checklist`, style:3}]);
+  detailMerges.push('A1:C1');
+  detailRows.push([]);
+
+  const byLocation = {}; // locationName -> { order: [ingredientId,...], data: Map(ingredientId -> {ing, qty, firstDate}) }
+  let lastDetailDate = null;
+  tasks.forEach(t => {
+    if(t.date !== lastDetailDate){
+      detailRows.push([{v:`Received ingredients before: ${fmtMMDDYYYY(t.date)} ${dayNameOf(t.date)}`, style:6}]);
+      detailMerges.push(`A${detailRows.length}:C${detailRows.length}`);
+      lastDetailDate = t.date;
+    }
+    const sauce = SAUCES.find(s => s.id === t.sauce_id);
+    const sauceName = sauce ? sauce.name : '(deleted sauce)';
+    const mixLabel = t.mixes === 1 ? 'mix' : 'mixes';
+    detailRows.push([{v:`${fmtMixesLabel(t.mixes)} ${mixLabel} ${sauceName} Ingredients CheckList`, style:2}]);
+    detailMerges.push(`A${detailRows.length}:C${detailRows.length}`);
+    detailRows.push(HEADER_ROW);
+
+    const loc = t.location || '(No Location)';
+    const locBucket = byLocation[loc] = byLocation[loc] || { order: [], data: new Map() };
+
+    const recipeRows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(t.sauce_id))
+      .map(r => ({ r, ing: SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id) }))
+      .filter(x => x.ing)
+      .sort((a,b) => a.ing.name.localeCompare(b.ing.name));
+    recipeRows.forEach(({r, ing}) => {
+      const qty = t.mixes * (parseFloat(r.qty_per_batch) || 0);
+      detailRows.push(ingRow(ing, qty));
+
+      let bucket = locBucket.data.get(ing.id);
+      if(!bucket){
+        bucket = { ing, qty: 0, firstDate: t.date };
+        locBucket.data.set(ing.id, bucket);
+        locBucket.order.push(ing.id);
+      }
+      bucket.qty += qty;
+      if(t.date < bucket.firstDate) bucket.firstDate = t.date;
+    });
+    detailRows.push([]);
+  });
+
+  // ---- Per-location weekly-total summary sheets: for each ingredient, the FULL WEEK's total
+  // qty, grouped under the day it's first actually needed in production — so Purchasing can
+  // place one order per group and have it on hand before that day's run.
+  const sheets = [];
+  Object.keys(byLocation).sort((a,b) => a.localeCompare(b, undefined, {numeric:true})).forEach(loc => {
+    const { order, data } = byLocation[loc];
+    const rows = [];
+    const merges = [];
+    rows.push([{v:`Week ${fmtMMDDYYYY(weekStart)} ${loc} Sauce Production Ingredients Checklist`, style:3}]);
+    merges.push('A1:C1');
+    rows.push([]);
+
+    const byDate = new Map(); // date -> [ingredientId,...]
+    order.forEach(id => {
+      const d = data.get(id).firstDate;
+      if(!byDate.has(d)) byDate.set(d, []);
+      byDate.get(d).push(id);
+    });
+    [...byDate.keys()].sort().forEach(d => {
+      rows.push([{v:`Received ingredients before: ${fmtMMDDYYYY(d)} ${dayNameOf(d)}`, style:6}]);
+      merges.push(`A${rows.length}:C${rows.length}`);
+      rows.push(HEADER_ROW);
+      byDate.get(d).map(id => data.get(id)).sort((a,b) => a.ing.name.localeCompare(b.ing.name)).forEach(bucket => {
+        rows.push(ingRow(bucket.ing, bucket.qty));
+      });
+      rows.push([]);
+    });
+
+    sheets.push({ name: safeSheetName(loc + ' Summary'), colWidths: COL_WIDTHS, merges, rows });
+  });
+  sheets.push({ name: safeSheetName(weekStart.replace(/-/g,'')), colWidths: COL_WIDTHS, merges: detailMerges, rows: detailRows });
+
+  const bytes = xlsxBuildWorkbook(sheets);
+  await downloadXlsxBytes(bytes, `Sauce Ingredients Checklist ${weekStart.replace(/-/g,'')}.xlsx`);
+}
+// Browsers won't let a web page write to an arbitrary folder like Desktop silently — that's a
+// deliberate security boundary, not something we can code around. Where supported (Chrome/Edge),
+// showSaveFilePicker's startIn:'desktop' at least opens the native Save dialog already pointed
+// at the Desktop, so accepting the default suggestion lands it there in one click. Falls back to
+// a normal <a download> (goes to the browser's configured downloads folder) everywhere else.
+async function downloadXlsxBytes(bytes, filename){
+  if(window.showSaveFilePicker){
+    try{
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        startIn: 'desktop',
+        types: [{ description: 'Excel Workbook', accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] } }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(bytes);
+      await writable.close();
+      return;
+    }catch(e){
+      if(e.name === 'AbortError') return; // user cancelled the save dialog — not a failure
+      // otherwise fall through to the plain download below
+    }
+  }
+  const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 /* ---- Locations (mirrors Lines) ---- */
@@ -5682,12 +6733,16 @@ function renderSauceLocationsTable(){
 /* ---- Allergens + Sauce master ---- */
 function renderSauceAllergenChecks(selectedIds){
   selectedIds = selectedIds || [];
-  document.getElementById('sauceAllergenChecks').innerHTML = ALLERGENS.map(a => `
-    <label style="display:flex;align-items:center;gap:6px;font-weight:400;width:auto">
-      <input type="checkbox" value="${a.id}" class="sauceAllergenCheck" ${selectedIds.includes(a.id)?'checked':''}>
-      <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${a.color||'#d64545'}"></span>
-      ${a.name}
-    </label>`).join('');
+  document.getElementById('sauceAllergenChecks').innerHTML = ALLERGENS.map(a => {
+    const color = a.color || '#d64545';
+    // .row > * (flex:1;min-width:130px) is meant for form-field columns — it stretches these
+    // short checkbox+pill pairs too, leaving dead space inside each one instead of packing
+    // the checkbox tight against its own label. Override back to content-sized here.
+    return `<label style="display:flex;align-items:center;gap:6px;flex:0 0 auto;min-width:0;width:auto;cursor:pointer">
+      <input type="checkbox" value="${a.id}" class="sauceAllergenCheck" ${selectedIds.includes(a.id)?'checked':''} style="width:auto;flex:0 0 auto">
+      <span style="padding:3px 9px;border-radius:99px;background:${color};color:${contrastTextColor(color)};font-weight:700;font-size:11px;font-family:var(--font-mono);letter-spacing:.01em;white-space:nowrap">${a.name}</span>
+    </label>`;
+  }).join('');
 }
 function getCheckedSauceAllergenIds(){
   return [...document.querySelectorAll('.sauceAllergenCheck:checked')].map(el => Number(el.value));
@@ -5740,12 +6795,73 @@ function renderSauceItemMatchInfo(itemCode, targetElId){
   }
   el.innerHTML = `<div style="margin-top:4px">${matches.map(it => `<div style="border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin-top:6px">${sauceItemDetailGridHtml(it)}</div>`).join('')}</div>`;
 }
+function toggleSauceProduceAlert(){
+  const body = document.getElementById('sauceProduceAlertBody');
+  const icon = document.getElementById('sauceProduceAlertToggleIcon');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▸ Click to expand' : '▾ Click to collapse';
+}
+function populateSauceAlertCustomerFilter(){
+  const sel = document.getElementById('sauceAlertCustomerFilter');
+  if(!sel) return;
+  const keep = sel.value;
+  const customers = dedupeCaseInsensitive(
+    SAUCES.flatMap(s => lookupSauceMatchedItems(s.item_code).map(it => SAUCE_STOCK_BY_ITEM_NO[it.item_no]?.customer).filter(Boolean))
+  );
+  sel.innerHTML = '<option value="">All Customers</option>' + customers.map(c=>`<option>${c}</option>`).join('');
+  if(customers.includes(keep)) sel.value = keep;
+}
+// Same tier logic as the Inventory Dashboard (classifyRow/TIER_META), applied to each sauce
+// via its linked Item #(s) — surfaces which sauces need production before the Add Task form.
+function renderSauceProduceAlertList(){
+  const tbody = document.getElementById('sauceProduceAlertList');
+  if(!tbody) return;
+  const thresholdN = 7; // same default the Dashboard's threshold selector starts on
+  const q = (document.getElementById('sauceAlertSearch')?.value || '').trim().toLowerCase();
+  const tierFilter = document.getElementById('sauceAlertTierFilter')?.value || '';
+  const customerFilter = document.getElementById('sauceAlertCustomerFilter')?.value || '';
+  let rows = [];
+  SAUCES.forEach(s => {
+    lookupSauceMatchedItems(s.item_code).forEach(it => {
+      if(it.item_status === 'Inactive') return;
+      const stockRow = SAUCE_STOCK_BY_ITEM_NO[it.item_no];
+      if(!stockRow) return;
+      const cls = classifyRow(stockRow, thresholdN);
+      if(cls.tier === 'sufficient' || cls.tier === 'mto') return;
+      rows.push({ sauce: s, item: it, stockRow, tier: cls.tier, days: cls.days });
+    });
+  });
+  if(q) rows = rows.filter(r => r.sauce.name.toLowerCase().includes(q) || r.item.item_no.toLowerCase().includes(q));
+  if(tierFilter) rows = rows.filter(r => r.tier === tierFilter);
+  if(customerFilter) rows = rows.filter(r => (r.stockRow.customer||'').toLowerCase() === customerFilter.toLowerCase());
+  rows.sort((a,b) => TIER_META[b.tier].order - TIER_META[a.tier].order);
+  tbody.innerHTML = rows.map(r => {
+    const daily = (r.stockRow.avg_daily_out_7d > 0) ? r.stockRow.avg_daily_out_7d : r.stockRow.avg_daily_out_30d;
+    const daysLabel = isFinite(r.days) ? fmtNum(r.days) : '–';
+    return `<tr style="cursor:pointer" onclick="pickSauceTaskSauce(${r.sauce.id}); document.getElementById('sauceTaskFormTitle').scrollIntoView({behavior:'smooth'})">
+      <td>${r.sauce.name}</td><td>${r.item.item_no}</td><td>${r.stockRow.customer||''}</td>
+      <td>${fmtNum(r.stockRow.act_inventory_qty)}</td><td>${fmtNum(daily)}</td>
+      <td>${daysLabel}</td><td>${tierChip(r.tier)}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('sauceProduceAlertEmpty').style.display = rows.length ? 'none' : 'block';
+}
+function populateSauceComponentSachetOptions(){
+  const sel = document.getElementById('sauceComponentSachet');
+  if(!sel) return;
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">(not a component — sold/tracked as its own item)</option>' +
+    SACHETS.map(x => `<option value="${x.sachet_name}">${x.sachet_name}</option>`).join('');
+  if([...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
 function resetSauceForm(){
   document.getElementById('sauceEditId').value = '';
   document.getElementById('sauceFormTitle').textContent = 'Add New Sauce';
   document.getElementById('sauceSubmitBtn').textContent = '＋ Save Sauce';
   document.getElementById('sauceName').value = '';
   document.getElementById('sauceItemCode').value = '';
+  document.getElementById('sauceComponentSachet').value = '';
   document.getElementById('saucePackageSpec').value = '';
   document.getElementById('sauceShelfLifeDays').value = '';
   document.getElementById('sauceRemark').value = '';
@@ -5760,6 +6876,7 @@ function editSauce(id){
   document.getElementById('sauceSubmitBtn').textContent = 'Save Changes';
   document.getElementById('sauceName').value = s.name || '';
   document.getElementById('sauceItemCode').value = s.item_code || '';
+  document.getElementById('sauceComponentSachet').value = s.component_sachet_name || '';
   document.getElementById('saucePackageSpec').value = s.package_spec || '';
   document.getElementById('sauceShelfLifeDays').value = s.shelf_life_days ?? '';
   document.getElementById('sauceRemark').value = s.remark || '';
@@ -5774,6 +6891,7 @@ async function submitSauce(){
   const patch = {
     name,
     item_code: document.getElementById('sauceItemCode').value.trim() || null,
+    component_sachet_name: document.getElementById('sauceComponentSachet').value || null,
     package_spec: document.getElementById('saucePackageSpec').value.trim() || null,
     shelf_life_days: document.getElementById('sauceShelfLifeDays').value ? parseInt(document.getElementById('sauceShelfLifeDays').value, 10) : null,
     remark: document.getElementById('sauceRemark').value.trim() || null
@@ -5813,7 +6931,7 @@ function renderSaucesTable(){
     const z = (i % 2 === 0) ? ' zrow' : '';
     return `<tr class="${z}"${matches.length ? ` style="cursor:pointer" onclick="toggleRowDetail('${rowId}')"` : ''}>
       <td>${s.name}</td><td>${s.item_code||''}</td><td>${s.package_spec||''}</td><td>${s.shelf_life_days ?? ''}</td>
-      <td>${sauceAllergenObjects(s).map(allergenChipHtml).join(' ')}</td>
+      <td style="white-space:normal;min-width:160px"><div style="display:flex;flex-wrap:wrap;gap:4px">${sauceAllergenObjects(s).map(allergenChipHtml).join('')}</div></td>
       <td>${linkedLabel}</td>
       <td>${s.remark||''}</td>
       <td class="no-print" style="white-space:nowrap">
@@ -5830,11 +6948,19 @@ function renderSaucesTable(){
 }
 
 /* ---- Ingredients + Receive Stock ---- */
+function populateSauceIngProducedByOptions(){
+  const sel = document.getElementById('sauceIngProducedBy');
+  if(!sel) return;
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">(raw ingredient — not produced in-house)</option>' +
+    SAUCES.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+  if([...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
 function resetSauceIngredientForm(){
   document.getElementById('sauceIngEditId').value = '';
   document.getElementById('sauceIngFormTitle').textContent = 'Add New Ingredient';
   document.getElementById('sauceIngSubmitBtn').textContent = '＋ Save Ingredient';
-  ['sauceIngName','sauceIngPcs','sauceIngWeight','sauceIngPackageSize','sauceIngUnit','sauceIngKgPerUnit'].forEach(id => document.getElementById(id).value = '');
+  ['sauceIngName','sauceIngPcs','sauceIngWeight','sauceIngPackageSize','sauceIngUnit','sauceIngKgPerUnit','sauceIngProducedBy'].forEach(id => document.getElementById(id).value = '');
 }
 function editSauceIngredient(id){
   const i = SAUCE_INGREDIENTS.find(x => x.id === id);
@@ -5848,6 +6974,7 @@ function editSauceIngredient(id){
   document.getElementById('sauceIngPackageSize').value = i.package_size || '';
   document.getElementById('sauceIngUnit').value = i.unit || '';
   document.getElementById('sauceIngKgPerUnit').value = i.kg_per_unit ?? '';
+  document.getElementById('sauceIngProducedBy').value = i.produced_by_sauce_id ?? '';
   showScreen('sauce-ingredients'); window.scrollTo(0,0);
 }
 async function submitSauceIngredient(){
@@ -5860,7 +6987,8 @@ async function submitSauceIngredient(){
     weight: document.getElementById('sauceIngWeight').value ? parseFloat(document.getElementById('sauceIngWeight').value) : null,
     package_size: document.getElementById('sauceIngPackageSize').value.trim() || null,
     unit: document.getElementById('sauceIngUnit').value.trim() || 'kg',
-    kg_per_unit: document.getElementById('sauceIngKgPerUnit').value ? parseFloat(document.getElementById('sauceIngKgPerUnit').value) : null
+    kg_per_unit: document.getElementById('sauceIngKgPerUnit').value ? parseFloat(document.getElementById('sauceIngKgPerUnit').value) : null,
+    produced_by_sauce_id: document.getElementById('sauceIngProducedBy').value ? Number(document.getElementById('sauceIngProducedBy').value) : null
   };
   const editId = document.getElementById('sauceIngEditId').value;
   try{
@@ -5885,7 +7013,7 @@ function renderSauceIngredientsTable(){
   document.getElementById('sauceIngredientsTable').innerHTML = rows.map(i => `<tr>
     <td>${i.name}</td><td>${i.pcs!=null?fmtNum(i.pcs):''}</td><td>${i.weight!=null?fmtNum(i.weight):''}</td>
     <td>${i.package_size||''}</td><td>${i.unit||''}</td><td>${i.kg_per_unit?fmtNum(i.kg_per_unit):'–'}</td>
-    <td>${fmtNum(i.inventory_qty)} ${i.unit||''}</td>
+    <td>${i.produced_by_sauce_id ? sauceRecipeSauceName(i.produced_by_sauce_id) : '–'}</td>
     <td class="no-print" style="white-space:nowrap">
       <div style="display:flex;gap:6px;flex-wrap:nowrap">
         <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editSauceIngredient(${i.id})">✎ Edit</button>
@@ -5894,26 +7022,6 @@ function renderSauceIngredientsTable(){
     </td>
   </tr>`).join('');
   document.getElementById('sauceIngredientsEmpty').style.display = rows.length ? 'none' : 'block';
-  const sel = document.getElementById('sauceIngReceiveId');
-  if(sel){
-    const keep = sel.value;
-    sel.innerHTML = SAUCE_INGREDIENTS.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
-    if([...sel.options].some(o => o.value === keep)) sel.value = keep;
-  }
-}
-async function receiveSauceIngredientStock(){
-  if(!canWrite()){ toast('You have read-only access'); return; }
-  const ingredientId = document.getElementById('sauceIngReceiveId').value;
-  const qty = parseFloat(document.getElementById('sauceIngReceiveQty').value);
-  const date = document.getElementById('sauceIngReceiveDate').value || todayStr();
-  if(!ingredientId){ toast('Please select an ingredient'); return; }
-  if(!qty){ toast('Please enter a quantity'); return; }
-  try{
-    await sbInsert('erp_sauce_ingredient_inout', [{ entry_date: date, ingredient_id: ingredientId, in_qty: qty, out_qty: 0, note: 'Received' }]);
-    toast('Stock received');
-    document.getElementById('sauceIngReceiveQty').value = '';
-    await refreshSauceScreen();
-  }catch(e){ toast('Receive failed: ' + e.message); }
 }
 
 /* ---- Recipes (sauce ingredient qty per batch/mix) ---- */
@@ -5921,18 +7029,39 @@ function sauceIngredientName(id){ const i = SAUCE_INGREDIENTS.find(x => String(x
 function sauceIngredientUnit(id){ const i = SAUCE_INGREDIENTS.find(x => String(x.id) === String(id)); return (i && i.unit) ? i.unit : 'units'; }
 function sauceRecipeSauceName(id){ const s = SAUCES.find(x => String(x.id) === String(id)); return s ? s.name : '(unknown)'; }
 function populateSauceRecipeSelects(){
-  const sauceIdsWithRecipe = new Set(SAUCE_RECIPE.map(r => String(r.sauce_id)));
-  const browseSel = document.getElementById('sauceRecBrowseSauce');
   const formSel = document.getElementById('sauceRecSauce');
-  const keepBrowse = browseSel.value, keepForm = formSel.value;
-  browseSel.innerHTML = '<option value="">Select a sauce...</option>' + SAUCES.map(s => `<option value="${s.id}">${s.name}${sauceIdsWithRecipe.has(String(s.id))?' ✓ has recipe':''}</option>`).join('');
+  const keepForm = formSel.value;
   formSel.innerHTML = '<option value="">Select sauce...</option>' + SAUCES.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-  if([...browseSel.options].some(o => o.value === keepBrowse)) browseSel.value = keepBrowse;
   if([...formSel.options].some(o => o.value === keepForm)) formSel.value = keepForm;
   const ingSel = document.getElementById('sauceRecIngredient');
   const keepIng = ingSel.value;
   ingSel.innerHTML = '<option value="">Select ingredient...</option>' + SAUCE_INGREDIENTS.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
   if([...ingSel.options].some(o => o.value === keepIng)) ingSel.value = keepIng;
+}
+function searchSauceRecBrowseSauce(){
+  const q = document.getElementById('sauceRecBrowseSauceSearch').value.trim().toLowerCase();
+  const box = document.getElementById('sauceRecBrowseSauceSuggest');
+  document.getElementById('sauceRecBrowseSauce').value = '';
+  if(!q){ box.style.display = 'none'; renderSauceRecipeBrowse(); return; }
+  const sauceIdsWithRecipe = new Set(SAUCE_RECIPE.map(r => String(r.sauce_id)));
+  const matches = SAUCES.filter(s => (s.name||'').toLowerCase().includes(q)).slice(0,30);
+  if(!matches.length){ box.innerHTML = '<div style="padding:8px 12px;color:var(--muted)">(no match)</div>'; box.style.display = 'block'; return; }
+  box.innerHTML = matches.map(s => `<div onclick="pickSauceRecBrowseSauce(${s.id})">${s.name}${sauceIdsWithRecipe.has(String(s.id))?' ✓ has recipe':''}</div>`).join('');
+  box.style.display = 'block';
+}
+function pickSauceRecBrowseSauce(id){
+  const s = SAUCES.find(x => x.id === id);
+  if(!s) return;
+  document.getElementById('sauceRecBrowseSauce').value = s.id;
+  document.getElementById('sauceRecBrowseSauceSuggest').style.display = 'none';
+  renderSauceRecipeBrowse();
+}
+function toggleSauceRecipeForm(){
+  const body = document.getElementById('sauceRecFormBody');
+  const icon = document.getElementById('sauceRecFormToggleIcon');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▸ Click to expand' : '▾ Click to collapse';
 }
 function resetSauceRecipeForm(){
   document.getElementById('sauceRecEditId').value = '';
@@ -5983,6 +7112,8 @@ function editSauceRecipe(id){
   document.getElementById('sauceRecIngredient').value = r.ingredient_id;
   document.getElementById('sauceRecQty').value = r.qty_per_batch;
   document.getElementById('sauceRecQtyUnit').value = r.qty_unit || 'unit';
+  document.getElementById('sauceRecFormBody').style.display = 'block';
+  document.getElementById('sauceRecFormToggleIcon').textContent = '▾ Click to collapse';
   showScreen('sauce-recipes'); window.scrollTo(0,0);
 }
 async function saveSauceRecipeDraft(){
@@ -6022,13 +7153,40 @@ async function deleteSauceRecipe(id){
     if(keepSauce){ document.getElementById('sauceRecBrowseSauce').value = keepSauce; renderSauceRecipeBrowse(); }
   });
 }
+// Wipes every ingredient row for the selected sauce in one go, for sauces whose recipe is
+// no longer used — faster than deleting each ingredient line one at a time.
+async function deleteSauceRecipeAll(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const sauceId = document.getElementById('sauceRecBrowseSauce').value;
+  if(!sauceId){ toast('Please select a sauce first'); return; }
+  const rows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId));
+  if(!rows.length){ toast('This sauce has no recipe to delete'); return; }
+  const sauceName = sauceRecipeSauceName(sauceId);
+  if(!confirm(`Delete the entire recipe for "${sauceName}" (${rows.length} ingredient row(s))? This cannot be undone.`)) return;
+  try{
+    for(const r of rows){ await sbDelete('erp_sauce_recipe', r.id); }
+    toast('Recipe deleted');
+    await refreshSauceScreen();
+    document.getElementById('sauceRecBrowseSauce').value = sauceId;
+    renderSauceRecipeBrowse();
+  }catch(e){ toast('Delete failed: ' + e.message); }
+}
 function renderSauceRecipeBrowse(){
   const sauceId = document.getElementById('sauceRecBrowseSauce').value;
+  // Keep the visible search box in sync with the hidden id whenever it's set programmatically
+  // (delete/save/cancel flows all just set the hidden value then call this), so it never shows
+  // stale or blank text next to a real selection.
+  const searchBox = document.getElementById('sauceRecBrowseSauceSearch');
+  if(searchBox) searchBox.value = sauceId ? sauceRecipeSauceName(sauceId) : '';
   const body = document.getElementById('sauceRecBrowseBody');
   if(!sauceId){ body.innerHTML = ''; return; }
   const rows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId));
-  const optionsHtml = '<option value="">Select ingredient...</option>' + SAUCE_INGREDIENTS.map(i => `<option value="${i.id}">${i.name}</option>`).join('');
+  const { totalKg, hasUnknown, hasRows } = sauceRecipeWeightKg(sauceId);
+  const weightInfo = hasRows
+    ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">⚖ Total weight per batch: <strong>${fmtNum(totalKg)} kg</strong>${hasUnknown?' (some ingredients have no Kg/Unit set — total may be incomplete)':''}</div>`
+    : '';
   body.innerHTML = `
+    ${weightInfo}
     <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Qty/Batch</th><th>Unit</th><th class="can-write"></th></tr></thead>
     <tbody>${rows.map(r => `<tr>
       <td>${sauceIngredientName(r.ingredient_id)}</td>
@@ -6038,16 +7196,20 @@ function renderSauceRecipeBrowse(){
              <option value="kg" ${r.qty_unit==='kg'?'selected':''}>kg (needs Kg/Unit to convert)</option>
            </select>` : ((r.qty_unit==='unit') ? sauceIngredientUnit(r.ingredient_id) : 'kg')}</td>
       <td class="can-write" style="white-space:nowrap">
-        <div style="display:flex;gap:6px;flex-wrap:nowrap">
-          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="updateSauceRecipeQty(${r.id}, document.getElementById('sauceRecQtyInput_${r.id}').value, document.getElementById('sauceRecUnitInput_${r.id}').value)">💾 Save</button>
-          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="renderSauceRecipeBrowse()">✕ Cancel</button>
-          <button class="btn secondary" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="deleteSauceRecipe(${r.id})">🗑 Delete</button>
-        </div>
+        <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="deleteSauceRecipe(${r.id})">🗑 Delete</button>
       </td>
     </tr>`).join('') || `<tr><td colspan="4" style="color:var(--muted)">No ingredients in this recipe yet.</td></tr>`}</tbody></table></div>
+    ${rows.length ? `<div class="btnrow can-write" style="margin-top:10px">
+      <button class="btn" onclick="saveSauceRecipeBrowseChanges('${sauceId}')">💾 Save Changes</button>
+      <button class="btn secondary" onclick="closeSauceRecipeBrowse()">✕ Cancel</button>
+    </div>` : ''}
     <div class="row can-write" style="align-items:flex-end;margin-top:10px">
       <div><label>Add Ingredient</label>
-        <select id="sauceRecBrowseIngredient">${optionsHtml}</select>
+        <div class="search">
+          <input id="sauceRecBrowseIngredientSearch" placeholder="Search ingredient..." oninput="searchSauceRecBrowseIngredient()" autocomplete="off">
+          <div class="suggest" id="sauceRecBrowseIngredientSuggest" style="display:none"></div>
+        </div>
+        <input type="hidden" id="sauceRecBrowseIngredient">
       </div>
       <div style="max-width:130px"><label>Qty/Batch</label><input type="number" step="any" id="sauceRecBrowseQty"></div>
       <div style="max-width:180px"><label>Unit</label>
@@ -6057,18 +7219,59 @@ function renderSauceRecipeBrowse(){
         </select>
       </div>
       <button class="btn" onclick="addIngredientToSauceRecipe('${sauceId}')">💾 Save New Ingredient</button>
-      <button class="btn secondary" onclick="document.getElementById('sauceRecBrowseIngredient').value=''; document.getElementById('sauceRecBrowseQty').value='';">✕ Cancel</button>
+      <button class="btn secondary" onclick="resetSauceRecBrowseIngredientPicker()">✕ Cancel</button>
     </div>`;
 }
-async function updateSauceRecipeQty(id, value, unit){
+function searchSauceRecBrowseIngredient(){
+  const q = document.getElementById('sauceRecBrowseIngredientSearch').value.trim().toLowerCase();
+  const box = document.getElementById('sauceRecBrowseIngredientSuggest');
+  document.getElementById('sauceRecBrowseIngredient').value = '';
+  if(!q){ box.style.display = 'none'; return; }
+  const matches = SAUCE_INGREDIENTS.filter(i => (i.name||'').toLowerCase().includes(q)).slice(0,30);
+  if(!matches.length){ box.innerHTML = '<div style="padding:8px 12px;color:var(--muted)">(no match)</div>'; box.style.display = 'block'; return; }
+  box.innerHTML = matches.map(i => `<div onclick="pickSauceRecBrowseIngredient(${i.id})">${i.name}</div>`).join('');
+  box.style.display = 'block';
+}
+function pickSauceRecBrowseIngredient(id){
+  const i = SAUCE_INGREDIENTS.find(x => x.id === id);
+  if(!i) return;
+  document.getElementById('sauceRecBrowseIngredientSearch').value = i.name;
+  document.getElementById('sauceRecBrowseIngredient').value = i.id;
+  document.getElementById('sauceRecBrowseIngredientSuggest').style.display = 'none';
+}
+function resetSauceRecBrowseIngredientPicker(){
+  document.getElementById('sauceRecBrowseIngredientSearch').value = '';
+  document.getElementById('sauceRecBrowseIngredient').value = '';
+  document.getElementById('sauceRecBrowseQty').value = '';
+}
+async function saveSauceRecipeBrowseChanges(sauceId){
   if(!canWrite()){ toast('You have read-only access'); return; }
-  const qty = parseFloat(value) || 0;
+  const rows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId));
+  const updates = [];
+  rows.forEach(r => {
+    const qtyInput = document.getElementById(`sauceRecQtyInput_${r.id}`);
+    const unitInput = document.getElementById(`sauceRecUnitInput_${r.id}`);
+    if(!qtyInput || !unitInput) return;
+    const qty = parseFloat(qtyInput.value) || 0;
+    const unit = unitInput.value || 'unit';
+    if(qty !== Number(r.qty_per_batch) || unit !== (r.qty_unit || 'unit')){
+      updates.push({ id: r.id, qty_per_batch: qty, qty_unit: unit });
+    }
+  });
+  if(!updates.length){ toast('No changes to save'); return; }
   try{
-    await sbUpdate('erp_sauce_recipe', id, { qty_per_batch: qty, qty_unit: unit || 'unit' });
-    toast('Recipe updated');
+    for(const u of updates){ await sbUpdate('erp_sauce_recipe', u.id, { qty_per_batch: u.qty_per_batch, qty_unit: u.qty_unit }); }
+    toast(`Recipe updated (${updates.length} row(s))`);
+    // Back to the "nothing selected" waiting state, ready to browse/edit a different recipe —
+    // matches Cancel's behavior instead of leaving this same sauce's (now-saved) rows open.
+    document.getElementById('sauceRecBrowseSauce').value = '';
     await refreshSauceScreen();
     renderSauceRecipeBrowse();
   }catch(e){ toast('Update failed: ' + e.message); }
+}
+function closeSauceRecipeBrowse(){
+  document.getElementById('sauceRecBrowseSauce').value = '';
+  renderSauceRecipeBrowse();
 }
 async function addIngredientToSauceRecipe(sauceId){
   if(!canWrite()){ toast('You have read-only access'); return; }
@@ -6104,7 +7307,7 @@ function renderSauceRecipeTable(){
 
 /* ---- Daily Sauce Production Schedule: Day + Task (Create tab) ---- */
 async function ensureSauceDay(dateStr){
-  let rows = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,manpower_count,manpower_names,status&schedule_date=eq.${dateStr}`);
+  let rows = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,status&schedule_date=eq.${dateStr}`);
   if(rows.length) return rows[0];
   rows = await sbInsert('erp_sauce_schedule_days', [{ schedule_date: dateStr }]);
   return rows[0];
@@ -6115,24 +7318,10 @@ async function onSauceDayDateChange(){
   await loadSauceDayForCreate(dateStr);
 }
 async function loadSauceDayForCreate(dateStr){
-  const rows = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,manpower_count,manpower_names,status&schedule_date=eq.${dateStr}`);
+  const rows = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,status&schedule_date=eq.${dateStr}`);
   CURRENT_SAUCE_DAY = rows[0] || null;
-  document.getElementById('sauceDayManpowerCount').value = CURRENT_SAUCE_DAY?.manpower_count ?? '';
-  document.getElementById('sauceDayManpowerNames').value = CURRENT_SAUCE_DAY?.manpower_names || '';
   resetSauceTaskForm();
   await renderSauceTasksTable();
-}
-async function saveSauceDayHeader(){
-  if(!canWrite()){ toast('You have read-only access'); return; }
-  const dateStr = document.getElementById('sauceDayDate').value || todayStr();
-  const manpowerCount = document.getElementById('sauceDayManpowerCount').value ? parseFloat(document.getElementById('sauceDayManpowerCount').value) : null;
-  const manpowerNames = document.getElementById('sauceDayManpowerNames').value.trim() || null;
-  try{
-    const day = await ensureSauceDay(dateStr);
-    await sbUpdate('erp_sauce_schedule_days', day.id, { manpower_count: manpowerCount, manpower_names: manpowerNames });
-    toast('Day info saved');
-    await loadSauceDayForCreate(dateStr);
-  }catch(e){ toast('Save failed: ' + e.message); }
 }
 function searchSauceTaskSauce(){
   const q = document.getElementById('sauceTaskSauceSearch').value.trim().toLowerCase();
@@ -6150,9 +7339,81 @@ function pickSauceTaskSauce(id){
   document.getElementById('sauceTaskSauceSearch').value = s.name;
   document.getElementById('sauceTaskSauceId').value = s.id;
   document.getElementById('sauceTaskSauceSuggest').style.display = 'none';
+  document.getElementById('sauceTaskFormBody').style.display = 'block';
+  document.getElementById('sauceTaskFormToggleIcon').textContent = '▾ Click to collapse';
   autofillSauceTaskPackingFromItem(s);
   recalcSauceTaskPackingHrs();
   recalcSauceTaskUsageNote();
+  checkSauceIngredientAvailability();
+  updateSauceComponentEstimate();
+}
+// If this sauce is linked to a Component/Sachet (fix33) with a Unit Weight set (fix34),
+// estimate how many packs this task's total recipe weight (mixes × weight/mix) will yield —
+// purely informational, separate from the pack_weight/machines packing-hours calc.
+function updateSauceComponentEstimate(){
+  const noteEl = document.getElementById('sauceTaskComponentEstimate');
+  if(!noteEl) return;
+  const sauceId = document.getElementById('sauceTaskSauceId').value;
+  const mixes = parseFloat(document.getElementById('sauceTaskMixes').value) || 0;
+  if(!sauceId || !mixes){ noteEl.innerHTML = ''; return; }
+  const sauce = SAUCES.find(s => s.id === Number(sauceId));
+  if(!sauce || !sauce.component_sachet_name){ noteEl.innerHTML = ''; return; }
+  const sachet = SACHETS.find(x => x.sachet_name === sauce.component_sachet_name);
+  if(!sachet || !sachet.unit_weight){
+    noteEl.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-top:4px">Set a Unit Weight for "${sauce.component_sachet_name}" in Components (Sachets) to estimate packs.</div>`;
+    return;
+  }
+  const { totalKg, hasRows } = sauceRecipeWeightKg(sauce.id);
+  if(!hasRows || !totalKg){ noteEl.innerHTML = ''; return; }
+  const totalWeightKg = totalKg * mixes;
+  const unitWeightKg = toKg(sachet.unit_weight, sachet.unit_weight_unit);
+  if(!unitWeightKg){ noteEl.innerHTML = ''; return; }
+  const estPacks = Math.floor(totalWeightKg / unitWeightKg);
+  noteEl.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-top:4px">📦 Estimated packs of "${sauce.component_sachet_name}": ~${fmtNum(estPacks)} (${fmtNum(totalWeightKg)} kg ÷ ${fmtNum(sachet.unit_weight)}${sachet.unit_weight_unit||'g'}/pack)</div>`;
+}
+// If a recipe ingredient is short, and that ingredient is itself linked to a sauce that
+// produces it (Manage Ingredients > "Produced By"), point at that sauce instead of just
+// flagging a bare shortfall — e.g. "Hon's Chili Oil Solids" is short → go make "Hon's Chili
+// Oil K150" first.
+function checkSauceIngredientAvailability(){
+  const noteEl = document.getElementById('sauceTaskIngredientNote');
+  if(!noteEl) return;
+  const sauceId = document.getElementById('sauceTaskSauceId').value;
+  const mixes = parseFloat(document.getElementById('sauceTaskMixes').value) || 0;
+  if(!sauceId || !mixes){ noteEl.innerHTML = ''; return; }
+  const recipeRows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId));
+  // The same producer sauce (e.g. "Hon's GF Vegan Fish Sauce") can be linked from more than
+  // one ingredient master row, and/or appear more than once in this recipe — group shortfalls
+  // by producer so each producer sauce only gets ONE reminder line, not one per ingredient.
+  const shortByProducer = new Map();
+  recipeRows.forEach(r => {
+    const ing = SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id);
+    // Only ingredients linked to a producer sauce get flagged here for now — a bare "you're
+    // low on this raw ingredient" isn't the ask yet, just "you need to go produce that sauce".
+    if(!ing || !ing.produced_by_sauce_id) return;
+    const perBatch = parseFloat(r.qty_per_batch) || 0;
+    const needed = r.qty_unit === 'unit'
+      ? mixes * perBatch
+      : (ing.kg_per_unit ? (mixes * perBatch) / ing.kg_per_unit : mixes * perBatch);
+    const stock = Number(ing.inventory_qty) || 0;
+    if(needed > stock){
+      const entry = shortByProducer.get(ing.produced_by_sauce_id) || { producerId: ing.produced_by_sauce_id, parts: [] };
+      entry.parts.push(`"${ing.name}" (need ${fmtNum(needed)} ${ing.unit||''})`);
+      shortByProducer.set(ing.produced_by_sauce_id, entry);
+    }
+  });
+  const problems = [...shortByProducer.values()].map(entry => {
+    const producer = SAUCES.find(s => s.id === entry.producerId);
+    const producerName = producer ? producer.name : '(deleted sauce)';
+    const partsText = entry.parts.join(', ');
+    // If the producer sauce is already Planned or Confirmed on today's schedule, this
+    // consuming sauce doesn't need its own "go produce that first" nag — just note it's covered.
+    const alreadyScheduled = SAUCE_TASKS_CREATE.some(t => t.sauce_id === entry.producerId && t.status !== 'Cancelled');
+    return alreadyScheduled
+      ? `<div style="font-size:12px;color:var(--muted);font-weight:600;margin-top:4px">✓ ${partsText} short, but "${producerName}" is already on today's schedule.</div>`
+      : `<div style="font-size:12px;color:var(--danger);font-weight:600;margin-top:4px">⚠ ${partsText} short — produced by "${producerName}". Produce that first.</div>`;
+  });
+  noteEl.innerHTML = problems.join('');
 }
 // Suggests "Approximately N cases, it's M weeks stock" from this task's recipe-derived
 // total weight (mixes × weight/mix) ÷ the linked item's case weight, and that item's recent
@@ -6219,6 +7480,13 @@ function recalcSauceTaskPackingHrs(){
   const calc = calcSaucePackingHrs(task);
   disp.value = calc ? `${fmtNum(calc.hrs)}h (${fmtNum(calc.totalKg)} kg / ${fmtNum(calc.totalPacks)} packs)${calc.hasUnknown?' ⚠ incomplete recipe weight':''}` : '';
 }
+function toggleSauceTaskForm(){
+  const body = document.getElementById('sauceTaskFormBody');
+  const icon = document.getElementById('sauceTaskFormToggleIcon');
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  icon.textContent = open ? '▸ Click to expand' : '▾ Click to collapse';
+}
 function resetSauceTaskForm(){
   document.getElementById('sauceTaskEditId').value = '';
   document.getElementById('sauceTaskFormTitle').textContent = 'Add Production Task';
@@ -6237,13 +7505,15 @@ function resetSauceTaskForm(){
   document.getElementById('sauceTaskBagsPerCycle').value = '';
   document.getElementById('sauceTaskPackingHrsDisplay').value = '';
   document.getElementById('sauceTaskUsageNote').value = '';
+  document.getElementById('sauceTaskIngredientNote').innerHTML = '';
+  document.getElementById('sauceTaskComponentEstimate').innerHTML = '';
 }
 function editSauceTask(id){
   const t = SAUCE_TASKS_CREATE.find(x => x.id === id);
   if(!t) return;
   document.getElementById('sauceTaskEditId').value = id;
   document.getElementById('sauceTaskFormTitle').textContent = 'Edit Production Task';
-  document.getElementById('sauceTaskSubmitBtn').textContent = 'Save Changes';
+  document.getElementById('sauceTaskSubmitBtn').textContent = '💾 Save Changes';
   document.getElementById('sauceTaskLocation').value = t.location || '';
   document.getElementById('sauceTaskMixes').value = t.mixes ?? '';
   const s = SAUCES.find(x => x.id === t.sauce_id);
@@ -6259,7 +7529,9 @@ function editSauceTask(id){
   document.getElementById('sauceTaskBagsPerCycle').value = t.bags_per_cycle ?? '';
   document.getElementById('sauceTaskUsageNote').value = t.usage_note || '';
   recalcSauceTaskPackingHrs();
-  window.scrollTo(0,0);
+  document.getElementById('sauceTaskFormBody').style.display = 'block';
+  document.getElementById('sauceTaskFormToggleIcon').textContent = '▾ Click to collapse';
+  document.getElementById('sauceTaskFormTitle').scrollIntoView({behavior:'smooth', block:'start'});
 }
 async function submitSauceTask(){
   if(!canWrite()){ toast('You have read-only access'); return; }
@@ -6311,8 +7583,13 @@ async function renderSauceTasksTable(){
     const prodDate = day.schedule_date;
     const julian = toSauceJulian(prodDate);
     const bb = s ? sauceBestBefore(s, prodDate) : null;
+    const notesLines = [
+      t.operator_notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">🕐 ${t.operator_notes}</div>` : '',
+      t.machine_notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">⚙ ${t.machine_notes}</div>` : '',
+      sauceTaskPackingCalcText(t) ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${sauceTaskPackingCalcText(t)}</div>` : ''
+    ].join('');
     return `<tr>
-      <td>${t.location||''}</td><td>${fmtNum(t.mixes)}</td><td>${s?s.name:'(sauce deleted)'}</td>
+      <td>${t.location||''}</td><td>${fmtNum(t.mixes)}</td><td>${s?s.name:'(sauce deleted)'}${notesLines}</td>
       <td>Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td>
       <td>${t.status}</td>
       <td class="no-print" style="white-space:nowrap">
@@ -6324,13 +7601,20 @@ async function renderSauceTasksTable(){
     </tr>`;
   }).join('');
   document.getElementById('sauceTasksEmpty').style.display = SAUCE_TASKS_CREATE.length ? 'none' : 'block';
+  const totalPackingHrs = SAUCE_TASKS_CREATE.reduce((sum,t) => {
+    const calc = calcSaucePackingHrs(t);
+    return sum + (calc ? calc.hrs : 0);
+  }, 0);
+  document.getElementById('sauceTasksPackingTotal').textContent = SAUCE_TASKS_CREATE.length
+    ? `🕐 Total packing hours for this day: ${fmtHrs(totalPackingHrs)} hrs across ${SAUCE_TASKS_CREATE.length} task(s)`
+    : '';
 }
 
 /* ---- Preview tab (grouped by Location) ---- */
 async function renderSaucePreview(){
   const dateStr = document.getElementById('saucePreviewDate').value || todayStr();
   document.getElementById('saucePreviewDate').value = dateStr;
-  const days = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,manpower_count,manpower_names,status&schedule_date=eq.${dateStr}`);
+  const days = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,status&schedule_date=eq.${dateStr}`);
   SAUCE_PREVIEW_DAY = days[0] || null;
   if(!SAUCE_PREVIEW_DAY){
     SAUCE_PREVIEW_TASKS = [];
@@ -6344,7 +7628,6 @@ async function renderSaucePreview(){
   const statusChip = SAUCE_PREVIEW_DAY.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
   document.getElementById('sauceDayInfo').innerHTML = `<div class="card">
     <div class="row" style="align-items:center">
-      <div><strong>Manpower:</strong> ${fmtNum(SAUCE_PREVIEW_DAY.manpower_count)}${SAUCE_PREVIEW_DAY.manpower_names?(' — '+SAUCE_PREVIEW_DAY.manpower_names):''}</div>
       <div style="flex:1"></div>
       <div><strong>Status:</strong> ${statusChip}</div>
     </div>
@@ -6352,11 +7635,14 @@ async function renderSaucePreview(){
   const byLoc = {};
   SAUCE_PREVIEW_TASKS.forEach(t => { const l = t.location || '(No Location)'; (byLoc[l]=byLoc[l]||[]).push(t); });
   const locs = Object.keys(byLoc).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
-  document.getElementById('saucePreviewTable').innerHTML = locs.map(l => `
+  document.getElementById('saucePreviewTable').innerHTML = locs.map(l => {
+    const locTotalHrs = byLoc[l].reduce((sum,t) => { const c = calcSaucePackingHrs(t); return sum + (c?c.hrs:0); }, 0);
+    return `
     <div class="card">
-      <h3>${l}</h3>
+      <h3 style="margin-bottom:2px">${l}</h3>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Total packing hours for this day: ${fmtHrs(locTotalHrs)} hrs</div>
       <div class="tablewrap"><table><thead><tr>
-        <th>Mixes</th><th>Sauce</th><th>Machine/Process</th><th>Operator/Timing</th><th>Pack Size</th><th>Prod. / Best Before</th><th>Usage Note</th><th>Status</th><th class="no-print"></th>
+        <th>Mixes</th><th>Sauce</th><th>Operator/Timing</th><th>Machine/Process</th><th>Pack Size</th><th>Prod. / Best Before</th><th>Usage Note</th><th>Status</th>
       </tr></thead><tbody>
       ${byLoc[l].map(t => {
         const s = SAUCES.find(x => x.id === t.sauce_id);
@@ -6365,20 +7651,22 @@ async function renderSaucePreview(){
         const bb = s ? sauceBestBefore(s, prodDate) : null;
         const allergenTags = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
         const packingCalc = sauceTaskPackingCalcText(t);
-        const tStatus = t.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
+        const tStatus = t.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>`
+          : t.status === 'Cancelled' ? `<span class="chip" style="opacity:.6">Cancelled</span>`
+          : `<span class="chip">Planned</span>`;
         return `<tr>
           <td>${fmtNum(t.mixes)}</td><td>${s?s.name:'(sauce deleted)'}</td>
-          <td>${t.machine_notes||''}</td><td>${t.operator_notes||''}</td><td>${t.pack_size_notes||''}</td>
+          <td>${t.operator_notes||''}</td><td>${t.machine_notes||''}</td><td>${t.pack_size_notes||''}</td>
           <td>Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td>
           <td>${t.usage_note||''}</td><td>${tStatus}</td>
-          <td class="no-print"><button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="openSauceLabelPrompt(${t.id},'preview')">🏷️ Print Label</button></td>
         </tr>` +
-        (packingCalc ? `<tr><td></td><td colspan="8" style="padding-top:0;padding-bottom:8px;font-size:12px;color:var(--muted)">${packingCalc}</td></tr>` : '') +
-        (allergenTags ? `<tr><td></td><td colspan="8" style="padding-top:0;padding-bottom:10px">${allergenTags}</td></tr>` : '');
+        (packingCalc ? `<tr><td></td><td colspan="7" style="padding-top:0;padding-bottom:8px;font-size:12px;color:var(--muted)">${packingCalc}</td></tr>` : '') +
+        (allergenTags ? `<tr><td></td><td colspan="7" style="padding-top:6px;padding-bottom:10px">${allergenTags}</td></tr>` : '');
       }).join('')}
       </tbody></table></div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 async function printSauceProductionReport(){
   if(!SAUCE_PREVIEW_DAY || !SAUCE_PREVIEW_TASKS.length){ toast('No tasks to print for this date'); return; }
@@ -6387,24 +7675,26 @@ async function printSauceProductionReport(){
   SAUCE_PREVIEW_TASKS.forEach(t => { const l = t.location || '(No Location)'; (byLoc[l]=byLoc[l]||[]).push(t); });
   const locs = Object.keys(byLoc).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
   const html = `
-    <h2>Sauce Production Report</h2>
-    <p>Date: ${day.schedule_date} — Manpower: ${fmtNum(day.manpower_count)}${day.manpower_names?(' — '+day.manpower_names):''}</p>
+    <p>Date: ${day.schedule_date}</p>
     ${locs.map(l => {
       const rs = byLoc[l];
       return `<div class="pr-line">
-        <h3>${l}</h3>
+        <h2>${l} Sauce Production Plan</h2>
         <table><colgroup><col style="width:10%"><col style="width:26%"><col style="width:16%"><col style="width:24%"><col style="width:24%"></colgroup>
-        <thead><tr><th>Mixes</th><th>Sauce</th><th>Allergens</th><th>Prod. / Best Before</th><th>Status</th></tr></thead>
+        <thead><tr><th>Mixes</th><th>Sauce</th><th>Package Size</th><th>Prod. / Best Before</th><th>Status</th></tr></thead>
         <tbody>${rs.map(t => {
           const s = SAUCES.find(x => x.id === t.sauce_id);
           const julian = toSauceJulian(day.schedule_date);
           const bb = s ? sauceBestBefore(s, day.schedule_date) : null;
-          const allergenTags = s ? sauceAllergenNames(s).join(', ') : '';
-          const notesLine = [t.machine_notes, t.operator_notes, t.pack_size_notes].filter(Boolean).join(' — ');
-          return `<tr><td>${fmtNum(t.mixes)}</td><td>${s?s.name:''}</td><td>${allergenTags}</td>
+          const allergenChips = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
+          const allergenLine = allergenChips ? `Allergens: ${allergenChips}` : '';
+          const opMachineNotes = [t.operator_notes, t.machine_notes].filter(Boolean).join(' — ');
+          const packingLine = sauceTaskPackingCalcText(t);
+          return `<tr><td>${fmtNum(t.mixes)}</td><td>${s?s.name:''}</td><td>${t.pack_size_notes||''}</td>
             <td>Prod: ${day.schedule_date} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td><td>${t.status}</td></tr>` +
-            (notesLine ? `<tr><td></td><td colspan="4" class="pr-detail">${notesLine}</td></tr>` : '') +
-            (t.usage_note ? `<tr><td></td><td colspan="4" class="pr-detail" style="color:#c0392b">${t.usage_note}</td></tr>` : '');
+            (opMachineNotes ? `<tr><td></td><td colspan="4" class="pr-detail" style="color:#c0392b;font-weight:700">${opMachineNotes}</td></tr>` : '') +
+            (allergenLine ? `<tr><td></td><td colspan="4" class="pr-detail" style="padding-top:6px">${allergenLine}</td></tr>` : '') +
+            (packingLine ? `<tr><td></td><td colspan="4" class="pr-detail">${packingLine}</td></tr>` : '');
         }).join('')}</tbody></table>
       </div>`;
     }).join('')}
@@ -6413,35 +7703,62 @@ async function printSauceProductionReport(){
 }
 
 /* ---- Confirm Completion tab ---- */
+// Same weight/case-weight math as recalcSauceTaskUsageNote's "Approximately N cases" text —
+// used here to pre-fill a starting guess for the finished-goods qty, which stays editable.
+function suggestedSauceOutputCases(task){
+  const sauce = SAUCES.find(s => s.id === task.sauce_id);
+  if(!sauce) return null;
+  const item = lookupSauceMatchedItems(sauce.item_code)[0];
+  if(!item) return null;
+  const { totalKg, hasRows } = sauceRecipeWeightKg(sauce.id);
+  const mixes = parseFloat(task.mixes) || 0;
+  if(!hasRows || !totalKg || !mixes) return null;
+  const cwKg = caseWeightKg(item);
+  if(!cwKg) return null;
+  return (totalKg * mixes) / cwKg;
+}
 async function renderSauceConfirmTab(){
   const dateStr = document.getElementById('sauceConfirmDate').value || todayStr();
   document.getElementById('sauceConfirmDate').value = dateStr;
-  const days = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,manpower_count,manpower_names,status&schedule_date=eq.${dateStr}`);
+  const days = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date,status&schedule_date=eq.${dateStr}`);
   SAUCE_CONFIRM_DAY = days[0] || null;
   if(!SAUCE_CONFIRM_DAY || SAUCE_CONFIRM_DAY.status === 'Confirmed'){
     SAUCE_CONFIRM_TASKS = [];
     document.getElementById('sauceConfirmDayInfo').innerHTML = '';
     document.getElementById('sauceConfirmTasksList').innerHTML = '';
     document.getElementById('sauceConfirmEmpty').style.display = 'block';
-    document.getElementById('sauceConfirmDayBtnWrap').style.display = 'none';
     return;
   }
   SAUCE_CONFIRM_TASKS = await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${SAUCE_CONFIRM_DAY.id}&order=location.asc,id.asc&limit=200`);
   document.getElementById('sauceConfirmEmpty').style.display = SAUCE_CONFIRM_TASKS.length ? 'none' : 'block';
-  document.getElementById('sauceConfirmDayBtnWrap').style.display = (SAUCE_CONFIRM_TASKS.length && canWrite()) ? '' : 'none';
-  document.getElementById('sauceConfirmDayInfo').innerHTML = `<p><strong>Manpower:</strong> ${fmtNum(SAUCE_CONFIRM_DAY.manpower_count)}${SAUCE_CONFIRM_DAY.manpower_names?(' — '+SAUCE_CONFIRM_DAY.manpower_names):''}</p>`;
+  document.getElementById('sauceConfirmDayInfo').innerHTML = '';
+  const confirmProdDate = SAUCE_CONFIRM_DAY.schedule_date;
+  const confirmJulian = toSauceJulian(confirmProdDate);
   document.getElementById('sauceConfirmTasksList').innerHTML = `
     <div class="tablewrap"><table><thead><tr>
-      <th>Location</th><th>Sauce</th><th>Mixes</th><th>Status</th><th class="no-print"></th>
+      <th>Location</th><th>Sauce</th><th>Mixes</th><th>Finished Goods Qty (cases)</th><th>Prod. / Best Before</th><th>Status</th><th class="no-print"></th>
     </tr></thead><tbody>
     ${SAUCE_CONFIRM_TASKS.map(t => {
       const s = SAUCES.find(x => x.id === t.sauce_id);
-      const statusChip = t.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
-      return `<tr>
+      const statusChip = t.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>`
+        : t.status === 'Cancelled' ? `<span class="chip" style="opacity:.6">Cancelled</span>`
+        : `<span class="chip">Planned</span>`;
+      const editable = canWrite() && t.status === 'Planned';
+      const suggested = t.confirmed_output_qty ?? suggestedSauceOutputCases(t);
+      // Cases are whole units — floor rather than round so the suggestion never implies
+      // more finished goods than the recipe weight can actually fill.
+      const qtyVal = (suggested != null && isFinite(suggested)) ? Math.floor(suggested) : '';
+      const bb = s ? sauceBestBefore(s, confirmProdDate) : null;
+      return `<tr${t.status==='Cancelled'?' style="opacity:.6"':''}>
         <td>${t.location||''}</td><td>${s?s.name:'(sauce deleted)'}</td>
-        <td>${canWrite() && t.status!=='Confirmed' ? `<input type="number" step="any" value="${t.mixes??''}" style="width:90px" onchange="updateSauceTaskMixes(${t.id}, this.value)">` : fmtNum(t.mixes)}</td>
+        <td>${editable ? `<input type="number" step="any" value="${t.mixes??''}" style="width:90px" onchange="updateSauceTaskMixes(${t.id}, this.value)">` : fmtNum(t.mixes)}</td>
+        <td>${editable ? `<input type="number" step="1" value="${qtyVal}" id="sauceConfirmQty_${t.id}" style="width:100px">` : fmtNum(t.confirmed_output_qty)}</td>
+        <td>Prod: ${confirmProdDate} (Julian: ${confirmJulian})${bb?`<br>Best Before: ${bb}`:''}</td>
         <td>${statusChip}</td>
-        <td class="no-print"><button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="openSauceLabelPrompt(${t.id},'confirm')">🏷️ Print Label</button></td>
+        <td class="no-print">${editable ? `<div style="display:flex;gap:6px;flex-wrap:nowrap">
+          <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="confirmSauceTask(${t.id})">✔ Confirm</button>
+          <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="cancelSauceTask(${t.id})">✕ Cancel</button>
+        </div>` : ''}</td>
       </tr>`;
     }).join('')}
     </tbody></table></div>`;
@@ -6453,55 +7770,87 @@ async function updateSauceTaskMixes(id, value){
     await renderSauceConfirmTab();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
-async function confirmSauceDayBtn(){
+// Confirms one task: deducts its recipe ingredients (mixes × recipe), and — if a finished
+// goods quantity was entered — records that into Finished Goods In/Out against the sauce's
+// linked Item #. Once every task for the day is confirmed this way, the day itself flips to
+// Confirmed too, so it drops off Awaiting Confirmation (mirrors the old bulk-confirm's effect).
+async function confirmSauceTask(id){
   if(!canWrite()){ toast('You have read-only access'); return; }
-  if(!SAUCE_CONFIRM_DAY){ toast('No day loaded'); return; }
-  if(!confirm('Confirm this day? This deducts recipe ingredients for every task and cannot be undone.')) return;
+  const t = SAUCE_CONFIRM_TASKS.find(x => x.id === id);
+  if(!t){ toast('Task not found — try refreshing'); return; }
+  const qtyInput = document.getElementById('sauceConfirmQty_'+id);
+  const outputQty = (qtyInput && qtyInput.value !== '') ? parseFloat(qtyInput.value) : null;
+  const mixes = parseFloat(t.mixes) || 0;
+  const sauceForMsg = SAUCES.find(s => s.id === t.sauce_id);
+  const destinations = [];
+  if(outputQty && sauceForMsg){
+    if(lookupSauceMatchedItems(sauceForMsg.item_code)[0]) destinations.push('Finished Goods In/Out');
+    if(sauceForMsg.component_sachet_name) destinations.push('Components (Sachets)');
+  }
+  const confirmMsg = 'Confirm this task? This deducts recipe ingredients' +
+    (destinations.length ? ` and records ${fmtNum(outputQty)} into ${destinations.join(' and ')}` : '') +
+    ', and cannot be undone.';
+  if(!confirm(confirmMsg)) return;
   try{
     SAUCE_RECIPE = await sbGetAll('erp_sauce_recipe?select=id,sauce_id,ingredient_id,qty_per_batch,qty_unit&order=id.asc');
-    for(const t of SAUCE_CONFIRM_TASKS){
-      if(t.status === 'Confirmed') continue;
-      const mixes = parseFloat(t.mixes) || 0; // mixes can be fractional — don't round
-      if(mixes > 0) await deductSauceIngredientsForSauce(t.sauce_id, SAUCE_CONFIRM_DAY.schedule_date, mixes);
-      await sbUpdate('erp_sauce_schedule_tasks', t.id, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_at: new Date().toISOString() });
+    if(mixes > 0) await deductSauceIngredientsForSauce(t.sauce_id, SAUCE_CONFIRM_DAY.schedule_date, mixes);
+    const sauce = SAUCES.find(s => s.id === t.sauce_id);
+    if(outputQty){
+      const item = sauce ? lookupSauceMatchedItems(sauce.item_code)[0] : null;
+      let recordedSomewhere = false;
+      if(item){
+        const prodDate = SAUCE_CONFIRM_DAY.schedule_date;
+        const julian = toSauceJulian(prodDate);
+        const bb = sauce ? sauceBestBefore(sauce, prodDate) : null;
+        const lot = `Sauce production confirm: ${sauce.name} — Prod: ${prodDate} (Julian: ${julian})${bb?` / Best Before: ${bb}`:''}`;
+        await sbInsert('erp_inout', [{
+          entry_date: prodDate, item_no: item.item_no, item_name: item.item_name,
+          in_qty: outputQty, out_qty: 0, lot
+        }]);
+        recordedSomewhere = true;
+      }
+      // Some sauces are really a packaging component (e.g. a seasoning sachet sealed into
+      // another product) rather than a sellable item of their own — those add to Components
+      // (Sachets) stock instead of/alongside Finished Goods.
+      if(sauce && sauce.component_sachet_name){
+        await sbInsert('erp_components_inout', [{
+          entry_date: SAUCE_CONFIRM_DAY.schedule_date, sachet_name: sauce.component_sachet_name,
+          in_qty: outputQty, out_qty: 0
+        }]);
+        recordedSomewhere = true;
+      }
+      if(!recordedSomewhere){
+        toast('⚠ No linked Item # or Component for this sauce — ingredients deducted, but no stock record created');
+      }
     }
-    await sbUpdate('erp_sauce_schedule_days', SAUCE_CONFIRM_DAY.id, { status: 'Confirmed', confirmed_at: new Date().toISOString() });
-    toast('Day confirmed — ingredient usage recorded');
-    await refreshSauceScreen();
+    await sbUpdate('erp_sauce_schedule_tasks', t.id, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_output_qty: outputQty, confirmed_at: new Date().toISOString() });
+    await markSauceDayDoneIfAllTasksResolved();
+    toast('Task confirmed' + (destinations.length ? ` — ${destinations.join(' and ')} updated` : ''));
+    await refreshSauceScreen(); await refreshInOut(); await refreshDashboard(); await refreshProduce(); await refreshComponents();
   }catch(e){ toast('Confirm failed: ' + e.message); }
 }
-
-/* ---- Printable production label (Product Name / Production Date / Best Before / Qty / Lot) ---- */
-function openSauceLabelPrompt(taskId, source){
-  const cache = source === 'confirm' ? { day: SAUCE_CONFIRM_DAY, tasks: SAUCE_CONFIRM_TASKS } : { day: SAUCE_PREVIEW_DAY, tasks: SAUCE_PREVIEW_TASKS };
-  const t = cache.tasks.find(x => x.id === taskId);
-  if(!t || !cache.day) return;
-  const s = SAUCES.find(x => x.id === t.sauce_id);
-  const prodDate = cache.day.schedule_date;
-  const julian = toSauceJulian(prodDate);
-  const bb = s ? sauceBestBefore(s, prodDate) : null;
-  const qty = prompt('Qty for this label (e.g. "8 bags", "1 case"):', t.pack_size_notes || '');
-  if(qty === null) return;
-  printSauceLabel({
-    productName: s ? s.name : '',
-    productionDate: prodDate,
-    bestBefore: bb,
-    qty: qty,
-    lot: `Prod: ${prodDate} (Julian: ${julian})`
-  });
+// A day drops off Awaiting Confirmation once every task is either Confirmed or Cancelled —
+// Cancelled counts as "resolved" too, since it means production isn't happening, not that
+// it's still pending.
+async function markSauceDayDoneIfAllTasksResolved(){
+  const remaining = await sbGet(`erp_sauce_schedule_tasks?select=id&day_id=eq.${SAUCE_CONFIRM_DAY.id}&status=not.in.(Confirmed,Cancelled)`);
+  if(!remaining.length){ await sbUpdate('erp_sauce_schedule_days', SAUCE_CONFIRM_DAY.id, { status: 'Confirmed', confirmed_at: new Date().toISOString() }); }
 }
-function printSauceLabel({ productName, productionDate, bestBefore, qty, lot }){
-  const html = `
-    <div class="sauce-label" style="max-width:420px;margin:0 auto;border:2px solid #000;padding:18px">
-      <h2 style="margin-top:0">${productName}</h2>
-      <table style="width:100%;font-size:16px">
-        <tr><td style="font-weight:700;padding:6px 0;width:45%">Production Date:</td><td>${productionDate}</td></tr>
-        <tr><td style="font-weight:700;padding:6px 0">Best Before Date:</td><td>${bestBefore || '–'}</td></tr>
-        <tr><td style="font-weight:700;padding:6px 0">Qty:</td><td>${qty || ''}</td></tr>
-        <tr><td style="font-weight:700;padding:6px 0">Lot:</td><td>${lot}</td></tr>
-      </table>
-    </div>`;
-  runReportPrint(html);
+// Cancels a task that isn't going to be produced after all — no ingredient deduction, no
+// Finished Goods record, just marks it out of the way so it stops sitting in Awaiting
+// Confirmation forever.
+async function cancelSauceTask(id){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const t = SAUCE_CONFIRM_TASKS.find(x => x.id === id);
+  if(!t){ toast('Task not found — try refreshing'); return; }
+  const s = SAUCES.find(x => x.id === t.sauce_id);
+  if(!confirm(`Cancel this task${s?' ('+s.name+')':''}? No ingredients will be deducted and nothing will be added to Finished Goods. This cannot be undone.`)) return;
+  try{
+    await sbUpdate('erp_sauce_schedule_tasks', t.id, { status: 'Cancelled', confirmed_at: new Date().toISOString() });
+    await markSauceDayDoneIfAllTasksResolved();
+    toast('Task cancelled');
+    await refreshSauceScreen();
+  }catch(e){ toast('Cancel failed: ' + e.message); }
 }
 
 /* ============================================================
