@@ -3875,6 +3875,12 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const remarkBlock = (itemsEditable && canWrite())
     ? `<div style="margin-bottom:8px"><input placeholder="Remark for this run..." value="${(run.remark||'').replace(/"/g,'&quot;')}" style="font-size:12px;padding:4px 8px;width:100%;color:var(--danger);font-weight:700;font-style:italic" onchange="updateRunRemark(${run.id}, this.value)"></div>`
     : (run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:700;font-style:italic;margin-bottom:8px">📝 ${run.remark}</div>` : '');
+  // Only movable before the run itself is confirmed — moving it after would leave already-
+  // confirmed stock/flour deductions dated against a day this run no longer belongs to.
+  const dateCanEdit = itemsEditable && canWrite() && run.status !== 'Confirmed';
+  const runDateBlock = dateCanEdit
+    ? `<input type="date" value="${run.run_date}" title="Move this run to a different production date" style="width:150px;display:inline-block;margin-left:8px" onchange="updateRunDate(${run.id}, this.value)">`
+    : '';
   return `<div class="card" style="margin-bottom:12px" data-run-total-kg="${totalKg}" data-run-used-kg="${usedKg}">
     <div class="row" style="align-items:center;margin-bottom:6px">
       <div style="flex:2">
@@ -3886,6 +3892,7 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
         <strong>${run.product_name}</strong>
         ${run.line ? `<span class="chip" style="margin-left:6px">${run.line}</span>` : ''}
         <span style="margin-left:6px">${statusChip}</span>
+        ${runDateBlock}
       </div>
       ${confirmBtn}
       ${itemsEditable ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" title="Delete run" onclick="deleteProductionRun(${run.id})">🗑 Delete Run</button>` : ''}
@@ -4137,6 +4144,30 @@ async function updateRunRemark(runId, value){
   try{
     await sbUpdate('erp_production_runs', runId, { remark: value.trim() || null });
     toast('Remark updated');
+    await refreshScheduleScreen();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
+// Moves an unconfirmed run to a different production date — every packed item under it moves
+// with it: production_date becomes the new date, and any item tracking an expiry date gets it
+// recalculated from the new date + that item's own R.SL Day, the same formula used when items
+// are first added to a run.
+async function updateRunDate(runId, newDate){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  if(!newDate) return;
+  try{
+    const items = await sbGet(`erp_production_run_items?select=id,item_no,item_name,expired_date&run_id=eq.${runId}`);
+    const base = new Date(newDate + 'T00:00:00');
+    for(const it of items){
+      const patch = { production_date: newDate };
+      if(it.expired_date){
+        const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
+        const rsl = parseFloat(item?.r_sl_day) || 0;
+        patch.expired_date = new Date(base.getTime() + rsl*86400000).toISOString().slice(0,10);
+      }
+      await sbUpdate('erp_production_run_items', it.id, patch);
+    }
+    await sbUpdate('erp_production_runs', runId, { run_date: newDate });
+    toast(`Run moved to ${newDate}${items.length?` — ${items.length} item date(s) recalculated`:''}`);
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
@@ -5750,7 +5781,14 @@ async function performBackup(){
     btn.disabled = false;
   }
 }
-function todayStr(){ return new Date().toISOString().slice(0,10); }
+// Local calendar date, NOT toISOString().slice(0,10) — that reads UTC, which rolls over to
+// "tomorrow" several hours before local midnight for anyone west of UTC (e.g. ~5pm in
+// Vancouver), making every "today" default and overdue/upcoming date comparison in the app
+// jump a day early every evening.
+function todayStr(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function toJulianDate(dateStr){
   if(!dateStr) return '';
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -6022,6 +6060,24 @@ function addDaysToDateStr(dateStr, days){
 function sauceBestBefore(sauce, productionDate){
   if(!sauce || sauce.shelf_life_days == null || !productionDate) return null;
   return addDaysToDateStr(productionDate, sauce.shelf_life_days);
+}
+// Only Cooler-storage items track a Best Before at all (same rule as Production Schedule -
+// Create). When the sauce's Item Code matches a real item, that item's own R.SL Day is the
+// source of truth for the day count — not the sauce's separate Shelf-life field, so there's
+// only one place to maintain it. The sauce's Shelf-life field is only used as a fallback for
+// sauces with no matching item (e.g. pure raw-material sauces never sold as their own item).
+function sauceCoolerBestBefore(sauce, productionDate){
+  if(!sauce || !productionDate) return null;
+  const matchedItem = lookupSauceMatchedItems(sauce.item_code)[0];
+  // No matching item at all means there's no storage type to check against — fall back to
+  // whatever's manually set on the sauce rather than assuming it isn't a Cooler item.
+  if(!matchedItem) return sauceBestBefore(sauce, productionDate);
+  const isCoolerItem = (matchedItem.storage || '').toLowerCase().includes('cooler');
+  if(!isCoolerItem) return null;
+  if(matchedItem.r_sl_day != null && matchedItem.r_sl_day !== ''){
+    return addDaysToDateStr(productionDate, parseFloat(matchedItem.r_sl_day) || 0);
+  }
+  return sauceBestBefore(sauce, productionDate);
 }
 function sauceAllergenNames(sauce){
   if(!sauce) return [];
@@ -7323,6 +7379,20 @@ async function loadSauceDayForCreate(dateStr){
   resetSauceTaskForm();
   await renderSauceTasksTable();
 }
+// Moves an unconfirmed task to a different day (creating that day if it doesn't exist yet).
+// Unlike Production Schedule runs, a sauce task's Production/Best Before dates are never
+// stored on the task itself — they're always derived live from whichever day it belongs to —
+// so simply repointing day_id is enough; there's nothing else to recalculate.
+async function moveSauceTaskDate(taskId, newDate){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  if(!newDate) return;
+  try{
+    const newDay = await ensureSauceDay(newDate);
+    await sbUpdate('erp_sauce_schedule_tasks', taskId, { day_id: newDay.id });
+    toast(`Task moved to ${newDate}`);
+    await loadSauceDayForCreate(document.getElementById('sauceDayDate').value || todayStr());
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
 function searchSauceTaskSauce(){
   const q = document.getElementById('sauceTaskSauceSearch').value.trim().toLowerCase();
   const box = document.getElementById('sauceTaskSauceSuggest');
@@ -7582,15 +7652,23 @@ async function renderSauceTasksTable(){
     const s = SAUCES.find(x => x.id === t.sauce_id);
     const prodDate = day.schedule_date;
     const julian = toSauceJulian(prodDate);
-    const bb = s ? sauceBestBefore(s, prodDate) : null;
+    const bb = s ? sauceCoolerBestBefore(s, prodDate) : null;
     const notesLines = [
       t.operator_notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">🕐 ${t.operator_notes}</div>` : '',
       t.machine_notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">⚙ ${t.machine_notes}</div>` : '',
       sauceTaskPackingCalcText(t) ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${sauceTaskPackingCalcText(t)}</div>` : ''
     ].join('');
+    const dateEditable = t.status !== 'Confirmed' && canWrite();
+    const dateLine = `Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}`;
+    const dateCell = dateEditable
+      ? `<div style="white-space:normal;min-width:150px">
+           <div>${dateLine}</div>
+           <input type="date" value="${prodDate}" title="Move this task to a different production date" style="margin-top:4px;font-size:11px;padding:2px 4px;width:100%" onchange="moveSauceTaskDate(${t.id}, this.value)">
+         </div>`
+      : `<div style="white-space:normal">${dateLine}</div>`;
     return `<tr>
       <td>${t.location||''}</td><td>${fmtNum(t.mixes)}</td><td>${s?s.name:'(sauce deleted)'}${notesLines}</td>
-      <td>Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td>
+      <td>${dateCell}</td>
       <td>${t.status}</td>
       <td class="no-print" style="white-space:nowrap">
         <div style="display:flex;gap:6px;flex-wrap:nowrap">
@@ -7648,7 +7726,7 @@ async function renderSaucePreview(){
         const s = SAUCES.find(x => x.id === t.sauce_id);
         const prodDate = SAUCE_PREVIEW_DAY.schedule_date;
         const julian = toSauceJulian(prodDate);
-        const bb = s ? sauceBestBefore(s, prodDate) : null;
+        const bb = s ? sauceCoolerBestBefore(s, prodDate) : null;
         const allergenTags = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
         const packingCalc = sauceTaskPackingCalcText(t);
         const tStatus = t.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>`
@@ -7685,7 +7763,7 @@ async function printSauceProductionReport(){
         <tbody>${rs.map(t => {
           const s = SAUCES.find(x => x.id === t.sauce_id);
           const julian = toSauceJulian(day.schedule_date);
-          const bb = s ? sauceBestBefore(s, day.schedule_date) : null;
+          const bb = s ? sauceCoolerBestBefore(s, day.schedule_date) : null;
           const allergenChips = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
           const allergenLine = allergenChips ? `Allergens: ${allergenChips}` : '';
           const opMachineNotes = [t.operator_notes, t.machine_notes].filter(Boolean).join(' — ');
@@ -7748,7 +7826,7 @@ async function renderSauceConfirmTab(){
       // Cases are whole units — floor rather than round so the suggestion never implies
       // more finished goods than the recipe weight can actually fill.
       const qtyVal = (suggested != null && isFinite(suggested)) ? Math.floor(suggested) : '';
-      const bb = s ? sauceBestBefore(s, confirmProdDate) : null;
+      const bb = s ? sauceCoolerBestBefore(s, confirmProdDate) : null;
       return `<tr${t.status==='Cancelled'?' style="opacity:.6"':''}>
         <td>${t.location||''}</td><td>${s?s.name:'(sauce deleted)'}</td>
         <td>${editable ? `<input type="number" step="any" value="${t.mixes??''}" style="width:90px" onchange="updateSauceTaskMixes(${t.id}, this.value)">` : fmtNum(t.mixes)}</td>
@@ -7801,7 +7879,7 @@ async function confirmSauceTask(id){
       if(item){
         const prodDate = SAUCE_CONFIRM_DAY.schedule_date;
         const julian = toSauceJulian(prodDate);
-        const bb = sauce ? sauceBestBefore(sauce, prodDate) : null;
+        const bb = sauce ? sauceCoolerBestBefore(sauce, prodDate) : null;
         const lot = `Sauce production confirm: ${sauce.name} — Prod: ${prodDate} (Julian: ${julian})${bb?` / Best Before: ${bb}`:''}`;
         await sbInsert('erp_inout', [{
           entry_date: prodDate, item_no: item.item_no, item_name: item.item_name,
