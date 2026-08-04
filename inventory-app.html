@@ -567,6 +567,21 @@
       <tbody id="flourIngTable"></tbody></table></div>
       <div class="empty" id="flourIngEmpty" style="display:none">No ingredients yet</div>
     </div>
+    <div class="card admin-only">
+      <h3>Adjust Ingredient Stock</h3>
+      <p style="color:var(--muted);font-size:13px;margin-top:0">Directly correct an ingredient's live inventory quantity (e.g. after a physical count). This writes an adjustment entry under the hood — it does not overwrite history. <strong>Admin only.</strong></p>
+      <label>Ingredient</label>
+      <select id="flourAdjIngredient" onchange="onFlourAdjIngredientChange()"><option value="">Select ingredient...</option></select>
+      <div class="row" id="flourAdjWrap" style="display:none">
+        <div><label>Current Quantity</label><input id="flourAdjCurrentQty" disabled></div>
+        <div><label>New Quantity</label><input type="number" step="any" id="flourAdjNewQty" oninput="recalcFlourAdjDelta()"></div>
+        <div><label>Adjustment (calculated)</label><input id="flourAdjDelta" disabled></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn" onclick="submitFlourIngredientAdjust()">✔ Apply Adjustment</button>
+        <button class="btn secondary" onclick="resetFlourIngredientAdjustForm()">✕ Cancel</button>
+      </div>
+    </div>
   </section>
 
   <!-- FLOUR USAGE: DASHBOARD -->
@@ -674,6 +689,16 @@
     <h2>Flour Usage — Ledger</h2>
     <p style="color:var(--muted);font-size:13px;margin-top:0">Every receiving and usage record, most recent first.</p>
     <div class="card">
+      <div class="filterbar">
+        <div><label>Ingredient</label><select id="flourLedgerFilterIngredient" onchange="onFlourLedgerFilterChange()"><option value="">All Ingredients</option></select></div>
+        <div><label>Type</label>
+          <select id="flourLedgerTypeFilter" onchange="onFlourLedgerFilterChange()">
+            <option value="">In / Out (Both)</option>
+            <option value="in">In only</option>
+            <option value="out">Out only</option>
+          </select>
+        </div>
+      </div>
       <div class="tablewrap"><table id="flourLedgerTableEl"><thead><tr><th>Date</th><th>Ingredient</th><th>In</th><th>Out</th><th>Note</th><th></th></tr></thead>
       <tbody id="flourLedgerTable"></tbody></table></div>
       <div class="empty" id="flourLedgerEmpty" style="display:none">No records yet</div>
@@ -2642,6 +2667,14 @@ async function refreshPO(){
     renderPOTable();
   }catch(e){ toast('Failed to load orders: ' + e.message); }
 }
+// True for a PO# group that's an overdue, not-yet-fully-shipped order for one of the 3
+// priority customers — the same condition that earns the red warning banner below.
+function poGroupIsOverdueUrgent(lines){
+  const h = lines[0];
+  const shippedCount = lines.filter(l=>l.status==='Shipped').length;
+  const isOverdue = h.ship_date < todayStr() && shippedCount < lines.length;
+  return isOverdue && isPriorityCustomerName(h.customer);
+}
 function renderPOTable(){
   const q = document.getElementById('poSearch').value.trim().toLowerCase();
   let rows = PO_DATA;
@@ -2652,7 +2685,12 @@ function renderPOTable(){
     const key = r.po_no ? ('PO:'+r.po_no) : ('ROW:'+r.id);
     (groups[key] = groups[key] || []).push(r);
   });
-  const keys = Object.keys(groups).slice(0,150);
+  // Overdue priority-customer orders get pinned to the top — sorted before the 150-group cap
+  // is applied, so an urgent order can never get pushed off the visible list by everything else.
+  const keys = Object.keys(groups).sort((a,b) => {
+    const urgentA = poGroupIsOverdueUrgent(groups[a]), urgentB = poGroupIsOverdueUrgent(groups[b]);
+    return (urgentA === urgentB) ? 0 : (urgentA ? -1 : 1);
+  }).slice(0,150);
   document.getElementById('poGroups').innerHTML = keys.map((key,i) => {
     const lines = groups[key];
     const h = lines[0];
@@ -2875,6 +2913,8 @@ async function refreshFlourScreen(){
     document.getElementById('flourReceiveIngredient').innerHTML = optionsHtml;
     document.getElementById('flourRecIngredient').innerHTML = optionsHtml;
     document.getElementById('flourExpectedIngredient').innerHTML = optionsHtml;
+    document.getElementById('flourAdjIngredient').innerHTML = optionsHtml;
+    document.getElementById('flourLedgerFilterIngredient').innerHTML = '<option value="">All Ingredients</option>' + FLOUR_INGREDIENTS.map(i=>`<option value="${i.id}">${i.name}</option>`).join('');
     populateFlourSupplierOptions();
     populateFlourIngredientFilters();
     FLOUR_EXPECTED_DELIVERIES = await sbGet('erp_flour_expected_delivery?select=*&status=eq.Pending&order=expected_date.asc&limit=500');
@@ -3057,6 +3097,48 @@ async function submitFlourIngredient(){
 async function deleteFlourIngredient(id){
   await deleteRow('erp_flour_ingredients', id, refreshFlourScreen);
 }
+/* ---- Adjust Ingredient Stock (admin only) — mirrors Adjust Sachet Inventory ---- */
+function resetFlourIngredientAdjustForm(){
+  document.getElementById('flourAdjIngredient').value = '';
+  document.getElementById('flourAdjNewQty').value = '';
+  document.getElementById('flourAdjWrap').style.display = 'none';
+}
+function onFlourAdjIngredientChange(){
+  const id = document.getElementById('flourAdjIngredient').value;
+  if(!id){ document.getElementById('flourAdjWrap').style.display = 'none'; return; }
+  const ing = FLOUR_INGREDIENTS.find(i => String(i.id) === String(id));
+  const qty = ing ? (Number(ing.inventory_qty)||0) : 0;
+  document.getElementById('flourAdjCurrentQty').value = fmtNum(qty);
+  document.getElementById('flourAdjWrap').dataset.currentQty = qty;
+  document.getElementById('flourAdjNewQty').value = qty;
+  document.getElementById('flourAdjWrap').style.display = 'flex';
+  recalcFlourAdjDelta();
+}
+function recalcFlourAdjDelta(){
+  const current = parseFloat(document.getElementById('flourAdjWrap').dataset.currentQty) || 0;
+  const newQty = parseFloat(document.getElementById('flourAdjNewQty').value);
+  document.getElementById('flourAdjDelta').value = isNaN(newQty) ? '' : fmtNum(newQty - current);
+}
+async function submitFlourIngredientAdjust(){
+  if(!isAdmin()){ toast('Admins only'); return; }
+  const ingredientId = document.getElementById('flourAdjIngredient').value;
+  if(!ingredientId){ toast('Please select an ingredient first'); return; }
+  const current = parseFloat(document.getElementById('flourAdjWrap').dataset.currentQty) || 0;
+  const newQty = parseFloat(document.getElementById('flourAdjNewQty').value);
+  if(isNaN(newQty)){ toast('Please enter a new quantity'); return; }
+  const delta = newQty - current;
+  if(delta === 0){ toast('New quantity is the same as current — nothing to adjust'); return; }
+  try{
+    await sbInsert('erp_flour_inout', [{
+      entry_date: todayStr(), ingredient_id: ingredientId,
+      in_qty: delta > 0 ? delta : 0, out_qty: delta < 0 ? -delta : 0,
+      note: 'Inventory Adjustment'
+    }]);
+    toast('Ingredient inventory adjusted');
+    resetFlourIngredientAdjustForm();
+    await refreshFlourScreen();
+  }catch(e){ toast('Adjustment failed: ' + e.message); }
+}
 function populateFlourIngredientFilters(){
   const sel = document.getElementById('flourIngFilterSupplier');
   const keep = sel.value;
@@ -3191,9 +3273,16 @@ async function confirmFlourExpectedDelivery(id){
 }
 
 /* ---- Ledger (paginated, own screen) ---- */
+function onFlourLedgerFilterChange(){ FLOUR_LEDGER_PAGE = 1; renderFlourLedger(); }
 async function renderFlourLedger(){
   const offset = (FLOUR_LEDGER_PAGE - 1) * FLOUR_LEDGER_PAGE_SIZE;
-  const {rows, total} = await sbGetPaged('erp_flour_inout?select=id,entry_date,ingredient_id,in_qty,out_qty,note&order=id.desc', offset, FLOUR_LEDGER_PAGE_SIZE);
+  let ledgerPath = 'erp_flour_inout?select=id,entry_date,ingredient_id,in_qty,out_qty,note&order=id.desc';
+  const ledgerIngredientFilter = document.getElementById('flourLedgerFilterIngredient')?.value;
+  if(ledgerIngredientFilter) ledgerPath += `&ingredient_id=eq.${ledgerIngredientFilter}`;
+  const ledgerTypeFilter = document.getElementById('flourLedgerTypeFilter')?.value;
+  if(ledgerTypeFilter === 'in') ledgerPath += '&in_qty=gt.0';
+  else if(ledgerTypeFilter === 'out') ledgerPath += '&out_qty=gt.0';
+  const {rows, total} = await sbGetPaged(ledgerPath, offset, FLOUR_LEDGER_PAGE_SIZE);
   document.getElementById('flourLedgerTable').innerHTML = rows.map((r,i) => {
     const rowId = 'flr-detail-'+i;
     const z = (i % 2 === 0) ? ' zrow' : '';
@@ -3333,15 +3422,28 @@ function renderFlourRecipeBrowseProductOptions(){
   const productsWithRecipe = [...new Set(FLOUR_RECIPE.map(r=>r.product_name))];
   // union of the Products master list and any product name that actually has recipe rows
   // (the two can drift apart if recipes were imported from a different source file)
+  const lineByName = new Map(); // lowercase name -> line
+  PRODUCTS.forEach(p => lineByName.set(p.name.toLowerCase(), p.line || '(No Line)'));
   const allNames = new Map(); // lowercase -> display name
   PRODUCTS.forEach(p => allNames.set(p.name.toLowerCase(), p.name));
   productsWithRecipe.forEach(n => { if(!allNames.has(n.toLowerCase())) allNames.set(n.toLowerCase(), n); });
-  const names = [...allNames.values()].sort((a,b)=>a.localeCompare(b));
-  sel.innerHTML = '<option value="">Select a product dough...</option>' + names.map(n=>{
-    const has = productsWithRecipe.some(x=>x.toLowerCase()===n.toLowerCase());
-    const inMaster = PRODUCTS.some(p=>p.name.toLowerCase()===n.toLowerCase());
-    return `<option value="${n.replace(/"/g,'&quot;')}">${n}${has?' ✓ has recipe':''}${!inMaster?' (not in Products master)':''}</option>`;
-  }).join('');
+  const byLine = {};
+  [...allNames.entries()].forEach(([lower, name]) => {
+    const line = lineByName.get(lower) || '(No Line)';
+    (byLine[line] = byLine[line] || []).push(name);
+  });
+  const lines = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  let html = '<option value="">Select a product dough...</option>';
+  lines.forEach(line => {
+    html += `<optgroup label="${line}">`;
+    byLine[line].sort((a,b)=>a.localeCompare(b)).forEach(n => {
+      const has = productsWithRecipe.some(x=>x.toLowerCase()===n.toLowerCase());
+      const inMaster = PRODUCTS.some(p=>p.name.toLowerCase()===n.toLowerCase());
+      html += `<option value="${n.replace(/"/g,'&quot;')}">${line} — ${n}${has?' ✓ has recipe':''}${!inMaster?' (not in Products master)':''}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  sel.innerHTML = html;
   if([...sel.options].some(o=>o.value===keep)) sel.value = keep;
 }
 function renderFlourRecipeBrowse(){
@@ -6005,13 +6107,13 @@ async function refreshSauceScreen(){
     await loadSauceDayForCreate(document.getElementById('sauceDayDate').value);
     await renderSaucePreview();
     await renderSauceConfirmTab();
-    await renderSauceScheduledDaysList('scheduledDaysListSauceCreate', 'scheduledDaysEmptySauceCreate', 'jumpToSauceScheduledDayCreate');
-    await renderSauceScheduledDaysList('scheduledDaysListSaucePreview', 'scheduledDaysEmptySaucePreview', 'jumpToSauceScheduledDayPreview');
+    await renderSauceScheduledDaysList('scheduledDaysListSauceCreate', 'scheduledDaysEmptySauceCreate', 'jumpToSauceScheduledDayCreate', document.getElementById('sauceDayDate').value);
+    await renderSauceScheduledDaysList('scheduledDaysListSaucePreview', 'scheduledDaysEmptySaucePreview', 'jumpToSauceScheduledDayPreview', document.getElementById('saucePreviewDate').value);
     await renderSauceMaterialPlan();
   }catch(e){ toast('Failed to load Sauce Production data: ' + e.message); }
 }
 // Only today-and-forward, same convention as Production Schedule's version.
-async function renderSauceScheduledDaysList(listElId, emptyElId, jumpFnName){
+async function renderSauceScheduledDaysList(listElId, emptyElId, jumpFnName, selectedDate){
   const listEl = document.getElementById(listElId);
   if(!listEl) return;
   try{
@@ -6026,8 +6128,9 @@ async function renderSauceScheduledDaysList(listElId, emptyElId, jumpFnName){
     const today = todayStr();
     listEl.innerHTML = daysWithTasks.map(d => {
       const isToday = d.schedule_date === today;
+      const isSelected = d.schedule_date === selectedDate;
       const n = counts[d.id] || 0;
-      return `<button class="btn secondary" style="padding:6px 12px;font-size:12px${isToday?';border-color:var(--accent);color:var(--accent);font-weight:700':''}" onclick="${jumpFnName}('${d.schedule_date}')">${d.schedule_date}${isToday?' (Today)':''} · ${n} task${n===1?'':'s'}</button>`;
+      return `<button class="btn secondary${isSelected?' active-option':''}" style="padding:6px 12px;font-size:12px${(!isSelected && isToday)?';border-color:var(--accent);color:var(--accent);font-weight:700':''}" onclick="${jumpFnName}('${d.schedule_date}')">${d.schedule_date}${isToday?' (Today)':''} · ${n} task${n===1?'':'s'}</button>`;
     }).join('');
     document.getElementById(emptyElId).style.display = 'none';
   }catch(e){ /* non-fatal — the rest of the screen still works */ }
@@ -6035,10 +6138,12 @@ async function renderSauceScheduledDaysList(listElId, emptyElId, jumpFnName){
 function jumpToSauceScheduledDayCreate(date){
   document.getElementById('sauceDayDate').value = date;
   onSauceDayDateChange();
+  renderSauceScheduledDaysList('scheduledDaysListSauceCreate', 'scheduledDaysEmptySauceCreate', 'jumpToSauceScheduledDayCreate', date);
 }
 function jumpToSauceScheduledDayPreview(date){
   document.getElementById('saucePreviewDate').value = date;
   renderSaucePreview();
+  renderSauceScheduledDaysList('scheduledDaysListSaucePreview', 'scheduledDaysEmptySaucePreview', 'jumpToSauceScheduledDayPreview', date);
 }
 
 /* ---- Date / Julian ("-DDD") / Best Before helpers ---- */
