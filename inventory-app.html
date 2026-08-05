@@ -708,6 +708,12 @@
         <button class="btn secondary" id="flourLedgerNextBtn" onclick="flourLedgerNextPage()" style="flex:0 0 auto">Next ›</button>
       </div>
     </div>
+    <div class="card admin-only">
+      <h3>🔍 Find Unit-Conversion Issues</h3>
+      <p style="color:var(--muted);font-size:13px;margin-top:0">Scans every Out record whose recipe is in kg for records where the raw kg figure got written as the pack count instead of being converted via Kg/Unit (this happens if a Production Run was confirmed before the Flour Usage ingredient data was loaded this session). <strong>Admin only.</strong></p>
+      <div class="btnrow"><button class="btn" onclick="auditFlourLedgerUnitIssues()">🔍 Scan Ledger</button></div>
+      <div id="flourAuditResult" style="margin-top:12px"></div>
+    </div>
   </section>
 
 
@@ -1006,6 +1012,7 @@
     </div>
     <div class="btnrow no-print">
       <button class="btn secondary" onclick="printSauceProductionReport()">🖨 Print Production Report</button>
+      <button class="btn secondary" onclick="printSauceProductionReportWeek()">🖨 Print Week's Production Plan</button>
     </div>
     <div id="sauceDayInfo"></div>
     <div id="saucePreviewTable"></div>
@@ -3310,6 +3317,46 @@ async function renderFlourLedger(){
 function flourLedgerPrevPage(){ if(FLOUR_LEDGER_PAGE > 1){ FLOUR_LEDGER_PAGE--; renderFlourLedger(); } }
 function flourLedgerNextPage(){ FLOUR_LEDGER_PAGE++; renderFlourLedger(); }
 
+// Diagnostic for the "FLOUR_INGREDIENTS not loaded yet" bug (fixed in confirmProductionRun):
+// any kg-recipe Out record where the recorded qty equals the raw kg figure in its own note
+// (instead of that figure divided by the ingredient's kg_per_unit) was written unconverted.
+async function auditFlourLedgerUnitIssues(){
+  const box = document.getElementById('flourAuditResult');
+  box.innerHTML = '<p style="color:var(--muted)">Scanning…</p>';
+  try{
+    const rows = await sbGetAll('erp_flour_inout?select=id,entry_date,ingredient_id,out_qty,note&out_qty=gt.0&note=not.is.null&order=entry_date.desc');
+    const flagged = [];
+    rows.forEach(r => {
+      const m = (r.note||'').match(/\(([\d.]+)\s*kg\)/i);
+      if(!m) return;
+      const kgFigure = parseFloat(m[1]);
+      const ing = FLOUR_INGREDIENTS.find(i => String(i.id) === String(r.ingredient_id));
+      if(!ing || !ing.kg_per_unit || ing.kg_per_unit === 1) return; // no conversion expected, or unknown ingredient
+      if((ing.unit||'').toLowerCase() === 'kg') return; // native unit is already kg — no conversion needed
+      const outQty = parseFloat(r.out_qty) || 0;
+      if(Math.abs(outQty - kgFigure) > 0.005) return; // already converted correctly
+      flagged.push({ ...r, ingName: ing.name, unit: ing.unit, kgFigure, correctQty: kgFigure / ing.kg_per_unit, overBy: outQty - (kgFigure / ing.kg_per_unit) });
+    });
+    if(!flagged.length){
+      box.innerHTML = '<p style="color:var(--muted)">No unit-conversion issues found.</p>';
+      return;
+    }
+    const byIng = {};
+    flagged.forEach(f => { (byIng[f.ingName]=byIng[f.ingName]||[]).push(f); });
+    const names = Object.keys(byIng).sort((a,b)=>a.localeCompare(b));
+    box.innerHTML = `<p style="color:var(--danger);font-weight:700">${flagged.length} suspect record(s) found across ${names.length} ingredient(s):</p>` +
+      names.map(n => {
+        const items = byIng[n];
+        const totalOverBy = items.reduce((s,f)=>s+f.overBy,0);
+        return `<div style="margin-bottom:14px">
+          <div style="font-weight:700;margin-bottom:4px">${n} — over-deducted by ~${fmtNum(totalOverBy)} ${items[0].unit||''} total</div>
+          <div class="tablewrap"><table><thead><tr><th>Date</th><th>Recorded Out</th><th>Should Be</th><th>Over By</th><th>Note</th></tr></thead>
+          <tbody>${items.map(f=>`<tr><td>${f.entry_date}</td><td>${fmtNum(f.out_qty)}</td><td>${fmtNum(f.correctQty)}</td><td>${fmtNum(f.overBy)}</td><td style="font-size:12px">${f.note}</td></tr>`).join('')}</tbody></table></div>
+        </div>`;
+      }).join('');
+  }catch(e){ box.innerHTML = `<p style="color:var(--danger)">Scan failed: ${e.message}</p>`; }
+}
+
 /* ---- Recipes (flour qty per batch, per item) ---- */
 function buildProductOptionsHtml(){
   if(!PRODUCTS.length) return '<option value="">Select product dough...</option>';
@@ -3845,8 +3892,13 @@ async function confirmProductionRun(runId){
     if(!run){ toast('Run not found'); return; }
     const mixes = parseFloat(run.planned_mixes) || 0; // batches can be fractional (e.g. 0.6) — don't round
     if(mixes > 0){
-      // re-fetch the recipe fresh in case it was edited since this page last loaded
+      // re-fetch the recipe AND the ingredients fresh in case they were edited since this
+      // page last loaded — deductFlourForProduct needs FLOUR_INGREDIENTS (for kg_per_unit
+      // conversion) but this screen never otherwise loads it, so without this it silently
+      // stays [] and every kg-based recipe gets deducted unconverted (raw kg as if it were
+      // stock units) with no warning, since the "ing" lookup itself comes back empty.
       FLOUR_RECIPE = await sbGet('erp_flour_recipe?select=id,product_name,ingredient_id,qty_per_batch,qty_unit&order=product_name.asc&limit=2000');
+      FLOUR_INGREDIENTS = await sbGet('erp_flour_ingredient_inventory?select=id,name,supplier,unit,kg_per_unit,reorder_level,inventory_qty&order=name.asc&limit=500');
       await deductFlourForProduct(run.product_name, run.run_date, mixes);
     }
     await sbUpdate('erp_production_runs', runId, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_at: new Date().toISOString() });
@@ -5979,17 +6031,24 @@ async function printProductionReport(){
   const date = document.getElementById('previewViewDate').value || todayStr();
   const { runs } = await fetchRunsAndItems(date);
   if(!runs.length){ toast('No runs to print for this date'); return; }
+  // Line 2-T's batches are excluded from the grand total (still shown in its own line section below)
+  const totalBatches = runs.reduce((s,r)=>{
+    if((r.line||'').trim().toLowerCase() === 'line 2-t') return s;
+    return s+(parseFloat(r.status==='Confirmed'?r.confirmed_mixes:r.planned_mixes)||0);
+  },0);
   const byLine = {};
   runs.forEach(r => { const l = r.line || '(No Line)'; (byLine[l]=byLine[l]||[]).push(r); });
   const lines = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
   const html = `
     <h2>Production Team Report</h2>
     <p>Date: ${date}</p>
+    <div class="pr-line">
+      <h3>${fmtNum(totalBatches)} batches total</h3>
+    </div>
     ${lines.map(l => {
       const rs = byLine[l];
-      const totalBatches = rs.reduce((s,r)=>s+(parseFloat(r.status==='Confirmed'?r.confirmed_mixes:r.planned_mixes)||0),0);
       return `<div class="pr-line">
-        <h3>${l} — ${fmtNum(totalBatches)} batches total</h3>
+        <h3>${l}</h3>
         <table><colgroup><col style="width:75%"><col style="width:25%"></colgroup><thead><tr><th>Product Dough</th><th>Batches</th></tr></thead>
         <tbody>${rs.map(r => `<tr><td>${r.product_name}</td><td>${fmtNum(r.status==='Confirmed'?r.confirmed_mixes:r.planned_mixes)}</td></tr>` +
           (r.remark ? `<tr><td colspan="2" class="pr-detail" style="color:#c0392b;font-weight:700">Remark: ${r.remark}</td></tr>` : '')).join('')}</tbody></table>
@@ -7752,7 +7811,7 @@ async function deleteSauceTask(id){
 }
 async function renderSauceTasksTable(){
   const day = CURRENT_SAUCE_DAY;
-  SAUCE_TASKS_CREATE = day ? await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${day.id}&order=id.asc&limit=200`) : [];
+  SAUCE_TASKS_CREATE = day ? await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${day.id}&order=sort_order.asc.nullslast,id.asc&limit=200`) : [];
   document.getElementById('sauceTasksTable').innerHTML = SAUCE_TASKS_CREATE.map(t => {
     const s = SAUCES.find(x => x.id === t.sauce_id);
     const prodDate = day.schedule_date;
@@ -7777,6 +7836,8 @@ async function renderSauceTasksTable(){
       <td>${t.status}</td>
       <td class="no-print" style="white-space:nowrap">
         <div style="display:flex;gap:6px;flex-wrap:nowrap">
+          <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" title="Move up" onclick="moveSauceTaskOrder(${t.id}, 'up')">▲</button>
+          <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" title="Move down" onclick="moveSauceTaskOrder(${t.id}, 'down')">▼</button>
           <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="editSauceTask(${t.id})">✎ Edit</button>
           <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteSauceTask(${t.id})">✕ Delete</button>
         </div>
@@ -7791,6 +7852,28 @@ async function renderSauceTasksTable(){
   document.getElementById('sauceTasksPackingTotal').textContent = SAUCE_TASKS_CREATE.length
     ? `🕐 Total packing hours for this day: ${fmtHrs(totalPackingHrs)} hrs across ${SAUCE_TASKS_CREATE.length} task(s)`
     : '';
+}
+// Reorders tasks within the current day — mirrors moveRunOrder/moveRunItemOrder from Daily
+// Production Schedule. Normalizes the whole day's tasks to their current display order first,
+// then swaps the moved task with its neighbor, so this works even before sort_order is ever set.
+async function moveSauceTaskOrder(taskId, direction){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const group = SAUCE_TASKS_CREATE
+    .slice()
+    .sort((a,b) => (a.sort_order ?? a.id) - (b.sort_order ?? b.id) || a.id - b.id);
+  const idx = group.findIndex(t => t.id === taskId);
+  if(idx === -1) return;
+  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if(swapIdx < 0 || swapIdx >= group.length) return; // already at that end
+  const updates = group.map((t,i) => ({ id: t.id, sort_order: i }));
+  const tmp = updates[idx].sort_order;
+  updates[idx].sort_order = updates[swapIdx].sort_order;
+  updates[swapIdx].sort_order = tmp;
+  try{
+    for(const u of updates){ await sbUpdate('erp_sauce_schedule_tasks', u.id, { sort_order: u.sort_order }); }
+    toast('Order updated');
+    await renderSauceTasksTable();
+  }catch(e){ toast('Reorder failed: ' + e.message); }
 }
 
 /* ---- Preview tab (grouped by Location) ---- */
@@ -7851,36 +7934,61 @@ async function renderSaucePreview(){
   `;
   }).join('');
 }
+// Shared by the single-day Preview print and the whole-week print — one date's tasks,
+// grouped by Location, each as its own "<Location> Sauce Production Plan" table.
+function sauceProductionDayHtml(dateStr, tasks){
+  const byLoc = {};
+  tasks.forEach(t => { const l = t.location || '(No Location)'; (byLoc[l]=byLoc[l]||[]).push(t); });
+  const locs = Object.keys(byLoc).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  return locs.map(l => {
+    const rs = byLoc[l];
+    return `<div class="pr-line">
+      <h2>${l} Sauce Production Plan</h2>
+      <table><colgroup><col style="width:10%"><col style="width:26%"><col style="width:16%"><col style="width:24%"><col style="width:24%"></colgroup>
+      <thead><tr><th>Mixes</th><th>Sauce</th><th>Package Size</th><th>Prod. / Best Before</th><th>Status</th></tr></thead>
+      <tbody>${rs.map(t => {
+        const s = SAUCES.find(x => x.id === t.sauce_id);
+        const julian = toSauceJulian(dateStr);
+        const bb = s ? sauceCoolerBestBefore(s, dateStr) : null;
+        const allergenChips = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
+        const allergenLine = allergenChips ? `Allergens: ${allergenChips}` : '';
+        const opMachineNotes = [t.operator_notes, t.machine_notes].filter(Boolean).join(' — ');
+        const packingLine = sauceTaskPackingCalcText(t);
+        return `<tr><td>${fmtNum(t.mixes)}</td><td>${s?s.name:''}</td><td>${t.pack_size_notes||''}</td>
+          <td>Prod: ${dateStr} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td><td>${t.status}</td></tr>` +
+          (opMachineNotes ? `<tr><td></td><td colspan="4" class="pr-detail" style="color:#c0392b;font-weight:700">${opMachineNotes}</td></tr>` : '') +
+          (allergenLine ? `<tr><td></td><td colspan="4" class="pr-detail" style="padding-top:6px">${allergenLine}</td></tr>` : '') +
+          (packingLine ? `<tr><td></td><td colspan="4" class="pr-detail">${packingLine}</td></tr>` : '');
+      }).join('')}</tbody></table>
+    </div>`;
+  }).join('');
+}
 async function printSauceProductionReport(){
   if(!SAUCE_PREVIEW_DAY || !SAUCE_PREVIEW_TASKS.length){ toast('No tasks to print for this date'); return; }
   const day = SAUCE_PREVIEW_DAY;
-  const byLoc = {};
-  SAUCE_PREVIEW_TASKS.forEach(t => { const l = t.location || '(No Location)'; (byLoc[l]=byLoc[l]||[]).push(t); });
-  const locs = Object.keys(byLoc).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  const html = `<p>Date: ${day.schedule_date}</p>${sauceProductionDayHtml(day.schedule_date, SAUCE_PREVIEW_TASKS)}`;
+  runReportPrint(html);
+}
+// Whole-week version: Monday-Sunday of whichever week the Preview date picker is
+// currently on, one page per day that actually has tasks scheduled (empty days are skipped).
+async function printSauceProductionReportWeek(){
+  const weekStart = mondayOfWeek(document.getElementById('saucePreviewDate').value || todayStr());
+  const weekEnd = addDaysStr(weekStart, 6);
+  const days = await sbGetAll(`erp_sauce_schedule_days?select=id,schedule_date&schedule_date=gte.${weekStart}&schedule_date=lte.${weekEnd}&order=schedule_date.asc`);
+  const dayIds = days.map(d=>d.id);
+  const tasks = dayIds.length
+    ? await sbGetAll(`erp_sauce_schedule_tasks?select=*&day_id=in.(${dayIds.join(',')})&order=location.asc,id.asc`)
+    : [];
+  const tasksByDayId = {};
+  tasks.forEach(t => { (tasksByDayId[t.day_id]=tasksByDayId[t.day_id]||[]).push(t); });
+  const scheduledDays = days.filter(d => (tasksByDayId[d.id]||[]).length);
+  if(!scheduledDays.length){ toast('Nothing scheduled this week to print'); return; }
   const html = `
-    <p>Date: ${day.schedule_date}</p>
-    ${locs.map(l => {
-      const rs = byLoc[l];
-      return `<div class="pr-line">
-        <h2>${l} Sauce Production Plan</h2>
-        <table><colgroup><col style="width:10%"><col style="width:26%"><col style="width:16%"><col style="width:24%"><col style="width:24%"></colgroup>
-        <thead><tr><th>Mixes</th><th>Sauce</th><th>Package Size</th><th>Prod. / Best Before</th><th>Status</th></tr></thead>
-        <tbody>${rs.map(t => {
-          const s = SAUCES.find(x => x.id === t.sauce_id);
-          const julian = toSauceJulian(day.schedule_date);
-          const bb = s ? sauceCoolerBestBefore(s, day.schedule_date) : null;
-          const allergenChips = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
-          const allergenLine = allergenChips ? `Allergens: ${allergenChips}` : '';
-          const opMachineNotes = [t.operator_notes, t.machine_notes].filter(Boolean).join(' — ');
-          const packingLine = sauceTaskPackingCalcText(t);
-          return `<tr><td>${fmtNum(t.mixes)}</td><td>${s?s.name:''}</td><td>${t.pack_size_notes||''}</td>
-            <td>Prod: ${day.schedule_date} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td><td>${t.status}</td></tr>` +
-            (opMachineNotes ? `<tr><td></td><td colspan="4" class="pr-detail" style="color:#c0392b;font-weight:700">${opMachineNotes}</td></tr>` : '') +
-            (allergenLine ? `<tr><td></td><td colspan="4" class="pr-detail" style="padding-top:6px">${allergenLine}</td></tr>` : '') +
-            (packingLine ? `<tr><td></td><td colspan="4" class="pr-detail">${packingLine}</td></tr>` : '');
-        }).join('')}</tbody></table>
-      </div>`;
-    }).join('')}
+    <p>Week of: ${weekStart} – ${weekEnd}</p>
+    ${scheduledDays.map((d,i) => `<div${i>0?' style="page-break-before:always"':''}>
+      <h1>${d.schedule_date}</h1>
+      ${sauceProductionDayHtml(d.schedule_date, tasksByDayId[d.id])}
+    </div>`).join('')}
   `;
   runReportPrint(html);
 }
