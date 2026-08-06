@@ -129,6 +129,8 @@
   .topnav nav button .ic{font-size:15px}
   .topnav nav button:hover{background:var(--chip);color:var(--text)}
   .topnav nav button.active{background:var(--accent);color:var(--accent-ink)}
+  .subnav-group-label{flex:0 0 auto;display:flex;align-items:center;padding:0 12px 0 14px;margin-left:2px;border-left:1px solid var(--line);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);opacity:.75;white-space:nowrap}
+  .subnav-group-label:first-child{border-left:none;margin-left:0;padding-left:2px}
 
   .dot{width:8px;height:8px;border-radius:50%;background:var(--danger)}
   .dot.on{background:var(--green)}
@@ -319,18 +321,20 @@
     <div class="module-switcher">
       <button data-module="inventory" class="active" onclick="switchModule('inventory')">📦 Inventory</button>
       <button data-module="schedule" onclick="switchModule('schedule')">📅 Production Schedule</button>
-      <button data-module="flour" onclick="switchModule('flour')">🌾 Flour Usage</button>
       <button data-module="sauce" onclick="switchModule('sauce')">🥫 Sauce Production</button>
+      <button data-module="flour" onclick="switchModule('flour')">🌾 Flour Usage</button>
       <button data-module="maintenance" onclick="switchModule('maintenance')">🔧 Maintenance</button>
     </div>
     <nav id="subNav" data-module="inventory">
+      <span class="subnav-group-label" data-module="inventory">Operations</span>
       <button data-screen="dashboard" data-module="inventory" class="active" onclick="showScreen('dashboard')"><span class="ic">📊</span>Dashboard</button>
       <button data-screen="inout" data-module="inventory" onclick="showScreen('inout')"><span class="ic">📦</span>Finished Goods In/Out</button>
       <button data-screen="po" data-module="inventory" onclick="showScreen('po')"><span class="ic">🧾</span>Orders</button>
-      <button data-screen="components" data-module="inventory" onclick="showScreen('components')"><span class="ic">🧂</span>Components (Sachets)</button>
       <button data-screen="produce" data-module="inventory" onclick="showScreen('produce')"><span class="ic">🏭</span>Need to Produce</button>
+      <span class="subnav-group-label" data-module="inventory">Master Data</span>
       <button data-screen="items" data-module="inventory" onclick="showScreen('items')"><span class="ic">📋</span>Manage Items</button>
       <button data-screen="recipes" data-module="inventory" onclick="showScreen('recipes')"><span class="ic">🔗</span>Item Recipes</button>
+      <button data-screen="components" data-module="inventory" onclick="showScreen('components')"><span class="ic">🧂</span>Components (Sachets)</button>
       <button data-screen="dupes" data-module="inventory" onclick="showScreen('dupes')"><span class="ic">🔀</span>Duplicated Items</button>
       <button class="can-write" data-screen="import" data-module="inventory" onclick="showScreen('import')"><span class="ic">📥</span>CSV Import</button>
       <button data-screen="history" data-module="inventory" onclick="showScreen('history')"><span class="ic">📜</span>Transaction History</button>
@@ -339,25 +343,31 @@
       <button class="admin-only" data-screen="users" data-module="maintenance" onclick="showScreen('users')"><span class="ic">👤</span>Manage Users</button>
       <button data-screen="account" data-module="maintenance" onclick="showScreen('account')"><span class="ic">🙋</span>My Account</button>
       <button data-screen="settings" data-module="maintenance" onclick="showScreen('settings')"><span class="ic">⚙️</span>Settings</button>
+      <span class="subnav-group-label" data-module="schedule">Operations</span>
       <button data-screen="schedule-create" data-module="schedule" class="active" onclick="showScreen('schedule-create')"><span class="ic">➕</span>Create</button>
       <button data-screen="schedule-preview" data-module="schedule" onclick="showScreen('schedule-preview')"><span class="ic">👁</span>Preview</button>
       <button data-screen="schedule-confirm" data-module="schedule" onclick="showScreen('schedule-confirm')"><span class="ic">✔</span>Confirm Completion</button>
+      <span class="subnav-group-label" data-module="schedule">Setup</span>
       <button data-screen="schedule-products" data-module="schedule" onclick="showScreen('schedule-products')"><span class="ic">🏷️</span>Products</button>
       <button class="can-write" data-screen="schedule-lines" data-module="schedule" onclick="showScreen('schedule-lines')"><span class="ic">🏭</span>Lines</button>
-      <button data-screen="flour-dashboard" data-module="flour" class="active" onclick="showScreen('flour-dashboard')"><span class="ic">📈</span>Dashboard</button>
-      <button data-screen="flour-ingredients" data-module="flour" onclick="showScreen('flour-ingredients')"><span class="ic">🌾</span>Ingredients</button>
-      <button data-screen="flour-usage-report" data-module="flour" onclick="showScreen('flour-usage-report')"><span class="ic">📊</span>Usage Report</button>
-      <button data-screen="flour-recipes" data-module="flour" onclick="showScreen('flour-recipes')"><span class="ic">🔗</span>Recipes</button>
-      <button data-screen="flour-ledger" data-module="flour" onclick="showScreen('flour-ledger')"><span class="ic">📜</span>Ledger</button>
+      <span class="subnav-group-label" data-module="sauce">Operations</span>
       <button class="active" data-screen="sauce-create" data-module="sauce" onclick="showScreen('sauce-create')"><span class="ic">➕</span>Create</button>
       <button data-screen="sauce-preview" data-module="sauce" onclick="showScreen('sauce-preview')"><span class="ic">👁</span>Preview</button>
       <button data-screen="sauce-confirm" data-module="sauce" onclick="showScreen('sauce-confirm')"><span class="ic">✔</span>Confirm Completion</button>
+      <button data-screen="sauce-materials" data-module="sauce" onclick="showScreen('sauce-materials')"><span class="ic">🛒</span>Material Plan</button>
+      <span class="subnav-group-label" data-module="sauce">Setup</span>
       <button class="can-write" data-screen="sauce-sauces" data-module="sauce" onclick="showScreen('sauce-sauces')"><span class="ic">🥫</span>Sauces</button>
       <button class="can-write" data-screen="sauce-ingredients" data-module="sauce" onclick="showScreen('sauce-ingredients')"><span class="ic">🌶️</span>Ingredients</button>
       <button class="can-write" data-screen="sauce-recipes" data-module="sauce" onclick="showScreen('sauce-recipes')"><span class="ic">🔗</span>Recipes</button>
-      <button data-screen="sauce-materials" data-module="sauce" onclick="showScreen('sauce-materials')"><span class="ic">🛒</span>Material Plan</button>
       <button class="can-write" data-screen="sauce-locations" data-module="sauce" onclick="showScreen('sauce-locations')"><span class="ic">🏭</span>Locations</button>
       <button class="can-write" data-screen="sauce-allergens" data-module="sauce" onclick="showScreen('sauce-allergens')"><span class="ic">⚠️</span>Allergens</button>
+      <span class="subnav-group-label" data-module="flour">Operations</span>
+      <button data-screen="flour-dashboard" data-module="flour" class="active" onclick="showScreen('flour-dashboard')"><span class="ic">📈</span>Dashboard</button>
+      <button data-screen="flour-usage-report" data-module="flour" onclick="showScreen('flour-usage-report')"><span class="ic">📊</span>Usage Report</button>
+      <button data-screen="flour-ledger" data-module="flour" onclick="showScreen('flour-ledger')"><span class="ic">📜</span>Ledger</button>
+      <span class="subnav-group-label" data-module="flour">Setup</span>
+      <button data-screen="flour-ingredients" data-module="flour" onclick="showScreen('flour-ingredients')"><span class="ic">🌾</span>Ingredients</button>
+      <button data-screen="flour-recipes" data-module="flour" onclick="showScreen('flour-recipes')"><span class="ic">🔗</span>Recipes</button>
     </nav>
     <div class="subnav-readonly-note" id="subNavReadOnlyNote">Read Only — you have view-only access</div>
   </header>
@@ -481,9 +491,6 @@
             <th>Days of Supply</th><th>Warning Level</th><th>Suggested Action</th>
           </tr></thead><tbody></tbody></table></div>
           <div class="empty" id="dashEmpty" style="display:none">No data yet. Please confirm Supabase is connected and data has been imported.</div>
-        </div>
-        <div class="btnrow no-print">
-          <button class="btn secondary" onclick="printSection('Inventory Report')">🖨 Print Inventory Report</button>
         </div>
       </div>
     </div>
@@ -2111,6 +2118,11 @@ function applySubNavVisibility(mod){
     subNav.style.display = 'flex';
     subNav.querySelectorAll('button[data-module]').forEach(b => {
       b.style.display = (b.dataset.module===mod && isScreenAllowed(b.dataset.screen)) ? '' : 'none';
+    });
+    // group-label headers (e.g. "Operations"/"Setup") just track the active module —
+    // they're not permission-gated since they're not a screen a user navigates to
+    subNav.querySelectorAll('.subnav-group-label[data-module]').forEach(el => {
+      el.style.display = (el.dataset.module===mod) ? '' : 'none';
     });
   } else {
     subNav.style.display = 'none';
