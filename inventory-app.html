@@ -107,9 +107,9 @@
   /* ---- Top navigation (menu across the top) ---- */
   .topnav{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--line)}
   .topnav .row1{display:flex;align-items:center;gap:12px;padding:12px 20px 8px}
-  .topnav .brand{display:flex;align-items:center;gap:10px}
-  .topnav .brand .name{font-family:var(--font-display);font-size:19px;font-weight:700;line-height:1.2}
-  .topnav .brand .sub{font-size:11px;color:var(--muted)}
+  .brand{display:flex;align-items:center;gap:10px}
+  .brand .name{font-family:var(--font-display);font-size:19px;font-weight:700;line-height:1.2}
+  .brand .sub{font-size:11px;color:var(--muted)}
   .brand-stamp{
     width:32px;height:32px;flex:0 0 auto;border-radius:50%;position:relative;
     border:2px solid var(--stamp);color:var(--stamp);
@@ -119,10 +119,12 @@
   }
   .brand-stamp::before{content:"";position:absolute;inset:3px;border:1px solid var(--stamp);border-radius:50%;opacity:.7}
   .topnav .spacer{flex:1}
-  .topnav .connwrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+  .connwrap{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
   .topnav nav{display:flex;gap:4px;padding:0 14px 10px;overflow-x:auto}
   .module-switcher{display:flex;gap:6px;padding:6px 14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--bg)}
-  .module-switcher button{flex:0 0 auto;padding:9px 16px;border:none;background:none;border-radius:8px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer}
+  .module-switcher button{flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:9px 16px;border:none;background:none;border-radius:8px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer}
+  .nav-icon{width:15px;height:15px;flex:0 0 auto;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .module-switcher .nav-icon{width:16px;height:16px}
   .module-switcher button:hover{background:var(--chip);color:var(--text)}
   .module-switcher button.active{background:var(--accent);color:var(--accent-ink)}
   .topnav nav button{flex:0 0 auto;display:flex;align-items:center;gap:7px;padding:8px 13px;border:none;background:none;border-radius:8px;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap}
@@ -131,6 +133,50 @@
   .topnav nav button.active{background:var(--accent);color:var(--accent-ink)}
   .subnav-group-label{flex:0 0 auto;display:flex;align-items:center;padding:0 12px 0 14px;margin-left:2px;border-left:1px solid var(--line);font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);opacity:.75;white-space:nowrap}
   .subnav-group-label:first-child{border-left:none;margin-left:0;padding-left:2px}
+
+  /* ---- Desktop sidebar (≥1024px) — generated from module-switcher + #subNav by buildSidebarNav() ---- */
+  #sidebarNav{display:none;flex-direction:column;width:230px;flex:0 0 230px;background:var(--panel);border-right:1px solid var(--line);height:100vh;position:sticky;top:0;transition:width .15s}
+  body.logged-out #sidebarNav{display:none!important}
+  .sidebar-item .ic,.sidebar-sec-head .ic{display:flex;flex:0 0 auto}
+  .sidebar-sec-head .nav-icon{width:17px;height:17px}
+  .chev{margin-left:auto;width:11px;height:11px;flex:0 0 auto;stroke:var(--muted);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;transition:transform .15s}
+  .sidebar-sec.open .sidebar-sec-head .chev{transform:rotate(90deg)}
+  .sidebar-brand-row{display:flex;align-items:center;gap:6px;flex:0 0 auto;padding:14px 16px 10px}
+  #sidebarBrandSlot{flex:1;min-width:0;overflow:hidden}
+  .sidebar-collapse-btn{flex:0 0 auto;width:22px;height:22px;border:1px solid var(--line);background:var(--panel);border-radius:6px;color:var(--muted);cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
+  .sidebar-collapse-btn:hover{color:var(--text);background:var(--chip)}
+  .sidebar-top{flex:1 1 auto;overflow-y:auto;padding:10px 0;min-height:0}
+  .sidebar-bottom{flex:0 0 auto;padding:10px 0;border-top:1px solid var(--line)}
+  .sidebar-sec{margin-bottom:1px}
+  .sidebar-sec-head{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:9px 16px;font-family:var(--font-body);font-size:12.5px;font-weight:700;color:var(--text);background:none;border:none;cursor:pointer}
+  .sidebar-sec-head:hover{background:var(--chip)}
+  .sidebar-sec-body{display:none;flex-direction:column;padding:2px 0 6px}
+  .sidebar-sec.open .sidebar-sec-body{display:flex}
+  .sidebar-grp-label{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);opacity:.7;padding:6px 16px 3px 39px;white-space:nowrap}
+  .sidebar-item{display:flex;align-items:center;gap:8px;width:100%;text-align:left;padding:6px 16px 6px 39px;font-family:var(--font-body);font-size:12px;color:var(--muted);background:none;border:none;border-left:2px solid transparent;cursor:pointer}
+  .sidebar-item:hover{color:var(--text)}
+  .sidebar-item.active{color:var(--accent);border-left-color:var(--accent);font-weight:600;background:var(--chip)}
+  .sidebar-item-label,.sidebar-sec-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #sidebarStatusSlot{padding:10px 16px 2px}
+  #sidebarStatusSlot #statusCluster{flex-wrap:wrap}
+  /* Collapsed rail: icons only, no labels/group headers/chevrons — toggled by the « button */
+  #sidebarNav.collapsed{width:64px;flex:0 0 64px}
+  #sidebarNav.collapsed .sidebar-brand-row{flex-direction:column;gap:8px;padding:14px 8px 10px}
+  #sidebarNav.collapsed .brand .name,#sidebarNav.collapsed .brand .sub{display:none}
+  #sidebarNav.collapsed .sidebar-grp-label,
+  #sidebarNav.collapsed .sidebar-sec-label,
+  #sidebarNav.collapsed .sidebar-item-label,
+  #sidebarNav.collapsed .chev,
+  #sidebarNav.collapsed .role-badge,
+  #sidebarNav.collapsed #connText,
+  #sidebarNav.collapsed #logoutBtn{display:none}
+  #sidebarNav.collapsed .sidebar-sec-head,#sidebarNav.collapsed .sidebar-item{justify-content:center;padding-left:8px;padding-right:8px}
+  #sidebarNav.collapsed #statusCluster{flex-direction:column;gap:8px}
+  @media (min-width:1024px){
+    body:not(.logged-out) .topnav{display:none}
+    body:not(.logged-out) .app-shell{flex-direction:row}
+    body:not(.logged-out) #sidebarNav{display:flex}
+  }
 
   .dot{width:8px;height:8px;border-radius:50%;background:var(--danger)}
   .dot.on{background:var(--green)}
@@ -301,6 +347,39 @@
 </head>
 <body>
 
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></symbol>
+  <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-jar" viewBox="0 0 24 24"><path d="M8 3h8v3.5c1.2.6 2 1.8 2 3.2V19a2 2 0 01-2 2H8a2 2 0 01-2-2V9.7c0-1.4.8-2.6 2-3.2V3z"/><path d="M6.3 11h11.4"/></symbol>
+  <symbol id="i-wheat" viewBox="0 0 24 24"><path d="M12 21V6"/><path d="M12 8l-3.5-3M12 8l3.5-3M12 12l-3.5-3M12 12l3.5-3M12 16l-3.5-3M12 16l3.5-3"/></symbol>
+  <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 00-5.4 4.9L3 17.5l2.5 2.5 6.1-6.1a4 4 0 004.9-5.4l-2.9 2.9-2-2z"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 8h13M17 8l-3.5-3.5M17 8l-3.5 3.5"/><path d="M20 16H7M7 16l3.5-3.5M7 16l3.5 3.5"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5V3z"/><path d="M9 8h6M9 12h6"/></symbol>
+  <symbol id="i-factory" viewBox="0 0 24 24"><path d="M3 21V11l5 3v-3l5 3V8l6 3v10z"/><path d="M3 21h18"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><circle cx="4.5" cy="6" r="1.1"/><circle cx="4.5" cy="12" r="1.1"/><circle cx="4.5" cy="18" r="1.1"/><path d="M9 6h11M9 12h11M9 18h11"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M9 15l6-6"/><path d="M10 6l1.5-1.5a3.5 3.5 0 015 5L15 11"/><path d="M14 18l-1.5 1.5a3.5 3.5 0 01-5-5L9 13"/></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M4 6h3.5l7 12H18M4 18h3.5l2.4-4.1"/><path d="M15 6h3M18 6l-2.5-2.5M18 6l-2.5 2.5M18 18l-2.5-2.5M18 18l-2.5 2.5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M4 15v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M5 21V13M5 9V3M12 21v-5M12 12V3M19 21v-8M19 9V3"/><circle cx="5" cy="11" r="1.6"/><circle cx="12" cy="14.5" r="1.6"/><circle cx="19" cy="11" r="1.6"/></symbol>
+  <symbol id="i-plus-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/></symbol>
+  <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8 12.5l2.5 2.5 5.5-6"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.5 3H5a2 2 0 00-2 2v7.5a2 2 0 00.6 1.4l8.5 8.5a2 2 0 002.8 0l6-6a2 2 0 000-2.8l-8.5-8.5A2 2 0 0012.5 3z"/><circle cx="8" cy="8" r="1.2"/></symbol>
+  <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5 19c0-8 4.5-14 14-14 0 9.5-6 14-14 14z"/><path d="M5 19c3-3 6-6 9.5-11"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-12a7 7 0 10-14 0c0 5.5 7 12 7 12z"/><circle cx="12" cy="9" r="2.4"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5L2.5 20h19L12 3.5z"/><path d="M12 10v4"/><circle cx="12" cy="17" r="0.8"/></symbol>
+  <symbol id="i-cart" viewBox="0 0 24 24"><path d="M3 4h2.5l2.6 12.2A2 2 0 0010 18h8a2 2 0 002-1.8L21.5 8H6.5"/><circle cx="10" cy="21" r="1.2"/><circle cx="18" cy="21" r="1.2"/></symbol>
+  <symbol id="i-bar" viewBox="0 0 24 24"><path d="M4 21V11M11 21V4M18 21v-7"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></symbol>
+  <symbol id="i-cloud-down" viewBox="0 0 24 24"><path d="M7 17a4 4 0 01.5-8 5.5 5.5 0 0110.8 1.2A3.5 3.5 0 0117.5 17H7z"/><path d="M12 11v6.5M9.5 15l2.5 2.5 2.5-2.5"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 2.7-6 6-6s6 2.5 6 6"/><circle cx="17" cy="9" r="2.2"/><path d="M15.3 14a5 5 0 015.7 6"/></symbol>
+  <symbol id="i-user-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="10" r="2.6"/><path d="M6.5 18.2a6 6 0 0111 0"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18 6l-1.5 1.5M7.5 16.5L6 18M18 18l-1.5-1.5M7.5 7.5L6 6"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+</svg>
+
 <div class="app-shell">
 
   <header class="topnav">
@@ -308,69 +387,73 @@
       <div class="brand">
         <span class="brand-stamp" title="Hon's Wun-Tun House">Hon's</span>
         <div>
-          <div class="name">Hon's Wun-Tun House <span id="appVersion" style="font-size:11px;font-weight:400;color:var(--muted);font-family:var(--font-body)"></span></div>
+          <div class="name">Hon's Wun-Tun House<span id="appVersion" style="display:block;font-size:11px;font-weight:400;color:var(--muted);font-family:var(--font-body)"></span></div>
           <div class="sub">Inventory Management System</div>
         </div>
       </div>
       <div class="spacer"></div>
-      <div class="connwrap"><span class="dot" id="connDot" title="Connection status"></span><span id="connText">Not connected</span></div>
-      <span class="role-badge" id="roleBadge" style="display:none"></span>
-      <button class="btn secondary" id="logoutBtn" style="display:none;padding:6px 12px;font-size:12px" onclick="doLogout()">Log Out</button>
-      <button class="iconbtn" id="themeBtn" title="Toggle theme">🌙</button>
+      <div id="statusCluster" style="display:flex;align-items:center;gap:12px">
+        <div class="connwrap"><span class="dot" id="connDot" title="Connection status"></span><span id="connText">Not connected</span></div>
+        <span class="role-badge" id="roleBadge" style="display:none"></span>
+        <button class="btn secondary" id="logoutBtn" style="display:none;padding:6px 12px;font-size:12px" onclick="doLogout()">Log Out</button>
+        <button class="iconbtn" id="themeBtn" title="Toggle theme">🌙</button>
+      </div>
     </div>
     <div class="module-switcher">
-      <button data-module="inventory" class="active" onclick="switchModule('inventory')">📦 Inventory</button>
-      <button data-module="schedule" onclick="switchModule('schedule')">📅 Production Schedule</button>
-      <button data-module="sauce" onclick="switchModule('sauce')">🥫 Sauce Production</button>
-      <button data-module="flour" onclick="switchModule('flour')">🌾 Flour Usage</button>
-      <button data-module="maintenance" onclick="switchModule('maintenance')">🔧 Maintenance</button>
+      <button data-module="inventory" class="active" onclick="switchModule('inventory')"><span class="ic"><svg class="nav-icon"><use href="#i-box"/></svg></span>Inventory</button>
+      <button data-module="schedule" onclick="switchModule('schedule')"><span class="ic"><svg class="nav-icon"><use href="#i-calendar"/></svg></span>Production Schedule</button>
+      <button data-module="sauce" onclick="switchModule('sauce')"><span class="ic"><svg class="nav-icon"><use href="#i-jar"/></svg></span>Sauce Production</button>
+      <button data-module="flour" onclick="switchModule('flour')"><span class="ic"><svg class="nav-icon"><use href="#i-wheat"/></svg></span>Flour Usage</button>
+      <button data-module="maintenance" onclick="switchModule('maintenance')"><span class="ic"><svg class="nav-icon"><use href="#i-wrench"/></svg></span>Maintenance</button>
     </div>
     <nav id="subNav" data-module="inventory">
       <span class="subnav-group-label" data-module="inventory">Operations</span>
-      <button data-screen="dashboard" data-module="inventory" class="active" onclick="showScreen('dashboard')"><span class="ic">📊</span>Dashboard</button>
-      <button data-screen="inout" data-module="inventory" onclick="showScreen('inout')"><span class="ic">📦</span>Finished Goods In/Out</button>
-      <button data-screen="po" data-module="inventory" onclick="showScreen('po')"><span class="ic">🧾</span>Orders</button>
-      <button data-screen="produce" data-module="inventory" onclick="showScreen('produce')"><span class="ic">🏭</span>Need to Produce</button>
+      <button data-screen="dashboard" data-module="inventory" class="active" onclick="showScreen('dashboard')"><span class="ic"><svg class="nav-icon"><use href="#i-grid"/></svg></span>Dashboard</button>
+      <button data-screen="inout" data-module="inventory" onclick="showScreen('inout')"><span class="ic"><svg class="nav-icon"><use href="#i-swap"/></svg></span>Finished Goods In/Out</button>
+      <button data-screen="po" data-module="inventory" onclick="showScreen('po')"><span class="ic"><svg class="nav-icon"><use href="#i-receipt"/></svg></span>Orders</button>
+      <button data-screen="produce" data-module="inventory" onclick="showScreen('produce')"><span class="ic"><svg class="nav-icon"><use href="#i-factory"/></svg></span>Need to Produce</button>
       <span class="subnav-group-label" data-module="inventory">Master Data</span>
-      <button data-screen="items" data-module="inventory" onclick="showScreen('items')"><span class="ic">📋</span>Manage Items</button>
-      <button data-screen="recipes" data-module="inventory" onclick="showScreen('recipes')"><span class="ic">🔗</span>Item Recipes</button>
-      <button data-screen="components" data-module="inventory" onclick="showScreen('components')"><span class="ic">🧂</span>Components (Sachets)</button>
-      <button data-screen="dupes" data-module="inventory" onclick="showScreen('dupes')"><span class="ic">🔀</span>Duplicated Items</button>
-      <button class="can-write" data-screen="import" data-module="inventory" onclick="showScreen('import')"><span class="ic">📥</span>CSV Import</button>
-      <button data-screen="history" data-module="inventory" onclick="showScreen('history')"><span class="ic">📜</span>Transaction History</button>
-      <button class="admin-only" data-screen="adjust" data-module="inventory" onclick="showScreen('adjust')"><span class="ic">🛠️</span>Inventory Adjust</button>
-      <button class="can-write" data-screen="backup" data-module="maintenance" onclick="showScreen('backup')"><span class="ic">💾</span>Data Backup</button>
-      <button class="admin-only" data-screen="users" data-module="maintenance" onclick="showScreen('users')"><span class="ic">👤</span>Manage Users</button>
-      <button data-screen="account" data-module="maintenance" onclick="showScreen('account')"><span class="ic">🙋</span>My Account</button>
-      <button data-screen="settings" data-module="maintenance" onclick="showScreen('settings')"><span class="ic">⚙️</span>Settings</button>
+      <button data-screen="items" data-module="inventory" onclick="showScreen('items')"><span class="ic"><svg class="nav-icon"><use href="#i-list"/></svg></span>Manage Items</button>
+      <button data-screen="recipes" data-module="inventory" onclick="showScreen('recipes')"><span class="ic"><svg class="nav-icon"><use href="#i-link"/></svg></span>Item Recipes</button>
+      <button data-screen="components" data-module="inventory" onclick="showScreen('components')"><span class="ic"><svg class="nav-icon"><use href="#i-box"/></svg></span>Components (Sachets)</button>
+      <button data-screen="dupes" data-module="inventory" onclick="showScreen('dupes')"><span class="ic"><svg class="nav-icon"><use href="#i-shuffle"/></svg></span>Duplicated Items</button>
+      <button class="can-write" data-screen="import" data-module="inventory" onclick="showScreen('import')"><span class="ic"><svg class="nav-icon"><use href="#i-upload"/></svg></span>CSV Import</button>
+      <button data-screen="history" data-module="inventory" onclick="showScreen('history')"><span class="ic"><svg class="nav-icon"><use href="#i-clock"/></svg></span>Transaction History</button>
+      <button class="admin-only" data-screen="adjust" data-module="inventory" onclick="showScreen('adjust')"><span class="ic"><svg class="nav-icon"><use href="#i-sliders"/></svg></span>Inventory Adjust</button>
+      <button class="can-write" data-screen="backup" data-module="maintenance" onclick="showScreen('backup')"><span class="ic"><svg class="nav-icon"><use href="#i-cloud-down"/></svg></span>Data Backup</button>
+      <button class="admin-only" data-screen="users" data-module="maintenance" onclick="showScreen('users')"><span class="ic"><svg class="nav-icon"><use href="#i-users"/></svg></span>Manage Users</button>
+      <button data-screen="account" data-module="maintenance" onclick="showScreen('account')"><span class="ic"><svg class="nav-icon"><use href="#i-user-circle"/></svg></span>My Account</button>
+      <button data-screen="settings" data-module="maintenance" onclick="showScreen('settings')"><span class="ic"><svg class="nav-icon"><use href="#i-gear"/></svg></span>Settings</button>
       <span class="subnav-group-label" data-module="schedule">Operations</span>
-      <button data-screen="schedule-create" data-module="schedule" class="active" onclick="showScreen('schedule-create')"><span class="ic">➕</span>Create</button>
-      <button data-screen="schedule-preview" data-module="schedule" onclick="showScreen('schedule-preview')"><span class="ic">👁</span>Preview</button>
-      <button data-screen="schedule-confirm" data-module="schedule" onclick="showScreen('schedule-confirm')"><span class="ic">✔</span>Confirm Completion</button>
+      <button data-screen="schedule-create" data-module="schedule" class="active" onclick="showScreen('schedule-create')"><span class="ic"><svg class="nav-icon"><use href="#i-plus-circle"/></svg></span>Create</button>
+      <button data-screen="schedule-preview" data-module="schedule" onclick="showScreen('schedule-preview')"><span class="ic"><svg class="nav-icon"><use href="#i-eye"/></svg></span>Preview</button>
+      <button data-screen="schedule-confirm" data-module="schedule" onclick="showScreen('schedule-confirm')"><span class="ic"><svg class="nav-icon"><use href="#i-check-circle"/></svg></span>Confirm Completion</button>
       <span class="subnav-group-label" data-module="schedule">Setup</span>
-      <button data-screen="schedule-products" data-module="schedule" onclick="showScreen('schedule-products')"><span class="ic">🏷️</span>Products</button>
-      <button class="can-write" data-screen="schedule-lines" data-module="schedule" onclick="showScreen('schedule-lines')"><span class="ic">🏭</span>Lines</button>
+      <button data-screen="schedule-products" data-module="schedule" onclick="showScreen('schedule-products')"><span class="ic"><svg class="nav-icon"><use href="#i-tag"/></svg></span>Products</button>
+      <button class="can-write" data-screen="schedule-lines" data-module="schedule" onclick="showScreen('schedule-lines')"><span class="ic"><svg class="nav-icon"><use href="#i-factory"/></svg></span>Lines</button>
       <span class="subnav-group-label" data-module="sauce">Operations</span>
-      <button class="active" data-screen="sauce-create" data-module="sauce" onclick="showScreen('sauce-create')"><span class="ic">➕</span>Create</button>
-      <button data-screen="sauce-preview" data-module="sauce" onclick="showScreen('sauce-preview')"><span class="ic">👁</span>Preview</button>
-      <button data-screen="sauce-confirm" data-module="sauce" onclick="showScreen('sauce-confirm')"><span class="ic">✔</span>Confirm Completion</button>
-      <button data-screen="sauce-materials" data-module="sauce" onclick="showScreen('sauce-materials')"><span class="ic">🛒</span>Material Plan</button>
+      <button class="active" data-screen="sauce-create" data-module="sauce" onclick="showScreen('sauce-create')"><span class="ic"><svg class="nav-icon"><use href="#i-plus-circle"/></svg></span>Create</button>
+      <button data-screen="sauce-preview" data-module="sauce" onclick="showScreen('sauce-preview')"><span class="ic"><svg class="nav-icon"><use href="#i-eye"/></svg></span>Preview</button>
+      <button data-screen="sauce-confirm" data-module="sauce" onclick="showScreen('sauce-confirm')"><span class="ic"><svg class="nav-icon"><use href="#i-check-circle"/></svg></span>Confirm Completion</button>
+      <button data-screen="sauce-materials" data-module="sauce" onclick="showScreen('sauce-materials')"><span class="ic"><svg class="nav-icon"><use href="#i-cart"/></svg></span>Material Plan</button>
       <span class="subnav-group-label" data-module="sauce">Setup</span>
-      <button class="can-write" data-screen="sauce-sauces" data-module="sauce" onclick="showScreen('sauce-sauces')"><span class="ic">🥫</span>Sauces</button>
-      <button class="can-write" data-screen="sauce-ingredients" data-module="sauce" onclick="showScreen('sauce-ingredients')"><span class="ic">🌶️</span>Ingredients</button>
-      <button class="can-write" data-screen="sauce-recipes" data-module="sauce" onclick="showScreen('sauce-recipes')"><span class="ic">🔗</span>Recipes</button>
-      <button class="can-write" data-screen="sauce-locations" data-module="sauce" onclick="showScreen('sauce-locations')"><span class="ic">🏭</span>Locations</button>
-      <button class="can-write" data-screen="sauce-allergens" data-module="sauce" onclick="showScreen('sauce-allergens')"><span class="ic">⚠️</span>Allergens</button>
+      <button class="can-write" data-screen="sauce-sauces" data-module="sauce" onclick="showScreen('sauce-sauces')"><span class="ic"><svg class="nav-icon"><use href="#i-jar"/></svg></span>Sauces</button>
+      <button class="can-write" data-screen="sauce-ingredients" data-module="sauce" onclick="showScreen('sauce-ingredients')"><span class="ic"><svg class="nav-icon"><use href="#i-leaf"/></svg></span>Ingredients</button>
+      <button class="can-write" data-screen="sauce-recipes" data-module="sauce" onclick="showScreen('sauce-recipes')"><span class="ic"><svg class="nav-icon"><use href="#i-link"/></svg></span>Recipes</button>
+      <button class="can-write" data-screen="sauce-locations" data-module="sauce" onclick="showScreen('sauce-locations')"><span class="ic"><svg class="nav-icon"><use href="#i-pin"/></svg></span>Locations</button>
+      <button class="can-write" data-screen="sauce-allergens" data-module="sauce" onclick="showScreen('sauce-allergens')"><span class="ic"><svg class="nav-icon"><use href="#i-alert"/></svg></span>Allergens</button>
       <span class="subnav-group-label" data-module="flour">Operations</span>
-      <button data-screen="flour-dashboard" data-module="flour" class="active" onclick="showScreen('flour-dashboard')"><span class="ic">📈</span>Dashboard</button>
-      <button data-screen="flour-usage-report" data-module="flour" onclick="showScreen('flour-usage-report')"><span class="ic">📊</span>Usage Report</button>
-      <button data-screen="flour-ledger" data-module="flour" onclick="showScreen('flour-ledger')"><span class="ic">📜</span>Ledger</button>
+      <button data-screen="flour-dashboard" data-module="flour" class="active" onclick="showScreen('flour-dashboard')"><span class="ic"><svg class="nav-icon"><use href="#i-grid"/></svg></span>Dashboard</button>
+      <button data-screen="flour-usage-report" data-module="flour" onclick="showScreen('flour-usage-report')"><span class="ic"><svg class="nav-icon"><use href="#i-bar"/></svg></span>Usage Report</button>
+      <button data-screen="flour-ledger" data-module="flour" onclick="showScreen('flour-ledger')"><span class="ic"><svg class="nav-icon"><use href="#i-doc"/></svg></span>Ledger</button>
       <span class="subnav-group-label" data-module="flour">Setup</span>
-      <button data-screen="flour-ingredients" data-module="flour" onclick="showScreen('flour-ingredients')"><span class="ic">🌾</span>Ingredients</button>
-      <button data-screen="flour-recipes" data-module="flour" onclick="showScreen('flour-recipes')"><span class="ic">🔗</span>Recipes</button>
+      <button data-screen="flour-ingredients" data-module="flour" onclick="showScreen('flour-ingredients')"><span class="ic"><svg class="nav-icon"><use href="#i-leaf"/></svg></span>Ingredients</button>
+      <button data-screen="flour-recipes" data-module="flour" onclick="showScreen('flour-recipes')"><span class="ic"><svg class="nav-icon"><use href="#i-link"/></svg></span>Recipes</button>
     </nav>
     <div class="subnav-readonly-note" id="subNavReadOnlyNote">Read Only — you have view-only access</div>
   </header>
+
+  <nav id="sidebarNav"></nav>
 
   <main>
 
@@ -2133,10 +2216,20 @@ function applySubNavVisibility(mod){
     const anyAllowed = screensInModule.some(b => isScreenAllowed(b.dataset.screen));
     mb.style.display = anyAllowed ? '' : 'none';
   });
+  // sidebar mirrors every module at once (not just the active one), so each item is
+  // gated individually, and a whole section hides if none of its screens are allowed
+  document.querySelectorAll('#sidebarNav .sidebar-item[data-screen]').forEach(b => {
+    b.style.display = isScreenAllowed(b.dataset.screen) ? '' : 'none';
+  });
+  document.querySelectorAll('#sidebarNav .sidebar-sec[data-module]').forEach(sec => {
+    const items = [...sec.querySelectorAll('.sidebar-item[data-screen]')];
+    sec.style.display = items.some(b => isScreenAllowed(b.dataset.screen)) ? '' : 'none';
+  });
 }
 function switchModule(mod){
   CURRENT_MODULE = mod;
   document.querySelectorAll('.module-switcher button').forEach(b => b.classList.toggle('active', b.dataset.module === mod));
+  document.querySelectorAll('#sidebarNav .sidebar-sec').forEach(s => s.classList.toggle('open', s.dataset.module === mod));
   applySubNavVisibility(mod);
   if(moduleHasSubNav(mod)){
     const visible = [...document.querySelectorAll(`#subNav button[data-module="${mod}"]`)];
@@ -2155,7 +2248,7 @@ function showScreen(name){
   const el = document.getElementById('screen-'+name);
   if(!el) return;
   el.classList.add('active');
-  document.querySelectorAll('.topnav nav button').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
+  document.querySelectorAll('.topnav nav button, #sidebarNav .sidebar-item').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
   // keep the module switcher / subnav filtering in sync every time
   // (skip for the login screen itself so pre-login Settings access via CSS still works)
   if(name !== 'login'){
@@ -2164,6 +2257,7 @@ function showScreen(name){
       CURRENT_MODULE = mod;
       document.querySelectorAll('.module-switcher button').forEach(b => b.classList.toggle('active', b.dataset.module === mod));
     }
+    document.querySelectorAll('#sidebarNav .sidebar-sec').forEach(s => s.classList.toggle('open', s.dataset.module === mod));
     applySubNavVisibility(mod); // always reapply, even if the module didn't change
   }
   // pull fresh data for whatever screen you just switched to, so navigating
@@ -2221,6 +2315,76 @@ function pickItem(inputId, suggestId, hiddenNoId, hiddenNameId, itemNo, itemName
   if(onPickFn && typeof window[onPickFn] === 'function') window[onPickFn]();
 }
 document.querySelectorAll('#subNav button[data-screen]').forEach(b => { SCREEN_MODULE[b.dataset.screen] = b.dataset.module; });
+// Builds the desktop sidebar from the exact same source as the mobile top-nav (module-switcher
+// + #subNav) so the two can never drift apart — every item's icon, label, data-screen/data-module
+// and classes (can-write, admin-only, etc.) are cloned straight from the real subNav/module-switcher
+// button, not hand-duplicated markup or a second icon lookup table. Maintenance is rendered last
+// and pinned to the bottom (with the connection/role/logout/theme cluster under it) via
+// .sidebar-bottom{flex:0 0 auto} + .sidebar-top{flex:1} in CSS, not by reordering the modules.
+// The full label is also set as a title="" tooltip, since it's the only way to read an item's
+// name once the sidebar is collapsed to icons-only.
+function buildSidebarNav(){
+  const sidebar = document.getElementById('sidebarNav');
+  if(!sidebar) return;
+  const labelOf = (el) => { const c = el.cloneNode(true); const ic = c.querySelector('.ic'); if(ic) ic.remove(); return c.textContent.trim(); };
+  const renderSec = (mb) => {
+    const mod = mb.dataset.module;
+    const modLabel = labelOf(mb);
+    const modIconHtml = mb.querySelector('.ic')?.innerHTML || '';
+    const children = [...document.querySelectorAll(`#subNav [data-module="${mod}"]`)];
+    const bodyHtml = children.map(el => {
+      if(el.classList.contains('subnav-group-label')) return `<div class="sidebar-grp-label">${el.textContent}</div>`;
+      const extraCls = [...el.classList].filter(c => c !== 'active').join(' ');
+      const label = labelOf(el);
+      const iconHtml = el.querySelector('.ic')?.innerHTML || '';
+      return `<button class="sidebar-item ${extraCls}" data-screen="${el.dataset.screen}" data-module="${mod}" onclick="showScreen('${el.dataset.screen}')" title="${label}"><span class="ic">${iconHtml}</span><span class="sidebar-item-label">${label}</span></button>`;
+    }).join('');
+    return `<div class="sidebar-sec" data-module="${mod}">
+      <button class="sidebar-sec-head" onclick="switchModule('${mod}')" title="${modLabel}"><span class="ic">${modIconHtml}</span><span class="sidebar-sec-label">${modLabel}</span><svg class="chev"><use href="#i-chevron"/></svg></button>
+      <div class="sidebar-sec-body">${bodyHtml}</div>
+    </div>`;
+  };
+  const modules = [...document.querySelectorAll('.module-switcher button[data-module]')];
+  const topHtml = modules.filter(mb => mb.dataset.module !== 'maintenance').map(renderSec).join('');
+  const maintMod = modules.find(mb => mb.dataset.module === 'maintenance');
+  const maintHtml = maintMod ? renderSec(maintMod) : '';
+  sidebar.innerHTML =
+    `<div class="sidebar-brand-row"><div id="sidebarBrandSlot"></div><button class="sidebar-collapse-btn" id="sidebarCollapseBtn" onclick="toggleSidebarCollapsed()" title="Collapse menu">«</button></div>` +
+    `<div class="sidebar-top">${topHtml}</div>` +
+    `<div class="sidebar-bottom">${maintHtml}<div id="sidebarStatusSlot"></div></div>`;
+  if(localStorage.getItem('sidebarCollapsed') === '1'){
+    sidebar.classList.add('collapsed');
+    document.getElementById('sidebarCollapseBtn').textContent = '»';
+  }
+}
+function toggleSidebarCollapsed(){
+  const sidebar = document.getElementById('sidebarNav');
+  const collapsed = sidebar.classList.toggle('collapsed');
+  document.getElementById('sidebarCollapseBtn').textContent = collapsed ? '»' : '«';
+  try{ localStorage.setItem('sidebarCollapsed', collapsed ? '1' : '0'); }catch(e){}
+}
+// Moves the actual brand block and the connection/role/logout/theme cluster (not copies — the
+// same live elements, so doLogout()/toggleTheme(), the appVersion span, and every place that
+// sets connDot/connText/roleBadge keep working unchanged) between the header (mobile) and the
+// sidebar (desktop) on breakpoint crossing, so there's only ever one of each in the DOM.
+function relocateHeaderExtras(){
+  const brand = document.querySelector('.brand');
+  const cluster = document.getElementById('statusCluster');
+  const sidebarBrandSlot = document.getElementById('sidebarBrandSlot');
+  const sidebarStatusSlot = document.getElementById('sidebarStatusSlot');
+  const headerRow = document.querySelector('.topnav .row1');
+  if(!brand || !cluster || !sidebarBrandSlot || !sidebarStatusSlot || !headerRow) return;
+  if(window.matchMedia('(min-width:1024px)').matches){
+    sidebarBrandSlot.appendChild(brand);
+    sidebarStatusSlot.appendChild(cluster);
+  } else {
+    headerRow.insertBefore(brand, headerRow.firstChild);
+    headerRow.appendChild(cluster);
+  }
+}
+buildSidebarNav();
+relocateHeaderExtras();
+window.matchMedia('(min-width:1024px)').addEventListener('change', relocateHeaderExtras);
 document.addEventListener('click', (e)=>{
   if(!e.target.closest('.search')) document.querySelectorAll('.suggest').forEach(s=>s.style.display='none');
 });
