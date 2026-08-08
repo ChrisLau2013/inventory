@@ -158,7 +158,7 @@
   .sidebar-item.active{color:var(--accent);border-left-color:var(--accent);font-weight:600;background:var(--chip)}
   .sidebar-item-label,.sidebar-sec-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   #sidebarStatusSlot{padding:10px 16px 2px}
-  #sidebarStatusSlot #statusCluster{flex-wrap:wrap}
+  #sidebarStatusSlot #statusCluster{flex-direction:column;align-items:flex-start;gap:8px}
   /* Collapsed rail: icons only, no labels/group headers/chevrons — toggled by the « button */
   #sidebarNav.collapsed{width:64px;flex:0 0 64px}
   #sidebarNav.collapsed .sidebar-brand-row{flex-direction:column;gap:8px;padding:14px 8px 10px}
@@ -3365,7 +3365,7 @@ function renderFlourIngredientTable(){
     return `<tr>
     <td>${i.name}</td><td>${i.supplier||''}</td>
     <td style="${low?'color:var(--danger);font-weight:700':''}">${fmtNum(i.inventory_qty)} ${i.unit||''}${low?' ⚠':''}</td>
-    <td>${i.kg_per_unit?fmtNum(i.kg_per_unit):'–'}</td>
+    <td>${i.kg_per_unit?fmtNum(i.kg_per_unit):`<span style="color:var(--amber);font-weight:700" title="Not set — if any recipe deducts this ingredient in kg, the deduction can't be converted to ${i.unit||'stock units'} and will silently be wrong">⚠ Not set</span>`}</td>
     <td>${kgTotal!=null?fmtNum(kgTotal)+' kg':'–'}</td>
     <td>${weeklyUsage>0?fmtNum(weeklyUsage)+' '+(i.unit||''):'–'}</td>
     <td style="${lowWeeks?'color:var(--danger);font-weight:700':''}">${weeksLeft!=null?fmtNum(weeksLeft):'–'}${lowWeeks?' ⚠':''}</td>
@@ -3789,7 +3789,7 @@ async function deductFlourForProduct(productName, entryDate, mixes){
      out of that run. Confirming an item adds Finished Goods
      In Qty (and triggers the existing sachet-recipe deduction,
      e.g. item 09510, automatically).
-   Packing hrs assumption (flag for Chris to confirm/adjust):
+   Packing hrs assumption (confirmed correct by Chris 2026-08-07):
    each packing "cycle" takes 1 minute, so:
      packing_hrs = (cases * pieces_per_case) / (bags_per_cycle * machines * cycles * 60)
    Production/Expiry date: Cooler storage -> Expired Date = run
@@ -3844,7 +3844,7 @@ async function renderScheduledDaysList(listElId, emptyElId, jumpFnName, selected
     listEl.innerHTML = days.map(d => {
       const isToday = d === today;
       const isSelected = d === selectedDate;
-      return `<button class="btn secondary${isSelected?' active-option':''}" style="padding:6px 12px;font-size:12px${(!isSelected && isToday)?';border-color:var(--accent);color:var(--accent);font-weight:700':''}" onclick="${jumpFnName}('${d}')">${d}${isToday?' (Today)':''} · ${counts[d]} run${counts[d]===1?'':'s'}</button>`;
+      return `<button class="btn secondary${isSelected?' active-option':''}" style="padding:6px 12px;font-size:12px${(!isSelected && isToday)?';border-color:var(--accent);color:var(--accent);font-weight:700':''}" onclick="${jumpFnName}('${d}')">${d} (${dayNameOf(d).slice(0,3)})${isToday?' (Today)':''} · ${counts[d]} run${counts[d]===1?'':'s'}</button>`;
     }).join('');
     document.getElementById(emptyElId).style.display = days.length ? 'none' : 'block';
   }catch(e){ /* non-fatal — the rest of the screen still works */ }
@@ -4067,6 +4067,7 @@ async function confirmProductionRun(runId){
     const run = rows[0];
     if(!run){ toast('Run not found'); return; }
     const mixes = parseFloat(run.planned_mixes) || 0; // batches can be fractional (e.g. 0.6) — don't round
+    if(!confirm(`Confirm ${fmtNum(mixes)} batches of ${run.product_name}?\n\nThis is the ACTUAL number of batches mixed — double-check it's not just the plan before continuing (edit the Batches field first if it's wrong). This deducts flour and cannot be undone.`)) return;
     if(mixes > 0){
       // re-fetch the recipe AND the ingredients fresh in case they were edited since this
       // page last loaded — deductFlourForProduct needs FLOUR_INGREDIENTS (for kg_per_unit
@@ -4082,9 +4083,65 @@ async function confirmProductionRun(runId){
     await refreshScheduleScreen(); await refreshFlourScreen();
   }catch(e){ toast('Confirm failed: ' + e.message); }
 }
+// Writes a delta flour adjustment for a Correct Confirmed Batches change — deltaMixes>0 means
+// more batches than originally recorded (deduct the extra), deltaMixes<0 means fewer (credit
+// the difference back). Mirrors deductFlourForProduct's kg->stock-unit conversion but as a
+// signed correction instead of a one-directional deduction.
+async function correctFlourForProductDelta(productName, entryDate, deltaMixes){
+  const target = (productName||'').trim().toLowerCase();
+  const rows = FLOUR_RECIPE.filter(r => (r.product_name||'').trim().toLowerCase() === target);
+  if(!rows.length) return;
+  const inserts = rows.map(r => {
+    const ing = FLOUR_INGREDIENTS.find(i => i.id === r.ingredient_id);
+    const perBatch = r.qty_per_batch || 0;
+    let unitsDelta;
+    if(r.qty_unit === 'unit'){
+      unitsDelta = deltaMixes * perBatch;
+    } else {
+      const kgDelta = deltaMixes * perBatch;
+      unitsDelta = (ing && ing.kg_per_unit) ? (kgDelta / ing.kg_per_unit) : kgDelta;
+    }
+    const note = `Correction: ${productName} batches adjusted by ${deltaMixes>0?'+':''}${fmtNum(deltaMixes)}`;
+    return unitsDelta >= 0
+      ? { entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: 0, out_qty: unitsDelta, note }
+      : { entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: -unitsDelta, out_qty: 0, note };
+  });
+  await sbInsert('erp_flour_inout', inserts);
+}
+// Correct Confirmed Batches (admin-only): fixes an already-confirmed run's batches when the
+// number locked in at confirm time (see confirmProductionRun above) turns out not to match
+// what was actually mixed — same reasoning and pattern as Correct Confirmed Item for Cases.
+// Corrects the flour deduction by the delta rather than overwriting history.
+async function promptCorrectConfirmedBatches(runId){
+  if(!isAdmin()){ toast('Admin only'); return; }
+  try{
+    const rows = await sbGet(`erp_production_runs?select=id,run_date,product_name,confirmed_mixes,status&id=eq.${runId}`);
+    const run = rows[0];
+    if(!run || run.status !== 'Confirmed'){ toast('Run not found or not confirmed'); return; }
+    const oldMixes = parseFloat(run.confirmed_mixes) || 0;
+    const input = prompt(`Correct confirmed batches for ${run.product_name}\nCurrently recorded as confirmed: ${fmtNum(oldMixes)} batches\n\nEnter the TRUE actual batches mixed:`, oldMixes);
+    if(input === null) return;
+    const newMixes = parseFloat(input);
+    if(!Number.isFinite(newMixes) || newMixes < 0){ toast('Enter a valid number of batches'); return; }
+    const delta = newMixes - oldMixes;
+    if(delta === 0){ toast('No change'); return; }
+    if(!confirm(`Change ${run.product_name} from ${fmtNum(oldMixes)} to ${fmtNum(newMixes)} batches (${delta>0?'+':''}${fmtNum(delta)})?\n\nThis corrects the flour ingredient deduction accordingly. Cannot be undone.`)) return;
+    FLOUR_RECIPE = await sbGet('erp_flour_recipe?select=id,product_name,ingredient_id,qty_per_batch,qty_unit&order=product_name.asc&limit=2000');
+    FLOUR_INGREDIENTS = await sbGet('erp_flour_ingredient_inventory?select=id,name,supplier,unit,kg_per_unit,reorder_level,inventory_qty&order=name.asc&limit=500');
+    await correctFlourForProductDelta(run.product_name, run.run_date, delta);
+    await sbUpdate('erp_production_runs', runId, { confirmed_mixes: newMixes });
+    toast(`Corrected — ${run.product_name} now shows ${fmtNum(newMixes)} confirmed batches`);
+    await refreshScheduleScreen(); await refreshFlourScreen();
+  }catch(e){ toast('Correction failed: ' + e.message); }
+}
 // Confirms one packed item's ACTUAL produced cases (whatever is currently saved for
 // it — edit the Cases field first if needed): writes Finished Goods In Qty to
 // erp_inout and, if that item has a sachet recipe, deducts components too.
+// Shows the exact number being locked in before doing anything — this used to silently
+// confirm whatever planned_cases happened to still be sitting in the field (often an
+// auto-suggested number nobody actually reviewed), which could lock in a wrong Finished
+// Goods quantity and throw off the run's Yield with no warning. See "Correct Confirmed
+// Item" (below) for fixing a case that already got confirmed with the wrong number.
 async function confirmRunItem(id){
   if(!canWrite()){ toast('You have read-only access'); return; }
   try{
@@ -4092,6 +4149,7 @@ async function confirmRunItem(id){
     const it = rows[0];
     if(!it){ toast('Item not found'); return; }
     const cases = Math.round(parseFloat(it.planned_cases) || 0);
+    if(!confirm(`Confirm ${fmtNum(cases)} cases of ${it.item_name||it.item_no} (#${it.item_no})?\n\nThis is the ACTUAL quantity produced — double-check it's not just the auto-suggested plan before continuing. This adds Finished Goods stock and cannot be undone.`)) return;
     const runDate = it.erp_production_runs?.run_date || todayStr();
     const julian = it.production_date ? toJulianDate(it.production_date) : (it.expired_date ? toJulianDate(it.expired_date) : '');
     const lot = it.expired_date ? `Exp: ${it.expired_date}${julian?` (Julian: ${julian})`:''}`
@@ -4104,6 +4162,49 @@ async function confirmRunItem(id){
     toast('Item confirmed — Finished Goods stock updated' + (itemHasRecipe(it.item_no) ? ' (components deducted)' : ''));
     await refreshScheduleScreen(); await refreshInOut(); await refreshDashboard(); await refreshComponents(); await refreshProduce();
   }catch(e){ toast('Confirm failed: ' + e.message); }
+}
+// Correct Confirmed Item (admin-only): fixes an already-confirmed item's cases when the
+// number locked in at confirm time (see confirmRunItem above) turns out not to match what
+// actually got produced — e.g. a run confirmed with 512 cases still showing on the field
+// when the real output was 341, which silently inflates the run's computed Yield. Writes a
+// delta adjustment to Finished Goods (erp_inout) and Components (erp_components_inout)
+// rather than overwriting history, same convention as Adjust Ingredient Stock / Adjust
+// Sachet Inventory — the wrong original entry stays on the books, this just corrects it.
+async function promptCorrectConfirmedItem(itemId){
+  if(!isAdmin()){ toast('Admin only'); return; }
+  try{
+    const rows = await sbGet(`erp_production_run_items?select=id,item_no,item_name,confirmed_cases,status,erp_production_runs(run_date)&id=eq.${itemId}`);
+    const it = rows[0];
+    if(!it || it.status !== 'Confirmed'){ toast('Item not found or not confirmed'); return; }
+    const oldCases = Math.round(parseFloat(it.confirmed_cases) || 0);
+    const input = prompt(`Correct confirmed cases for ${it.item_name||it.item_no} (#${it.item_no})\nCurrently recorded as confirmed: ${oldCases} cases\n\nEnter the TRUE actual cases produced:`, oldCases);
+    if(input === null) return;
+    const newCases = Math.round(parseFloat(input));
+    if(!Number.isFinite(newCases) || newCases < 0){ toast('Enter a valid number of cases'); return; }
+    const delta = newCases - oldCases;
+    if(delta === 0){ toast('No change'); return; }
+    if(!confirm(`Change ${it.item_name||it.item_no} from ${oldCases} to ${newCases} cases (${delta>0?'+':''}${delta})?\n\nThis adjusts Finished Goods stock by ${delta>0?'+':''}${delta} case(s)${itemHasRecipe(it.item_no)?' and corrects Components stock accordingly':''}. Cannot be undone.`)) return;
+    const runDate = it.erp_production_runs?.run_date || todayStr();
+    const lot = `Correction: confirmed cases ${oldCases} → ${newCases}`;
+    if(delta > 0){
+      await sbInsert('erp_inout', [{ entry_date: runDate, item_no: it.item_no, item_name: it.item_name, in_qty: delta, out_qty: 0, lot }]);
+    } else {
+      await sbInsert('erp_inout', [{ entry_date: runDate, item_no: it.item_no, item_name: it.item_name, in_qty: 0, out_qty: -delta, lot }]);
+    }
+    if(itemHasRecipe(it.item_no)){
+      const recipeRows = RECIPE.filter(r => r.item_no === it.item_no);
+      const compInserts = recipeRows.map(r => {
+        const pcsDelta = delta * (parseFloat(r.pcs_per_case) || 0);
+        return pcsDelta >= 0
+          ? { entry_date: runDate, sachet_name: r.sachet_name, in_qty: 0, out_qty: pcsDelta }
+          : { entry_date: runDate, sachet_name: r.sachet_name, in_qty: -pcsDelta, out_qty: 0 };
+      });
+      if(compInserts.length) await sbInsert('erp_components_inout', compInserts);
+    }
+    await sbUpdate('erp_production_run_items', it.id, { confirmed_cases: newCases });
+    toast(`Corrected — ${it.item_name||it.item_no} now shows ${newCases} confirmed cases`);
+    await refreshScheduleScreen(); await refreshInOut(); await refreshDashboard(); await refreshComponents(); await refreshProduce();
+  }catch(e){ toast('Correction failed: ' + e.message); }
 }
 async function deleteProductionRun(runId){
   await deleteRow('erp_production_runs', runId, refreshScheduleScreen);
@@ -4180,7 +4281,7 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const p = getProductInfo(run.product_name);
   const actualYield = runActualYield(run, items, p);
   const statusChip = run.status === 'Confirmed'
-    ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)} batches${actualYield!=null?`, Yield: ${fmtNum(actualYield)}`:''})</span>`
+    ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)}/${fmtNum(run.planned_mixes)} batch${(parseFloat(run.planned_mixes)||0)===1?'':'es'}${actualYield!=null?`, Yield: ${fmtNum(actualYield)}`:''})</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedBatches(${run.id})">✎ Correct</button>`
     : `<span class="chip">Planned</span>`;
   const totalKg = runTotalOutputKg(run);
   const usedKg = runUsedKg(items);
@@ -4235,7 +4336,9 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
     <tbody>${items.map(it => {
       const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
       const dateLabel = formatProdExpDate(it);
-      const itStatus = it.status==='Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
+      const itStatus = it.status==='Confirmed'
+        ? `<span class="chip ok">Confirmed</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedItem(${it.id})">✎ Correct</button>`
+        : `<span class="chip">Planned</span>`;
       const rowEditable = (itemsEditable || showItemConfirmButtons) && it.status!=='Confirmed';
       // Only items actually tracking an expiry date (Cooler/Freezer) get an editable date —
       // a plain "Prod: ..." item's date is just the run's own date, not meant to be
@@ -4627,7 +4730,7 @@ function renderLineSummary(runs, items){
       const mixTimeMin = p && p.mixing_min_per_mix ? mixes * p.mixing_min_per_mix : null;
       const actualYield = runActualYield(run, runItems, p);
       const statusChip = run.status === 'Confirmed'
-        ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)} batches${actualYield!=null?`, Yield: ${fmtNum(actualYield)}`:''})</span>`
+        ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)}/${fmtNum(run.planned_mixes)} batch${(parseFloat(run.planned_mixes)||0)===1?'':'es'}${actualYield!=null?`, Yield: ${fmtNum(actualYield)}`:''})</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedBatches(${run.id})">✎ Correct</button>`
         : `<span class="chip">Planned</span>`;
       const runInfoBlock = `<div style="margin-bottom:6px">
         <strong>${fmtNum(mixes)} batches of ${run.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}</strong>
@@ -4643,15 +4746,21 @@ function renderLineSummary(runs, items){
       const itemRows = runItems.map(it => {
         const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
         const dateLabel = formatProdExpDate(it);
-        const itStatus = it.status==='Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
+        const itStatus = it.status==='Confirmed'
+          ? `<span class="chip ok">Confirmed</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedItem(${it.id})">✎ Correct</button>`
+          : `<span class="chip">Planned</span>`;
+        // Once an item is Confirmed, the actual cases packed (confirmed_cases) can differ from
+        // what was originally planned — show that actual figure, not the stale plan, so the
+        // Cases column always matches what runActualYield() above is computing the Yield from.
+        const displayCases = it.status === 'Confirmed' ? it.confirmed_cases : it.planned_cases;
         const packingCalc = it.packing_hrs
-          ? `<div>${fmtHrs(it.packing_hrs)}h</div><div style="font-size:11px;color:var(--muted);white-space:normal">for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)</div>`
+          ? `<div>${fmtHrs(it.packing_hrs)}h</div><div style="font-size:11px;color:var(--muted);white-space:normal">for ${fmtNum(displayCases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)</div>`
           : '–';
         return `<tr>
           <td>${it.item_no}</td>
           <td>${it.item_name||''}${it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${it.remark}</div>`:''}</td>
-          <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, it.planned_cases)}</td>
-          <td>${fmtNum(it.planned_cases)}</td>
+          <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, displayCases)}</td>
+          <td>${fmtNum(displayCases)}</td>
           <td style="min-width:160px">${packingCalc}</td>
           <td style="white-space:normal">${dateLabel}</td>
           <td>${itStatus}</td>
@@ -6082,8 +6191,17 @@ async function handleSalesFile(file){
 /* ============================================================
    DATA BACKUP — export every table as one downloadable JSON file
    ============================================================ */
-const BACKUP_TABLES = ['erp_items','erp_opening_balance','erp_inout','erp_pending_order',
-  'erp_duplicated_items','erp_sachets','erp_item_sachet_recipe','erp_components_inout','erp_import_log'];
+// Every base table in the app (the 3 read-only inventory-summary VIEWs are excluded — they're
+// computed live from these tables, so backing up their derived output doesn't help a restore).
+const BACKUP_TABLES = [
+  'erp_profiles','erp_role_requests','erp_import_log',
+  'erp_items','erp_opening_balance','erp_inout','erp_pending_order','erp_duplicated_items',
+  'erp_sachets','erp_item_sachet_recipe','erp_sachet_inventory','erp_components_inout',
+  'erp_lines','erp_products','erp_production_runs','erp_production_run_items',
+  'erp_flour_ingredients','erp_flour_inout','erp_flour_expected_delivery','erp_flour_recipe',
+  'erp_sauce_locations','erp_allergens','erp_sauces','erp_sauce_allergens','erp_sauce_ingredients',
+  'erp_sauce_recipe','erp_sauce_ingredient_inout','erp_sauce_schedule_days','erp_sauce_schedule_tasks'
+];
 async function performBackup(){
   if(!canWrite()){ toast('Backup requires Editor or Admin access'); return; }
   const btn = document.getElementById('backupBtn');
@@ -6365,7 +6483,7 @@ async function renderSauceScheduledDaysList(listElId, emptyElId, jumpFnName, sel
       const isToday = d.schedule_date === today;
       const isSelected = d.schedule_date === selectedDate;
       const n = counts[d.id] || 0;
-      return `<button class="btn secondary${isSelected?' active-option':''}" style="padding:6px 12px;font-size:12px${(!isSelected && isToday)?';border-color:var(--accent);color:var(--accent);font-weight:700':''}" onclick="${jumpFnName}('${d.schedule_date}')">${d.schedule_date}${isToday?' (Today)':''} · ${n} task${n===1?'':'s'}</button>`;
+      return `<button class="btn secondary${isSelected?' active-option':''}" style="padding:6px 12px;font-size:12px${(!isSelected && isToday)?';border-color:var(--accent);color:var(--accent);font-weight:700':''}" onclick="${jumpFnName}('${d.schedule_date}')">${d.schedule_date} (${dayNameOf(d.schedule_date).slice(0,3)})${isToday?' (Today)':''} · ${n} task${n===1?'':'s'}</button>`;
     }).join('');
     document.getElementById(emptyElId).style.display = 'none';
   }catch(e){ /* non-fatal — the rest of the screen still works */ }
@@ -6562,6 +6680,58 @@ async function deductSauceIngredientsForSauce(sauceId, entryDate, mixes){
     return { entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: 0, out_qty: unitsNeeded, note };
   });
   await sbInsert('erp_sauce_ingredient_inout', inserts);
+}
+// Writes a delta ingredient adjustment for a Correct Confirmed Mixes change — mirrors
+// correctFlourForProductDelta on the Daily Production Schedule side. deltaMixes>0 means more
+// mixes than originally recorded (deduct the extra), deltaMixes<0 means fewer (credit back).
+async function correctSauceIngredientsForSauceDelta(sauceId, entryDate, deltaMixes){
+  const sauce = SAUCES.find(s => s.id === sauceId || String(s.id) === String(sauceId));
+  const rows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId));
+  if(!rows.length) return;
+  const inserts = rows.map(r => {
+    const ing = SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id);
+    const perBatch = r.qty_per_batch || 0;
+    let unitsDelta;
+    if(r.qty_unit === 'unit'){
+      unitsDelta = deltaMixes * perBatch;
+    } else {
+      const kgDelta = deltaMixes * perBatch;
+      unitsDelta = (ing && ing.kg_per_unit) ? (kgDelta / ing.kg_per_unit) : kgDelta;
+    }
+    const note = `Correction: ${sauce?sauce.name:'sauce'} mixes adjusted by ${deltaMixes>0?'+':''}${fmtNum(deltaMixes)}`;
+    return unitsDelta >= 0
+      ? { entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: 0, out_qty: unitsDelta, note }
+      : { entry_date: entryDate, ingredient_id: r.ingredient_id, in_qty: -unitsDelta, out_qty: 0, note };
+  });
+  await sbInsert('erp_sauce_ingredient_inout', inserts);
+}
+// Correct Confirmed Mixes (admin-only): fixes an already-confirmed sauce task's mixes when the
+// number locked in at confirm time turns out not to match what was actually mixed — same
+// pattern as Correct Confirmed Batches on the Daily Production Schedule side. Corrects the
+// ingredient deduction by the delta rather than overwriting history.
+async function promptCorrectConfirmedSauceMixes(taskId){
+  if(!isAdmin()){ toast('Admin only'); return; }
+  try{
+    const rows = await sbGet(`erp_sauce_schedule_tasks?select=id,sauce_id,day_id,confirmed_mixes,status,erp_sauce_schedule_days(schedule_date)&id=eq.${taskId}`);
+    const t = rows[0];
+    if(!t || t.status !== 'Confirmed'){ toast('Task not found or not confirmed'); return; }
+    const sauce = SAUCES.find(s => s.id === t.sauce_id);
+    const oldMixes = parseFloat(t.confirmed_mixes) || 0;
+    const input = prompt(`Correct confirmed mixes for ${sauce?sauce.name:'this sauce'}\nCurrently recorded as confirmed: ${fmtNum(oldMixes)} mixes\n\nEnter the TRUE actual mixes made:`, oldMixes);
+    if(input === null) return;
+    const newMixes = parseFloat(input);
+    if(!Number.isFinite(newMixes) || newMixes < 0){ toast('Enter a valid number of mixes'); return; }
+    const delta = newMixes - oldMixes;
+    if(delta === 0){ toast('No change'); return; }
+    if(!confirm(`Change ${sauce?sauce.name:'this sauce'} from ${fmtNum(oldMixes)} to ${fmtNum(newMixes)} mixes (${delta>0?'+':''}${fmtNum(delta)})?\n\nThis corrects the ingredient deduction accordingly. Cannot be undone.`)) return;
+    const entryDate = t.erp_sauce_schedule_days?.schedule_date || todayStr();
+    SAUCE_RECIPE = await sbGetAll('erp_sauce_recipe?select=id,sauce_id,ingredient_id,qty_per_batch,qty_unit&order=id.asc');
+    SAUCE_INGREDIENTS = await sbGetAll('erp_sauce_ingredient_inventory?select=id,name,pcs,weight,package_size,unit,kg_per_unit,produced_by_sauce_id,inventory_qty&order=name.asc');
+    await correctSauceIngredientsForSauceDelta(t.sauce_id, entryDate, delta);
+    await sbUpdate('erp_sauce_schedule_tasks', taskId, { confirmed_mixes: newMixes });
+    toast(`Corrected — ${sauce?sauce.name:'sauce'} now shows ${fmtNum(newMixes)} confirmed mixes`);
+    await refreshSauceScreen();
+  }catch(e){ toast('Correction failed: ' + e.message); }
 }
 
 /* ---- Material Plan: what a week of scheduled tasks adds up to, so Purchasing can order
@@ -7408,7 +7578,7 @@ function renderSauceIngredientsTable(){
   if(q) rows = rows.filter(i => (i.name||'').toLowerCase().includes(q));
   document.getElementById('sauceIngredientsTable').innerHTML = rows.map(i => `<tr>
     <td>${i.name}</td><td>${i.pcs!=null?fmtNum(i.pcs):''}</td><td>${i.weight!=null?fmtNum(i.weight):''}</td>
-    <td>${i.package_size||''}</td><td>${i.unit||''}</td><td>${i.kg_per_unit?fmtNum(i.kg_per_unit):'–'}</td>
+    <td>${i.package_size||''}</td><td>${i.unit||''}</td><td>${i.kg_per_unit?fmtNum(i.kg_per_unit):`<span style="color:var(--amber);font-weight:700" title="Not set — if any recipe deducts this ingredient in kg, the deduction can't be converted to ${i.unit||'stock units'} and will silently be wrong">⚠ Not set</span>`}</td>
     <td>${i.produced_by_sauce_id ? sauceRecipeSauceName(i.produced_by_sauce_id) : '–'}</td>
     <td class="no-print" style="white-space:nowrap">
       <div style="display:flex;gap:6px;flex-wrap:nowrap">
@@ -8093,7 +8263,8 @@ async function renderSaucePreview(){
         const bb = s ? sauceCoolerBestBefore(s, prodDate) : null;
         const allergenTags = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
         const packingCalc = sauceTaskPackingCalcText(t);
-        const tStatus = t.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>`
+        const tStatus = t.status === 'Confirmed'
+          ? `<span class="chip ok">Confirmed (${fmtNum(t.confirmed_mixes)}/${fmtNum(t.mixes)} mix${(parseFloat(t.mixes)||0)===1?'':'es'})</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedSauceMixes(${t.id})">✎ Correct</button>`
           : t.status === 'Cancelled' ? `<span class="chip" style="opacity:.6">Cancelled</span>`
           : `<span class="chip">Planned</span>`;
         return `<tr>
@@ -8130,8 +8301,12 @@ function sauceProductionDayHtml(dateStr, tasks){
         const allergenLine = allergenChips ? `Allergens: ${allergenChips}` : '';
         const opMachineNotes = [t.operator_notes, t.machine_notes].filter(Boolean).join(' — ');
         const packingLine = sauceTaskPackingCalcText(t);
+        const statusCellHtml = t.status === 'Confirmed'
+          ? `<span class="chip ok">Confirmed (${fmtNum(t.confirmed_mixes)}/${fmtNum(t.mixes)} Mix${(parseFloat(t.mixes)||0)===1?'':'es'})</span>`
+          : t.status === 'Cancelled' ? `<span class="chip" style="opacity:.6">Cancelled</span>`
+          : `<span class="chip">Planned</span>`;
         return `<tr><td>${fmtNum(t.mixes)}</td><td>${s?s.name:''}</td><td>${t.pack_size_notes||''}</td>
-          <td>Prod: ${dateStr} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td><td>${t.status}</td></tr>` +
+          <td>Prod: ${dateStr} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td><td>${statusCellHtml}</td></tr>` +
           (opMachineNotes ? `<tr><td></td><td colspan="4" class="pr-detail" style="color:#c0392b;font-weight:700">${opMachineNotes}</td></tr>` : '') +
           (allergenLine ? `<tr><td></td><td colspan="4" class="pr-detail" style="padding-top:6px">${allergenLine}</td></tr>` : '') +
           (packingLine ? `<tr><td></td><td colspan="4" class="pr-detail">${packingLine}</td></tr>` : '');
@@ -8207,7 +8382,8 @@ async function renderSauceConfirmTab(){
     </tr></thead><tbody>
     ${SAUCE_CONFIRM_TASKS.map(t => {
       const s = SAUCES.find(x => x.id === t.sauce_id);
-      const statusChip = t.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>`
+      const statusChip = t.status === 'Confirmed'
+        ? `<span class="chip ok">Confirmed (${fmtNum(t.confirmed_mixes)}/${fmtNum(t.mixes)} mix${(parseFloat(t.mixes)||0)===1?'':'es'})</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedSauceMixes(${t.id})">✎ Correct</button>`
         : t.status === 'Cancelled' ? `<span class="chip" style="opacity:.6">Cancelled</span>`
         : `<span class="chip">Planned</span>`;
       const editable = canWrite() && t.status === 'Planned';
@@ -8254,12 +8430,17 @@ async function confirmSauceTask(id){
     if(lookupSauceMatchedItems(sauceForMsg.item_code)[0]) destinations.push('Finished Goods In/Out');
     if(sauceForMsg.component_sachet_name) destinations.push('Components (Sachets)');
   }
-  const confirmMsg = 'Confirm this task? This deducts recipe ingredients' +
+  const confirmMsg = `Confirm ${fmtNum(mixes)} mixes of ${sauceForMsg?sauceForMsg.name:'this sauce'}?\n\nThis is the ACTUAL number of mixes made — double-check it's not just the plan before continuing (edit Mixes first if it's wrong). This deducts recipe ingredients` +
     (destinations.length ? ` and records ${fmtNum(outputQty)} into ${destinations.join(' and ')}` : '') +
     ', and cannot be undone.';
   if(!confirm(confirmMsg)) return;
   try{
+    // re-fetch the recipe AND the ingredients fresh — same reasoning as the flour side's
+    // confirmProductionRun fix: deductSauceIngredientsForSauce needs SAUCE_INGREDIENTS (for
+    // kg_per_unit conversion), and relying on refreshSauceScreen() having already loaded it
+    // is a coincidence of every sauce screen sharing one refresh function, not a guarantee.
     SAUCE_RECIPE = await sbGetAll('erp_sauce_recipe?select=id,sauce_id,ingredient_id,qty_per_batch,qty_unit&order=id.asc');
+    SAUCE_INGREDIENTS = await sbGetAll('erp_sauce_ingredient_inventory?select=id,name,pcs,weight,package_size,unit,kg_per_unit,produced_by_sauce_id,inventory_qty&order=name.asc');
     if(mixes > 0) await deductSauceIngredientsForSauce(t.sauce_id, SAUCE_CONFIRM_DAY.schedule_date, mixes);
     const sauce = SAUCES.find(s => s.id === t.sauce_id);
     if(outputQty){
