@@ -1039,7 +1039,7 @@
       <input type="hidden" id="sauceTaskEditId">
       <div class="row">
         <div><label>Location</label><select id="sauceTaskLocation"><option value="">Select location...</option></select></div>
-        <div><label>Mixes</label><input type="number" step="any" id="sauceTaskMixes" oninput="recalcSauceTaskPackingHrs(); recalcSauceTaskUsageNote(); checkSauceIngredientAvailability(); updateSauceComponentEstimate()"></div>
+        <div><label>Mixes</label><input type="number" step="any" id="sauceTaskMixes" oninput="recalcSauceTaskPackingHrs(); recalcSauceTaskUsageNote(); checkSauceIngredientAvailability(); updateSauceComponentEstimate(); onSauceTaskItemsChanged()"></div>
         <div><label>Sauce</label>
           <div class="search">
             <input id="sauceTaskSauceSearch" placeholder="Search sauce name..." oninput="searchSauceTaskSauce()" autocomplete="off">
@@ -1047,6 +1047,11 @@
           </div>
           <input type="hidden" id="sauceTaskSauceId">
         </div>
+      </div>
+      <div id="sauceTaskItemsSection" style="display:none;margin:10px 0">
+        <label>Items to Produce</label>
+        <p style="color:var(--muted);font-size:12px;margin:0 0 6px">This sauce is linked to more than one Item # — pick which one(s) this task packs. The last checked item auto-fills with whatever weight is left over; every quantity here is still editable.</p>
+        <div id="sauceTaskItemsList"></div>
       </div>
       <div id="sauceTaskIngredientNote"></div>
       <div id="sauceTaskComponentEstimate"></div>
@@ -1056,6 +1061,7 @@
       <textarea id="sauceTaskOperatorNotes" rows="2" placeholder="e.g. Start cooking at 7:00am"></textarea>
       <label>Pack Size Notes</label>
       <input id="sauceTaskPackNotes" placeholder="e.g. 500g x 8 bags/case">
+      <div id="sauceTaskSingleItemFields">
       <div class="row">
         <div><label>Pack Weight</label><input type="number" step="any" id="sauceTaskPackWeight" oninput="recalcSauceTaskPackingHrs()"></div>
         <div><label>Pack Weight Unit</label><select id="sauceTaskPackWeightUnit" onchange="recalcSauceTaskPackingHrs()"><option value="g">g</option><option value="kg">kg</option><option value="lb">lb</option></select></div>
@@ -1069,6 +1075,7 @@
       <input id="sauceTaskPackingHrsDisplay" disabled>
       <label>Usage / Stock Coverage Note</label>
       <input id="sauceTaskUsageNote" placeholder="e.g. Approximately 200 cases, it's 5 weeks stock">
+      </div>
       <div class="btnrow">
         <button class="btn" id="sauceTaskSubmitBtn" onclick="submitSauceTask()">➕ Add Task</button>
         <button class="btn secondary" onclick="resetSauceTaskForm()">Clear / Cancel Edit</button>
@@ -6200,7 +6207,8 @@ const BACKUP_TABLES = [
   'erp_lines','erp_products','erp_production_runs','erp_production_run_items',
   'erp_flour_ingredients','erp_flour_inout','erp_flour_expected_delivery','erp_flour_recipe',
   'erp_sauce_locations','erp_allergens','erp_sauces','erp_sauce_allergens','erp_sauce_ingredients',
-  'erp_sauce_recipe','erp_sauce_ingredient_inout','erp_sauce_schedule_days','erp_sauce_schedule_tasks'
+  'erp_sauce_recipe','erp_sauce_ingredient_inout','erp_sauce_schedule_days','erp_sauce_schedule_tasks',
+  'erp_sauce_task_items'
 ];
 async function performBackup(){
   if(!canWrite()){ toast('Backup requires Editor or Admin access'); return; }
@@ -6417,6 +6425,7 @@ let SAUCE_PREVIEW_DAY = null;
 let SAUCE_PREVIEW_TASKS = [];
 let SAUCE_CONFIRM_DAY = null;
 let SAUCE_CONFIRM_TASKS = [];
+let SAUCE_CONFIRM_TASK_ITEMS = {}; // task_id -> erp_sauce_task_items rows, for multi-Item # sauces
 let SAUCE_STOCK_BY_ITEM_NO = {};
 
 async function refreshSauceScreen(){
@@ -6524,18 +6533,25 @@ function sauceBestBefore(sauce, productionDate){
 // source of truth for the day count — not the sauce's separate Shelf-life field, so there's
 // only one place to maintain it. The sauce's Shelf-life field is only used as a fallback for
 // sauces with no matching item (e.g. pure raw-material sauces never sold as their own item).
+// Per-item version — lets a multi-Item # task compute a genuinely different Best Before per
+// item (a sauce's linked items can have different Storage/R.SL Day from each other), instead
+// of every item silently inheriting whichever one happens to be first in the Item Code list.
+function sauceCoolerBestBeforeForItem(item, sauce, productionDate){
+  if(!productionDate) return null;
+  // No matching item at all means there's no storage type to check against — fall back to
+  // whatever's manually set on the sauce rather than assuming it isn't a Cooler item.
+  if(!item) return sauceBestBefore(sauce, productionDate);
+  const isCoolerItem = (item.storage || '').toLowerCase().includes('cooler');
+  if(!isCoolerItem) return null;
+  if(item.r_sl_day != null && item.r_sl_day !== ''){
+    return addDaysToDateStr(productionDate, parseFloat(item.r_sl_day) || 0);
+  }
+  return sauceBestBefore(sauce, productionDate);
+}
 function sauceCoolerBestBefore(sauce, productionDate){
   if(!sauce || !productionDate) return null;
   const matchedItem = lookupSauceMatchedItems(sauce.item_code)[0];
-  // No matching item at all means there's no storage type to check against — fall back to
-  // whatever's manually set on the sauce rather than assuming it isn't a Cooler item.
-  if(!matchedItem) return sauceBestBefore(sauce, productionDate);
-  const isCoolerItem = (matchedItem.storage || '').toLowerCase().includes('cooler');
-  if(!isCoolerItem) return null;
-  if(matchedItem.r_sl_day != null && matchedItem.r_sl_day !== ''){
-    return addDaysToDateStr(productionDate, parseFloat(matchedItem.r_sl_day) || 0);
-  }
-  return sauceBestBefore(sauce, productionDate);
+  return sauceCoolerBestBeforeForItem(matchedItem, sauce, productionDate);
 }
 function sauceAllergenNames(sauce){
   if(!sauce) return [];
@@ -7926,6 +7942,117 @@ function pickSauceTaskSauce(id){
   recalcSauceTaskUsageNote();
   checkSauceIngredientAvailability();
   updateSauceComponentEstimate();
+  renderSauceTaskItemsPicker();
+}
+// Multi-Item # sauces (Item Code holds >1 comma-separated code — see lookupSauceMatchedItems)
+// need to say which item(s) a given task actually packs, since Confirm Completion has to
+// write Finished Goods for each one separately rather than always guessing "the first match".
+// Single/no-match sauces keep the old implicit behavior and never show this section at all.
+let SAUCE_TASK_ITEM_CANDIDATES = [];
+function renderSauceTaskItemsPicker(presetRows){
+  const sauceId = document.getElementById('sauceTaskSauceId').value;
+  const sauce = SAUCES.find(s => s.id === Number(sauceId));
+  const section = document.getElementById('sauceTaskItemsSection');
+  SAUCE_TASK_ITEM_CANDIDATES = sauce ? lookupSauceMatchedItems(sauce.item_code) : [];
+  const isMulti = SAUCE_TASK_ITEM_CANDIDATES.length > 1;
+  // Pack Weight/#M/C Running/Cycle/Bags-per-Cycle/Packing Hrs/Usage Note are all specific to
+  // ONE item's own pack size and machine setup — meaningless as a single shared value once a
+  // task can span several items with different packaging, so they're replaced by the per-item
+  // lines in #sauceTaskItemsList (see updateSauceTaskItemCalc) instead of shown here.
+  document.getElementById('sauceTaskSingleItemFields').style.display = isMulti ? 'none' : '';
+  if(!isMulti){
+    section.style.display = 'none';
+    document.getElementById('sauceTaskItemsList').innerHTML = '';
+    return;
+  }
+  section.style.display = 'block';
+  const presetByNo = {};
+  (presetRows||[]).forEach(r => { presetByNo[r.item_no] = r; });
+  document.getElementById('sauceTaskItemsList').innerHTML = SAUCE_TASK_ITEM_CANDIDATES.map(it => {
+    const preset = presetByNo[it.item_no];
+    // default to all-checked both when adding fresh (presetRows undefined) and when editing a
+    // task that predates this feature and so has no erp_sauce_task_items rows at all yet
+    const checked = (presetRows && presetRows.length > 0) ? !!preset : true;
+    const qty = preset ? (preset.planned_cases ?? '') : '';
+    return `<div style="padding:6px 0;border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="checkbox" id="sauceTaskItemChk_${it.item_no}" ${checked?'checked':''} style="width:auto;flex:0 0 auto" onchange="onSauceTaskItemsChanged()">
+        <div style="flex:1;font-size:13px">${it.item_no} — ${it.item_name||''}</div>
+        <input type="number" step="1" style="width:100px;flex:0 0 auto" id="sauceTaskItemQty_${it.item_no}" value="${qty}" placeholder="cases" oninput="onSauceTaskItemsChanged('${it.item_no}')">
+      </div>
+      <div id="sauceTaskItemCalc_${it.item_no}" style="font-size:11px;color:var(--muted);padding-left:26px;margin-top:2px"></div>
+    </div>`;
+  }).join('');
+  onSauceTaskItemsChanged();
+}
+// Fires on every checkbox/qty/mixes change: re-runs the last-item-gets-remainder math, then
+// refreshes each checked item's own Packing Hrs + stock-coverage line (each item can have its
+// own pack weight and machine config on its Manage Items record, so these can't be shared
+// across items the way the single-item task fields are).
+function onSauceTaskItemsChanged(editedItemNo){
+  recalcSauceTaskItemQtys(editedItemNo);
+  updateAllSauceTaskItemCalcs();
+}
+async function updateAllSauceTaskItemCalcs(){
+  if(SAUCE_TASK_ITEM_CANDIDATES.length <= 1) return;
+  await Promise.all(SAUCE_TASK_ITEM_CANDIDATES.map(it => updateSauceTaskItemCalc(it.item_no)));
+}
+// Per-item Packing Hrs (using that item's OWN Weight/Pack, Pieces, # M/C Running, Cycle, Bags
+// per Cycle from Manage Items — never the task-level fields, which only apply when a task has
+// a single item) + a stock-coverage estimate from that item's own recent sales pace.
+async function updateSauceTaskItemCalc(itemNo){
+  const el = document.getElementById(`sauceTaskItemCalc_${itemNo}`);
+  if(!el) return;
+  const item = ITEMS_BY_NO[itemNo];
+  const chk = document.getElementById(`sauceTaskItemChk_${itemNo}`);
+  const qty = parseFloat(document.getElementById(`sauceTaskItemQty_${itemNo}`)?.value) || 0;
+  if(!item || !chk?.checked || !qty){ el.innerHTML = ''; return; }
+  const parts = [];
+  const totalPacks = qty * (parseFloat(item.pieces) || 1);
+  const denom = (parseFloat(item.bags_per_cycle)||0) * (parseFloat(item.machines_running)||0) * (parseFloat(item.cycle)||0) * 60;
+  if(denom > 0){
+    parts.push(`📦 ${fmtHrs(totalPacks/denom)}h for ${fmtNum(totalPacks)} packs (${fmtNum(item.machines_running)} machine(s), ${item.cycle} cycle(s)/min, ${fmtNum(item.bags_per_cycle)} bags/cycle)`);
+  }
+  try{
+    const rows = await sbGet(`erp_inventory_summary?select=avg_daily_out_7d,avg_daily_out_30d&item_no=eq.${encodeURIComponent(itemNo)}&limit=1`);
+    const r = rows && rows[0];
+    const dailyOut = r ? (Number(r.avg_daily_out_7d) || Number(r.avg_daily_out_30d) || 0) : 0;
+    if(dailyOut > 0) parts.push(`📊 ≈${fmtNum(qty / (dailyOut * 7))} weeks stock`);
+  }catch(e){ /* non-fatal — leave the weeks estimate out if this lookup fails */ }
+  el.innerHTML = parts.join(' · ');
+}
+// Mirrors recalcLastItemCasesForRun's "last item soaks up whatever's left" convention, just
+// scoped to one task's checked items instead of across separate run-item records. Only the
+// LAST checked item is ever auto-overwritten — every other row is left exactly as typed, and
+// if the edit that triggered this WAS the last item's own field, it's left alone too (so it
+// doesn't fight the cursor while someone's typing into it).
+function recalcSauceTaskItemQtys(editedItemNo){
+  const sauceId = document.getElementById('sauceTaskSauceId').value;
+  const sauce = SAUCES.find(s => s.id === Number(sauceId));
+  if(!sauce || SAUCE_TASK_ITEM_CANDIDATES.length <= 1) return;
+  // Unchecked items never contribute to the plan — zero their qty out and lock the field so
+  // what's on screen can't silently disagree with what actually gets saved/confirmed.
+  SAUCE_TASK_ITEM_CANDIDATES.forEach(it => {
+    const chk = document.getElementById(`sauceTaskItemChk_${it.item_no}`);
+    const qtyInput = document.getElementById(`sauceTaskItemQty_${it.item_no}`);
+    if(!chk || !qtyInput) return;
+    qtyInput.disabled = !chk.checked;
+    if(!chk.checked) qtyInput.value = 0;
+  });
+  const mixes = parseFloat(document.getElementById('sauceTaskMixes').value) || 0;
+  const { totalKg: perMixKg, hasRows } = sauceRecipeWeightKg(sauce.id);
+  const totalKg = hasRows ? perMixKg * mixes : 0;
+  const checked = SAUCE_TASK_ITEM_CANDIDATES.filter(it => document.getElementById(`sauceTaskItemChk_${it.item_no}`)?.checked);
+  if(!checked.length) return;
+  const lastItem = checked[checked.length - 1];
+  if(editedItemNo && editedItemNo === lastItem.item_no) return; // respect a direct edit to the remainder field itself
+  const usedKg = checked.slice(0, -1).reduce((sum, it) => {
+    const qty = parseFloat(document.getElementById(`sauceTaskItemQty_${it.item_no}`)?.value) || 0;
+    return sum + qty * caseWeightKg(it);
+  }, 0);
+  const cwKg = caseWeightKg(lastItem);
+  const lastInput = document.getElementById(`sauceTaskItemQty_${lastItem.item_no}`);
+  if(lastInput && cwKg > 0){ lastInput.value = Math.max(0, Math.floor((totalKg - usedKg) / cwKg)); }
 }
 // If this sauce is linked to a Component/Sachet (fix33) with a Unit Weight set (fix34),
 // estimate how many packs this task's total recipe weight (mixes × weight/mix) will yield —
@@ -8087,8 +8214,12 @@ function resetSauceTaskForm(){
   document.getElementById('sauceTaskUsageNote').value = '';
   document.getElementById('sauceTaskIngredientNote').innerHTML = '';
   document.getElementById('sauceTaskComponentEstimate').innerHTML = '';
+  SAUCE_TASK_ITEM_CANDIDATES = [];
+  document.getElementById('sauceTaskItemsSection').style.display = 'none';
+  document.getElementById('sauceTaskItemsList').innerHTML = '';
+  document.getElementById('sauceTaskSingleItemFields').style.display = '';
 }
-function editSauceTask(id){
+async function editSauceTask(id){
   const t = SAUCE_TASKS_CREATE.find(x => x.id === id);
   if(!t) return;
   document.getElementById('sauceTaskEditId').value = id;
@@ -8109,6 +8240,8 @@ function editSauceTask(id){
   document.getElementById('sauceTaskBagsPerCycle').value = t.bags_per_cycle ?? '';
   document.getElementById('sauceTaskUsageNote').value = t.usage_note || '';
   recalcSauceTaskPackingHrs();
+  const existingItems = await sbGet(`erp_sauce_task_items?select=item_no,item_name,planned_cases&task_id=eq.${id}`);
+  renderSauceTaskItemsPicker(existingItems);
   document.getElementById('sauceTaskFormBody').style.display = 'block';
   document.getElementById('sauceTaskFormToggleIcon').textContent = '▾ Click to collapse';
   document.getElementById('sauceTaskFormTitle').scrollIntoView({behavior:'smooth', block:'start'});
@@ -8140,36 +8273,81 @@ async function submitSauceTask(){
   const editId = document.getElementById('sauceTaskEditId').value;
   try{
     const day = await ensureSauceDay(dateStr);
+    let taskId;
     if(editId){
       await sbUpdate('erp_sauce_schedule_tasks', editId, patch);
+      taskId = Number(editId);
       toast('Task updated');
     } else {
-      await sbInsert('erp_sauce_schedule_tasks', [{ day_id: day.id, ...patch }]);
+      const inserted = await sbInsert('erp_sauce_schedule_tasks', [{ day_id: day.id, ...patch }]);
+      taskId = inserted[0].id;
       toast('Task added');
     }
+    await syncSauceTaskItems(taskId);
     resetSauceTaskForm();
     await loadSauceDayForCreate(dateStr);
   }catch(e){ toast('Save failed: ' + e.message); }
 }
+// Replaces a task's erp_sauce_task_items with whatever's currently checked in the Items to
+// Produce picker — full delete+recreate is safe here because this only ever runs for tasks
+// that are still Planned (see the guard below): nothing has been confirmed yet, so there's no
+// confirmed_cases/status history to lose. Single/no-match sauces never had rows to begin with.
+async function syncSauceTaskItems(taskId){
+  if(SAUCE_TASK_ITEM_CANDIDATES.length <= 1) return;
+  const existing = await sbGet(`erp_sauce_task_items?select=id,status&task_id=eq.${taskId}`);
+  if(existing.some(r => r.status === 'Confirmed')) return; // don't clobber recorded actuals
+  await sb(`erp_sauce_task_items?task_id=eq.${taskId}`, { method: 'DELETE' });
+  const checked = SAUCE_TASK_ITEM_CANDIDATES.filter(it => document.getElementById(`sauceTaskItemChk_${it.item_no}`)?.checked);
+  if(!checked.length) return;
+  const rows = checked.map(it => ({
+    task_id: taskId,
+    item_no: it.item_no,
+    item_name: it.item_name,
+    planned_cases: parseFloat(document.getElementById(`sauceTaskItemQty_${it.item_no}`)?.value) || 0,
+    status: 'Planned'
+  }));
+  await sbInsert('erp_sauce_task_items', rows);
+}
 async function deleteSauceTask(id){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  if(!confirm('Delete this record? This cannot be undone.')) return;
   const dateStr = document.getElementById('sauceDayDate').value || todayStr();
-  await deleteRow('erp_sauce_schedule_tasks', id, async () => { await loadSauceDayForCreate(dateStr); });
+  try{
+    // A multi-Item # task's erp_sauce_task_items rows FK-reference it (task_id), so they must
+    // be deleted first or Supabase 409s on the foreign key constraint — deleteRow() alone only
+    // ever deletes the one table it's told to.
+    await sb(`erp_sauce_task_items?task_id=eq.${id}`, {method:'DELETE'});
+    await sbDelete('erp_sauce_schedule_tasks', id);
+    toast('Deleted');
+    await loadSauceDayForCreate(dateStr);
+  }catch(e){ toast('Delete failed: ' + e.message); }
 }
 async function renderSauceTasksTable(){
   const day = CURRENT_SAUCE_DAY;
   SAUCE_TASKS_CREATE = day ? await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${day.id}&order=sort_order.asc.nullslast,id.asc&limit=200`) : [];
+  const taskItemsMap = await fetchSauceTaskItemsForTasks(SAUCE_TASKS_CREATE);
+  const dailyOutMap = await fetchItemDailyOutMap(Object.values(taskItemsMap).flat().map(ti => ti.item_no));
   document.getElementById('sauceTasksTable').innerHTML = SAUCE_TASKS_CREATE.map(t => {
     const s = SAUCES.find(x => x.id === t.sauce_id);
     const prodDate = day.schedule_date;
     const julian = toSauceJulian(prodDate);
-    const bb = s ? sauceCoolerBestBefore(s, prodDate) : null;
+    const taskItems = taskItemsMap[t.id];
+    const isMultiItem = taskItems && taskItems.length > 1;
+    // Best Before and Packing Hrs only mean one thing per item — once a task spans several
+    // items (different Storage/R.SL Day, different machine setup), those get shown per item
+    // in itemsLine below instead of guessed from a single one here.
+    const bb = (!isMultiItem && s) ? sauceCoolerBestBefore(s, prodDate) : null;
+    const itemsLine = sauceTaskItemsBreakdownHtml(taskItems, s, prodDate, dailyOutMap);
     const notesLines = [
       t.operator_notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">🕐 ${t.operator_notes}</div>` : '',
       t.machine_notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">⚙ ${t.machine_notes}</div>` : '',
-      sauceTaskPackingCalcText(t) ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${sauceTaskPackingCalcText(t)}</div>` : ''
+      (!isMultiItem && sauceTaskPackingCalcText(t)) ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">${sauceTaskPackingCalcText(t)}</div>` : '',
+      itemsLine ? `<div style="margin-top:4px">${itemsLine}</div>` : ''
     ].join('');
     const dateEditable = t.status !== 'Confirmed' && canWrite();
-    const dateLine = `Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}`;
+    const dateLine = isMultiItem
+      ? `Prod: ${prodDate} (Julian: ${julian})`
+      : `Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}`;
     const dateCell = dateEditable
       ? `<div style="white-space:normal;min-width:150px">
            <div>${dateLine}</div>
@@ -8192,6 +8370,8 @@ async function renderSauceTasksTable(){
   }).join('');
   document.getElementById('sauceTasksEmpty').style.display = SAUCE_TASKS_CREATE.length ? 'none' : 'block';
   const totalPackingHrs = SAUCE_TASKS_CREATE.reduce((sum,t) => {
+    const items = taskItemsMap[t.id];
+    if(items && items.length > 1) return sum + sauceTaskItemsTotalPackingHrs(items);
     const calc = calcSaucePackingHrs(t);
     return sum + (calc ? calc.hrs : 0);
   }, 0);
@@ -8237,6 +8417,8 @@ async function renderSaucePreview(){
   }
   SAUCE_PREVIEW_TASKS = await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${SAUCE_PREVIEW_DAY.id}&order=location.asc,id.asc&limit=200`);
   document.getElementById('saucePreviewEmpty').style.display = SAUCE_PREVIEW_TASKS.length ? 'none' : 'block';
+  const sauceTaskItemsMap = await fetchSauceTaskItemsForTasks(SAUCE_PREVIEW_TASKS);
+  const sauceItemDailyOutMap = await fetchItemDailyOutMap(Object.values(sauceTaskItemsMap).flat().map(ti => ti.item_no));
   const statusChip = SAUCE_PREVIEW_DAY.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
   document.getElementById('sauceDayInfo').innerHTML = `<div class="card">
     <div class="row" style="align-items:center">
@@ -8248,7 +8430,12 @@ async function renderSaucePreview(){
   SAUCE_PREVIEW_TASKS.forEach(t => { const l = t.location || '(No Location)'; (byLoc[l]=byLoc[l]||[]).push(t); });
   const locs = Object.keys(byLoc).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
   document.getElementById('saucePreviewTable').innerHTML = locs.map(l => {
-    const locTotalHrs = byLoc[l].reduce((sum,t) => { const c = calcSaucePackingHrs(t); return sum + (c?c.hrs:0); }, 0);
+    const locTotalHrs = byLoc[l].reduce((sum,t) => {
+      const items = sauceTaskItemsMap[t.id];
+      if(items && items.length > 1) return sum + sauceTaskItemsTotalPackingHrs(items);
+      const c = calcSaucePackingHrs(t);
+      return sum + (c?c.hrs:0);
+    }, 0);
     return `
     <div class="card">
       <h3 style="margin-bottom:2px">${l}</h3>
@@ -8260,19 +8447,28 @@ async function renderSaucePreview(){
         const s = SAUCES.find(x => x.id === t.sauce_id);
         const prodDate = SAUCE_PREVIEW_DAY.schedule_date;
         const julian = toSauceJulian(prodDate);
-        const bb = s ? sauceCoolerBestBefore(s, prodDate) : null;
+        const taskItems = sauceTaskItemsMap[t.id];
+        const isMultiItem = taskItems && taskItems.length > 1;
+        // Pack Size/Prod.-Best Before/Usage Note/Packing Hrs are all specific to ONE item's own
+        // pack size, storage type, and machine setup — meaningless as a single shared value once
+        // a task spans several items, so they're blanked here in favor of the per-item
+        // breakdown row (itemsLine) below, which is where that data actually lives now.
+        const bb = (!isMultiItem && s) ? sauceCoolerBestBefore(s, prodDate) : null;
         const allergenTags = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
-        const packingCalc = sauceTaskPackingCalcText(t);
+        const packingCalc = isMultiItem ? '' : sauceTaskPackingCalcText(t);
+        const itemsLine = sauceTaskItemsBreakdownHtml(taskItems, s, prodDate, sauceItemDailyOutMap);
         const tStatus = t.status === 'Confirmed'
           ? `<span class="chip ok">Confirmed (${fmtNum(t.confirmed_mixes)}/${fmtNum(t.mixes)} mix${(parseFloat(t.mixes)||0)===1?'':'es'})</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedSauceMixes(${t.id})">✎ Correct</button>`
           : t.status === 'Cancelled' ? `<span class="chip" style="opacity:.6">Cancelled</span>`
           : `<span class="chip">Planned</span>`;
         return `<tr>
           <td>${fmtNum(t.mixes)}</td><td>${s?s.name:'(sauce deleted)'}</td>
-          <td>${t.operator_notes||''}</td><td>${t.machine_notes||''}</td><td>${t.pack_size_notes||''}</td>
-          <td>Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td>
-          <td>${t.usage_note||''}</td><td>${tStatus}</td>
+          <td>${t.operator_notes||''}</td><td>${t.machine_notes||''}</td>
+          <td>${isMultiItem ? '<span style="color:var(--muted)">see items below</span>' : (t.pack_size_notes||'')}</td>
+          <td>${isMultiItem ? `Prod: ${prodDate} (Julian: ${julian})` : `Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}`}</td>
+          <td>${isMultiItem ? '' : (t.usage_note||'')}</td><td>${tStatus}</td>
         </tr>` +
+        (itemsLine ? `<tr><td></td><td colspan="7" style="padding:0">${itemsLine}</td></tr>` : '') +
         (packingCalc ? `<tr><td></td><td colspan="7" style="padding-top:0;padding-bottom:8px;font-size:12px;color:var(--muted)">${packingCalc}</td></tr>` : '') +
         (allergenTags ? `<tr><td></td><td colspan="7" style="padding-top:6px;padding-bottom:10px">${allergenTags}</td></tr>` : '');
       }).join('')}
@@ -8281,9 +8477,90 @@ async function renderSaucePreview(){
   `;
   }).join('');
 }
+// Batch-fetches erp_sauce_task_items for a set of tasks and groups them by task_id — shared by
+// the on-screen Preview and both print reports so multi-Item # sauces show their per-item
+// breakdown everywhere a task shows up, not just in Confirm Completion.
+async function fetchSauceTaskItemsForTasks(tasks){
+  const ids = tasks.map(t => t.id);
+  if(!ids.length) return {};
+  const rows = await sbGetAll(`erp_sauce_task_items?select=*&task_id=in.(${ids.join(',')})`);
+  const map = {};
+  rows.forEach(r => { (map[r.task_id] = map[r.task_id] || []).push(r); });
+  return map;
+}
+// Batch-fetches recent sales pace for a set of item_nos, keyed the same way FLOUR/etc. stock-
+// coverage lookups are — used to give each item in a multi-Item # breakdown its own "X weeks
+// stock" figure instead of borrowing one sauce-wide number from the single-item Usage Note.
+async function fetchItemDailyOutMap(itemNos){
+  const uniq = [...new Set(itemNos)].filter(Boolean);
+  if(!uniq.length) return {};
+  const rows = await sbGetAll(`erp_inventory_summary?select=item_no,avg_daily_out_7d,avg_daily_out_30d&item_no=in.(${uniq.map(n=>encodeURIComponent(n)).join(',')})`);
+  const map = {};
+  rows.forEach(r => { map[r.item_no] = r; });
+  return map;
+}
+// Full per-item breakdown for a multi-Item # task: cases, pack size, Prod./Best Before, and
+// stock coverage — every figure computed from THAT item's own erp_items record (Weight/Pack,
+// Storage, R.SL Day) rather than the single first-matched item the task-level columns show.
+// Single/no-match sauces (0 or 1 rows) return '' since the outer row already says everything
+// there is to say about those.
+// Sum of every item's own packing hrs for a multi-Item # task — shared by the breakdown HTML
+// below and by the day/location packing-hour totals in Preview, so a task that got its
+// task-level Packing Hrs hidden (see renderSauceTaskItemsPicker) still counts toward those.
+function sauceTaskItemsTotalPackingHrs(taskItems){
+  if(!taskItems || taskItems.length <= 1) return 0;
+  return taskItems.reduce((sum, ti) => {
+    const item = ITEMS_BY_NO[ti.item_no];
+    const qty = ti.confirmed_cases ?? ti.planned_cases ?? 0;
+    if(!item || !qty) return sum;
+    const totalPacks = qty * (parseFloat(item.pieces) || 1);
+    const denom = (parseFloat(item.bags_per_cycle)||0) * (parseFloat(item.machines_running)||0) * (parseFloat(item.cycle)||0) * 60;
+    return denom > 0 ? sum + totalPacks/denom : sum;
+  }, 0);
+}
+function sauceTaskItemsBreakdownHtml(taskItems, sauce, dateStr, dailyOutMap){
+  if(!taskItems || taskItems.length <= 1) return '';
+  dailyOutMap = dailyOutMap || {};
+  const julian = toSauceJulian(dateStr);
+  const totalHrs = sauceTaskItemsTotalPackingHrs(taskItems);
+  const rowsHtml = taskItems.map(ti => {
+    const item = ITEMS_BY_NO[ti.item_no];
+    const qty = ti.confirmed_cases ?? ti.planned_cases ?? 0;
+    const packDetail = itemPackDetail(item, qty) || '–';
+    const bb = sauceCoolerBestBeforeForItem(item, sauce, dateStr);
+    const dailyOutRow = dailyOutMap[ti.item_no];
+    const rate = dailyOutRow ? (Number(dailyOutRow.avg_daily_out_7d) || Number(dailyOutRow.avg_daily_out_30d) || 0) : 0;
+    const usage = (rate > 0 && qty) ? `≈${fmtNum(qty / (rate*7))} weeks stock` : '';
+    // Packing hrs use THIS item's own # M/C Running/Cycle/Bags-per-Cycle from Manage Items —
+    // same formula as updateSauceTaskItemCalc() in the Create form, so the number here always
+    // matches what you saw while picking quantities, not a blended task-level guess.
+    let packingText = '';
+    if(item && qty){
+      const totalPacks = qty * (parseFloat(item.pieces) || 1);
+      const denom = (parseFloat(item.bags_per_cycle)||0) * (parseFloat(item.machines_running)||0) * (parseFloat(item.cycle)||0) * 60;
+      if(denom > 0){
+        packingText = `📦 ${fmtHrs(totalPacks/denom)}h (${fmtNum(totalPacks)} packs, ${fmtNum(item.machines_running)} machine(s), ${item.cycle} cyc/min, ${fmtNum(item.bags_per_cycle)} bags/cyc)`;
+      }
+    }
+    return `<div style="display:flex;flex-wrap:wrap;gap:4px 14px;padding:3px 0 3px 16px;font-size:12px;border-top:1px dashed var(--line)">
+      <strong>📋 ${ti.item_no} — ${ti.item_name||''}</strong>
+      <span>${fmtNum(qty)} case${(parseFloat(qty)||0)===1?'':'s'}</span>
+      <span>${packDetail}</span>
+      <span>Prod: ${dateStr} (Julian: ${julian})${bb?`, Best Before: ${bb}`:''}</span>
+      ${usage?`<span>${usage}</span>`:''}
+      ${packingText?`<span>${packingText}</span>`:''}
+    </div>`;
+  }).join('');
+  const totalLine = totalHrs > 0
+    ? `<div style="padding:4px 0 4px 16px;font-size:12px;font-weight:700;border-top:1px solid var(--line)">🕐 Total Packing Hrs for this task: ${fmtHrs(totalHrs)}h</div>`
+    : '';
+  return rowsHtml + totalLine;
+}
 // Shared by the single-day Preview print and the whole-week print — one date's tasks,
 // grouped by Location, each as its own "<Location> Sauce Production Plan" table.
-function sauceProductionDayHtml(dateStr, tasks){
+function sauceProductionDayHtml(dateStr, tasks, taskItemsMap, dailyOutMap){
+  taskItemsMap = taskItemsMap || {};
+  dailyOutMap = dailyOutMap || {};
   const byLoc = {};
   tasks.forEach(t => { const l = t.location || '(No Location)'; (byLoc[l]=byLoc[l]||[]).push(t); });
   const locs = Object.keys(byLoc).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
@@ -8296,17 +8573,25 @@ function sauceProductionDayHtml(dateStr, tasks){
       <tbody>${rs.map(t => {
         const s = SAUCES.find(x => x.id === t.sauce_id);
         const julian = toSauceJulian(dateStr);
-        const bb = s ? sauceCoolerBestBefore(s, dateStr) : null;
+        const taskItems = taskItemsMap[t.id];
+        const isMultiItem = taskItems && taskItems.length > 1;
+        // Same reasoning as renderSaucePreview: Package Size/Best Before/Packing Hrs only mean
+        // one thing per item, so they're blanked here in favor of the per-item breakdown row.
+        const bb = (!isMultiItem && s) ? sauceCoolerBestBefore(s, dateStr) : null;
         const allergenChips = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
         const allergenLine = allergenChips ? `Allergens: ${allergenChips}` : '';
         const opMachineNotes = [t.operator_notes, t.machine_notes].filter(Boolean).join(' — ');
-        const packingLine = sauceTaskPackingCalcText(t);
+        const packingLine = isMultiItem ? '' : sauceTaskPackingCalcText(t);
+        const itemsLine = sauceTaskItemsBreakdownHtml(taskItems, s, dateStr, dailyOutMap);
         const statusCellHtml = t.status === 'Confirmed'
           ? `<span class="chip ok">Confirmed (${fmtNum(t.confirmed_mixes)}/${fmtNum(t.mixes)} Mix${(parseFloat(t.mixes)||0)===1?'':'es'})</span>`
           : t.status === 'Cancelled' ? `<span class="chip" style="opacity:.6">Cancelled</span>`
           : `<span class="chip">Planned</span>`;
-        return `<tr><td>${fmtNum(t.mixes)}</td><td>${s?s.name:''}</td><td>${t.pack_size_notes||''}</td>
-          <td>Prod: ${dateStr} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}</td><td>${statusCellHtml}</td></tr>` +
+        return `<tr><td>${fmtNum(t.mixes)}</td><td>${s?s.name:''}</td>
+          <td>${isMultiItem ? 'see items below' : (t.pack_size_notes||'')}</td>
+          <td>${isMultiItem ? `Prod: ${dateStr} (Julian: ${julian})` : `Prod: ${dateStr} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}`}</td>
+          <td>${statusCellHtml}</td></tr>` +
+          (itemsLine ? `<tr><td></td><td colspan="4" class="pr-detail" style="padding:0">${itemsLine}</td></tr>` : '') +
           (opMachineNotes ? `<tr><td></td><td colspan="4" class="pr-detail" style="color:#c0392b;font-weight:700">${opMachineNotes}</td></tr>` : '') +
           (allergenLine ? `<tr><td></td><td colspan="4" class="pr-detail" style="padding-top:6px">${allergenLine}</td></tr>` : '') +
           (packingLine ? `<tr><td></td><td colspan="4" class="pr-detail">${packingLine}</td></tr>` : '');
@@ -8317,7 +8602,9 @@ function sauceProductionDayHtml(dateStr, tasks){
 async function printSauceProductionReport(){
   if(!SAUCE_PREVIEW_DAY || !SAUCE_PREVIEW_TASKS.length){ toast('No tasks to print for this date'); return; }
   const day = SAUCE_PREVIEW_DAY;
-  const html = `<p>Date: ${day.schedule_date}</p>${sauceProductionDayHtml(day.schedule_date, SAUCE_PREVIEW_TASKS)}`;
+  const taskItemsMap = await fetchSauceTaskItemsForTasks(SAUCE_PREVIEW_TASKS);
+  const dailyOutMap = await fetchItemDailyOutMap(Object.values(taskItemsMap).flat().map(ti => ti.item_no));
+  const html = `<p>Date: ${day.schedule_date}</p>${sauceProductionDayHtml(day.schedule_date, SAUCE_PREVIEW_TASKS, taskItemsMap, dailyOutMap)}`;
   runReportPrint(html);
 }
 // Whole-week version: Monday-Sunday of whichever week the Preview date picker is
@@ -8334,11 +8621,13 @@ async function printSauceProductionReportWeek(){
   tasks.forEach(t => { (tasksByDayId[t.day_id]=tasksByDayId[t.day_id]||[]).push(t); });
   const scheduledDays = days.filter(d => (tasksByDayId[d.id]||[]).length);
   if(!scheduledDays.length){ toast('Nothing scheduled this week to print'); return; }
+  const taskItemsMap = await fetchSauceTaskItemsForTasks(tasks);
+  const dailyOutMap = await fetchItemDailyOutMap(Object.values(taskItemsMap).flat().map(ti => ti.item_no));
   const html = `
     <p>Week of: ${weekStart} – ${weekEnd}</p>
     ${scheduledDays.map((d,i) => `<div${i>0?' style="page-break-before:always"':''}>
       <h1>${d.schedule_date}</h1>
-      ${sauceProductionDayHtml(d.schedule_date, tasksByDayId[d.id])}
+      ${sauceProductionDayHtml(d.schedule_date, tasksByDayId[d.id], taskItemsMap, dailyOutMap)}
     </div>`).join('')}
   `;
   runReportPrint(html);
@@ -8366,6 +8655,7 @@ async function renderSauceConfirmTab(){
   SAUCE_CONFIRM_DAY = days[0] || null;
   if(!SAUCE_CONFIRM_DAY || SAUCE_CONFIRM_DAY.status === 'Confirmed'){
     SAUCE_CONFIRM_TASKS = [];
+    SAUCE_CONFIRM_TASK_ITEMS = {};
     document.getElementById('sauceConfirmDayInfo').innerHTML = '';
     document.getElementById('sauceConfirmTasksList').innerHTML = '';
     document.getElementById('sauceConfirmEmpty').style.display = 'block';
@@ -8376,6 +8666,13 @@ async function renderSauceConfirmTab(){
   document.getElementById('sauceConfirmDayInfo').innerHTML = '';
   const confirmProdDate = SAUCE_CONFIRM_DAY.schedule_date;
   const confirmJulian = toSauceJulian(confirmProdDate);
+  // Multi-Item # sauces (see syncSauceTaskItems) get their own rows here so Confirm can record
+  // Finished Goods against every linked item, not just guess "the first match" like the old
+  // single-Qty-field flow still does for ordinary single/no-match sauces below.
+  const taskIds = SAUCE_CONFIRM_TASKS.map(t => t.id);
+  const allTaskItems = taskIds.length ? await sbGetAll(`erp_sauce_task_items?select=*&task_id=in.(${taskIds.join(',')})`) : [];
+  SAUCE_CONFIRM_TASK_ITEMS = {};
+  allTaskItems.forEach(r => { (SAUCE_CONFIRM_TASK_ITEMS[r.task_id] = SAUCE_CONFIRM_TASK_ITEMS[r.task_id] || []).push(r); });
   document.getElementById('sauceConfirmTasksList').innerHTML = `
     <div class="tablewrap"><table><thead><tr>
       <th>Location</th><th>Sauce</th><th>Mixes</th><th>Finished Goods Qty (cases)</th><th>Prod. / Best Before</th><th>Status</th><th class="no-print"></th>
@@ -8387,16 +8684,41 @@ async function renderSauceConfirmTab(){
         : t.status === 'Cancelled' ? `<span class="chip" style="opacity:.6">Cancelled</span>`
         : `<span class="chip">Planned</span>`;
       const editable = canWrite() && t.status === 'Planned';
-      const suggested = t.confirmed_output_qty ?? suggestedSauceOutputCases(t);
-      // Cases are whole units — floor rather than round so the suggestion never implies
-      // more finished goods than the recipe weight can actually fill.
-      const qtyVal = (suggested != null && isFinite(suggested)) ? Math.floor(suggested) : '';
-      const bb = s ? sauceCoolerBestBefore(s, confirmProdDate) : null;
+      const taskItems = SAUCE_CONFIRM_TASK_ITEMS[t.id] || [];
+      const isMultiItemRow = taskItems.length > 1;
+      const bb = (!isMultiItemRow && s) ? sauceCoolerBestBefore(s, confirmProdDate) : null;
+      let qtyCellHtml, dateCellHtml;
+      if(isMultiItemRow){
+        qtyCellHtml = `<div style="display:flex;flex-direction:column;gap:4px">${taskItems.map(ti => {
+          const val = ti.confirmed_cases ?? ti.planned_cases ?? '';
+          return `<div style="display:flex;align-items:center;gap:6px">
+            ${editable ? `<input type="number" step="1" value="${val}" id="sauceConfirmItemQty_${t.id}_${ti.item_no}" style="width:70px">` : `<span>${fmtNum(ti.confirmed_cases)}</span>`}
+            <span style="font-size:12px">cases → <span style="color:var(--muted)">${ti.item_no}</span></span>
+          </div>`;
+        }).join('')}</div>`;
+        // One Best Before line per item, aligned to the qty rows above — each item can have its
+        // own Storage/R.SL Day, so a single blended date (the old behavior) was only ever right
+        // by coincidence.
+        dateCellHtml = `<div style="display:flex;flex-direction:column;gap:4px">
+          <div style="font-size:11px;color:var(--muted)">Prod: ${confirmProdDate} (Julian: ${confirmJulian})</div>
+          ${taskItems.map(ti => {
+            const bbi = sauceCoolerBestBeforeForItem(ITEMS_BY_NO[ti.item_no], s, confirmProdDate);
+            return `<div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--muted)">${ti.item_no}</span><span>${bbi ? 'Best Before: '+bbi : '–'}</span></div>`;
+          }).join('')}
+        </div>`;
+      } else {
+        const suggested = t.confirmed_output_qty ?? suggestedSauceOutputCases(t);
+        // Cases are whole units — floor rather than round so the suggestion never implies
+        // more finished goods than the recipe weight can actually fill.
+        const qtyVal = (suggested != null && isFinite(suggested)) ? Math.floor(suggested) : '';
+        qtyCellHtml = editable ? `<input type="number" step="1" value="${qtyVal}" id="sauceConfirmQty_${t.id}" style="width:100px">` : fmtNum(t.confirmed_output_qty);
+        dateCellHtml = `Prod: ${confirmProdDate} (Julian: ${confirmJulian})${bb?`<br>Best Before: ${bb}`:''}`;
+      }
       return `<tr${t.status==='Cancelled'?' style="opacity:.6"':''}>
         <td>${t.location||''}</td><td>${s?s.name:'(sauce deleted)'}</td>
         <td>${editable ? `<input type="number" step="any" value="${t.mixes??''}" style="width:90px" onchange="updateSauceTaskMixes(${t.id}, this.value)">` : fmtNum(t.mixes)}</td>
-        <td>${editable ? `<input type="number" step="1" value="${qtyVal}" id="sauceConfirmQty_${t.id}" style="width:100px">` : fmtNum(t.confirmed_output_qty)}</td>
-        <td>Prod: ${confirmProdDate} (Julian: ${confirmJulian})${bb?`<br>Best Before: ${bb}`:''}</td>
+        <td>${qtyCellHtml}</td>
+        <td>${dateCellHtml}</td>
         <td>${statusChip}</td>
         <td class="no-print">${editable ? `<div style="display:flex;gap:6px;flex-wrap:nowrap">
           <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="confirmSauceTask(${t.id})">✔ Confirm</button>
@@ -8421,17 +8743,33 @@ async function confirmSauceTask(id){
   if(!canWrite()){ toast('You have read-only access'); return; }
   const t = SAUCE_CONFIRM_TASKS.find(x => x.id === id);
   if(!t){ toast('Task not found — try refreshing'); return; }
-  const qtyInput = document.getElementById('sauceConfirmQty_'+id);
-  const outputQty = (qtyInput && qtyInput.value !== '') ? parseFloat(qtyInput.value) : null;
+  const taskItems = SAUCE_CONFIRM_TASK_ITEMS[id] || [];
+  const isMultiItem = taskItems.length > 1;
   const mixes = parseFloat(t.mixes) || 0;
   const sauceForMsg = SAUCES.find(s => s.id === t.sauce_id);
   const destinations = [];
-  if(outputQty && sauceForMsg){
-    if(lookupSauceMatchedItems(sauceForMsg.item_code)[0]) destinations.push('Finished Goods In/Out');
-    if(sauceForMsg.component_sachet_name) destinations.push('Components (Sachets)');
+  let outputQty = null; // legacy single/no-match-sauce path
+  let itemQtys = [];    // [{item_no, item_name, qty}] — multi-Item # sauce path
+  if(isMultiItem){
+    itemQtys = taskItems.map(ti => {
+      const inp = document.getElementById(`sauceConfirmItemQty_${id}_${ti.item_no}`);
+      return { item_no: ti.item_no, item_name: ti.item_name, qty: (inp && inp.value !== '') ? parseFloat(inp.value) || 0 : 0 };
+    });
+    if(itemQtys.some(iq => iq.qty > 0)) destinations.push('Finished Goods In/Out');
+    if(sauceForMsg && sauceForMsg.component_sachet_name) destinations.push('Components (Sachets)');
+  } else {
+    const qtyInput = document.getElementById('sauceConfirmQty_'+id);
+    outputQty = (qtyInput && qtyInput.value !== '') ? parseFloat(qtyInput.value) : null;
+    if(outputQty && sauceForMsg){
+      if(lookupSauceMatchedItems(sauceForMsg.item_code)[0]) destinations.push('Finished Goods In/Out');
+      if(sauceForMsg.component_sachet_name) destinations.push('Components (Sachets)');
+    }
   }
+  const qtySummary = isMultiItem
+    ? itemQtys.filter(iq => iq.qty > 0).map(iq => `${fmtNum(iq.qty)} of #${iq.item_no}`).join(', ')
+    : fmtNum(outputQty);
   const confirmMsg = `Confirm ${fmtNum(mixes)} mixes of ${sauceForMsg?sauceForMsg.name:'this sauce'}?\n\nThis is the ACTUAL number of mixes made — double-check it's not just the plan before continuing (edit Mixes first if it's wrong). This deducts recipe ingredients` +
-    (destinations.length ? ` and records ${fmtNum(outputQty)} into ${destinations.join(' and ')}` : '') +
+    (destinations.length ? ` and records ${qtySummary} into ${destinations.join(' and ')}` : '') +
     ', and cannot be undone.';
   if(!confirm(confirmMsg)) return;
   try{
@@ -8443,13 +8781,40 @@ async function confirmSauceTask(id){
     SAUCE_INGREDIENTS = await sbGetAll('erp_sauce_ingredient_inventory?select=id,name,pcs,weight,package_size,unit,kg_per_unit,produced_by_sauce_id,inventory_qty&order=name.asc');
     if(mixes > 0) await deductSauceIngredientsForSauce(t.sauce_id, SAUCE_CONFIRM_DAY.schedule_date, mixes);
     const sauce = SAUCES.find(s => s.id === t.sauce_id);
-    if(outputQty){
+    const prodDate = SAUCE_CONFIRM_DAY.schedule_date;
+    const julian = toSauceJulian(prodDate);
+    const bb = sauce ? sauceCoolerBestBefore(sauce, prodDate) : null;
+    let recordedSomewhere = false;
+    let totalQtyForTask = outputQty;
+    if(isMultiItem){
+      // Every linked Item # gets its own Finished Goods entry — this is the whole point of
+      // letting a task span multiple items, unlike the single-item path below which only ever
+      // had one item to write to in the first place.
+      const inserts = itemQtys.filter(iq => iq.qty > 0).map(iq => {
+        // Each item can have its own Storage/R.SL Day, so its Best Before must be computed
+        // from ITS OWN record — the single blended `bb` above only ever matches one of them.
+        const bbi = sauceCoolerBestBeforeForItem(ITEMS_BY_NO[iq.item_no], sauce, prodDate);
+        return {
+          entry_date: prodDate, item_no: iq.item_no, item_name: iq.item_name, in_qty: iq.qty, out_qty: 0,
+          lot: `Sauce production confirm: ${sauce?sauce.name:''} — Prod: ${prodDate} (Julian: ${julian})${bbi?` / Best Before: ${bbi}`:''}`
+        };
+      });
+      if(inserts.length){ await sbInsert('erp_inout', inserts); recordedSomewhere = true; }
+      for(const iq of itemQtys){
+        const row = taskItems.find(ti => ti.item_no === iq.item_no);
+        await sbUpdate('erp_sauce_task_items', row.id, { status: 'Confirmed', confirmed_cases: iq.qty, confirmed_at: new Date().toISOString() });
+      }
+      totalQtyForTask = itemQtys.reduce((s,iq) => s + iq.qty, 0);
+      if(sauce && sauce.component_sachet_name && totalQtyForTask > 0){
+        await sbInsert('erp_components_inout', [{ entry_date: prodDate, sachet_name: sauce.component_sachet_name, in_qty: totalQtyForTask, out_qty: 0 }]);
+        recordedSomewhere = true;
+      }
+      if(!recordedSomewhere){
+        toast('⚠ No cases entered for any item — ingredients deducted, but no stock record created');
+      }
+    } else if(outputQty){
       const item = sauce ? lookupSauceMatchedItems(sauce.item_code)[0] : null;
-      let recordedSomewhere = false;
       if(item){
-        const prodDate = SAUCE_CONFIRM_DAY.schedule_date;
-        const julian = toSauceJulian(prodDate);
-        const bb = sauce ? sauceCoolerBestBefore(sauce, prodDate) : null;
         const lot = `Sauce production confirm: ${sauce.name} — Prod: ${prodDate} (Julian: ${julian})${bb?` / Best Before: ${bb}`:''}`;
         await sbInsert('erp_inout', [{
           entry_date: prodDate, item_no: item.item_no, item_name: item.item_name,
@@ -8462,7 +8827,7 @@ async function confirmSauceTask(id){
       // (Sachets) stock instead of/alongside Finished Goods.
       if(sauce && sauce.component_sachet_name){
         await sbInsert('erp_components_inout', [{
-          entry_date: SAUCE_CONFIRM_DAY.schedule_date, sachet_name: sauce.component_sachet_name,
+          entry_date: prodDate, sachet_name: sauce.component_sachet_name,
           in_qty: outputQty, out_qty: 0
         }]);
         recordedSomewhere = true;
@@ -8471,7 +8836,7 @@ async function confirmSauceTask(id){
         toast('⚠ No linked Item # or Component for this sauce — ingredients deducted, but no stock record created');
       }
     }
-    await sbUpdate('erp_sauce_schedule_tasks', t.id, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_output_qty: outputQty, confirmed_at: new Date().toISOString() });
+    await sbUpdate('erp_sauce_schedule_tasks', t.id, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_output_qty: totalQtyForTask, confirmed_at: new Date().toISOString() });
     await markSauceDayDoneIfAllTasksResolved();
     toast('Task confirmed' + (destinations.length ? ` — ${destinations.join(' and ')} updated` : ''));
     await refreshSauceScreen(); await refreshInOut(); await refreshDashboard(); await refreshProduce(); await refreshComponents();
@@ -8530,8 +8895,9 @@ async function consumeAuthRedirectHash(){
     return true;
   }catch(e){ return false; }
 }
-// Bump this string whenever you ship a new build — it's the only place it's set.
-const APP_VERSION = 'Ver. 2.0';
+// Set this to today's date every time inventory-app.html is edited — it's the only place it's
+// set, and it's how "Ver." in the header/sidebar tells you how fresh the deployed file is.
+const APP_VERSION = 'Ver. 2026-08-09';
 document.getElementById('appVersion').textContent = APP_VERSION;
 (async function init(){
   try{
