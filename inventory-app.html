@@ -233,12 +233,12 @@
   th{color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
   tbody tr:last-child td{border-bottom:none}
   #sauceTasksTable td{vertical-align:top}
-  .tablewrap table:not(#dashTable):not(#produceTable):not(#itemsTableEl):not(#ioRecentTable):not(#compRecentTable):not(#histTable):not(#flourLedgerTableEl):not(#schedNeedTableEl):not(#saucesTableEl) tbody tr:nth-child(odd){background:var(--chip)}
+  .tablewrap table:not(#dashTable):not(#produceTable):not(#itemsTableEl):not(#ioRecentTable):not(#compRecentTable):not(#histTable):not(#flourLedgerTableEl):not(#schedNeedTableEl):not(#saucesTableEl):not(#productsTableEl) tbody tr:nth-child(odd){background:var(--chip)}
   #dashTable tbody tr.zrow, #produceTable tbody tr.zrow, #itemsTableEl tbody tr.zrow, #schedNeedTableEl tbody tr.zrow,
   #ioRecentTable tbody tr.zrow, #compRecentTable tbody tr.zrow, #histTable tbody tr.zrow, #flourLedgerTableEl tbody tr.zrow,
-  #saucesTableEl tbody tr.zrow{background:var(--chip)}
+  #saucesTableEl tbody tr.zrow, #productsTableEl tbody tr.zrow{background:var(--chip)}
   .dash-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px 18px;padding:12px 4px;white-space:normal}
-  .dash-detail-grid .l{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:2px}
+  .dash-detail-grid .l{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);margin-bottom:2px;line-height:1.3;min-height:2.6em}
   .tablewrap{overflow:auto;max-height:70vh}
   .chip{display:inline-block;padding:3px 9px;border-radius:99px;background:var(--chip);font-size:11px;font-weight:600;font-family:var(--font-mono);letter-spacing:.01em}
   .chip.warn{background:rgba(200,71,47,.15);color:var(--danger)}
@@ -822,7 +822,7 @@
     <div class="card can-write">
       <h3>New Production Run</h3>
       <div class="row">
-        <div><label>Run Date</label><input type="date" id="runDate" onchange="renderRunsList()"></div>
+        <div><label>Run Date</label><input type="date" id="runDate" onchange="renderRunsList(); recalcRunPackingDate()"></div>
         <div><label>Product Dough</label>
           <select id="runProduct" onchange="onRunProductChange()"><option value="">Select product...</option></select>
         </div>
@@ -830,6 +830,7 @@
       <div class="row">
         <div><label>Line (auto-filled)</label><input id="runLine" disabled></div>
         <div><label>Planned Batches</label><input type="number" id="runMixes" step="any"></div>
+        <div><label>Packing Date <span style="color:var(--muted);font-weight:400">(auto, editable)</span></label><input type="date" id="runPackingDate"></div>
       </div>
       <label>Remark</label>
       <textarea id="runRemark" rows="2" placeholder="Notes for this run..."></textarea>
@@ -948,6 +949,13 @@
         <div><label>Mixing time (min/batch)</label><input type="number" step="any" id="prodMixMin" placeholder="e.g. 17.31"></div>
         <div><label>Lactic Acid Oil</label><input id="prodLacticAcidOil" placeholder="amount / note per batch"></div>
       </div>
+      <label style="margin-top:8px;display:block;font-size:12px;color:var(--muted)">Compound Roller / Steamer Process Times (minutes) — use the calculator below to work these out</label>
+      <div class="row">
+        <div><label>Compound Roller to Steamer (min)</label><input type="number" step="any" id="prodCrToSteamerMin" placeholder="e.g. 20"></div>
+        <div><label>Go Through Steamer (min)</label><input type="number" step="any" id="prodSteamerThroughMin" placeholder="e.g. 15"></div>
+        <div><label>Steamer to Packaging Dept. (min)</label><input type="number" step="any" id="prodSteamerToPackagingMin" placeholder="e.g. 35"></div>
+        <div><label>Time of Finish per Dough (min)</label><input type="number" step="any" id="prodFinishPerDoughMin" placeholder="e.g. 120"></div>
+      </div>
       <label>Remark</label>
       <input id="prodRemark">
       <div class="btnrow">
@@ -956,11 +964,33 @@
       </div>
     </div>
     <div class="card">
+      <h3 style="margin-top:0">⏱ Process Time Calculator</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Enter the clock times observed for a batch to work out the minute values above — then click Apply to copy the results into the Product Dough form.</p>
+      <div class="row">
+        <div><label>Beginning of Compound Roller</label><input type="time" id="calcCrBegin" oninput="recalcProcessTimeCalculator()"></div>
+        <div><label>Into the Steamer</label><input type="time" id="calcSteamerIn" oninput="recalcProcessTimeCalculator()"></div>
+        <div><label>Out from the Steamer</label><input type="time" id="calcSteamerOut" oninput="recalcProcessTimeCalculator()"></div>
+        <div><label>Come Out at Packaging Dept.</label><input type="time" id="calcPackagingOut" oninput="recalcProcessTimeCalculator()"></div>
+        <div><label>End of Compound Roller</label><input type="time" id="calcCrEnd" oninput="recalcProcessTimeCalculator()"></div>
+      </div>
+      <div class="row">
+        <div><label>Compound Roller to Steamer (min)</label><input id="calcCrToSteamerMin" disabled></div>
+        <div><label>Go Through Steamer (min)</label><input id="calcSteamerThroughMin" disabled></div>
+        <div><label>Steamer to Packaging Dept. (min)</label><input id="calcSteamerToPackagingMin" disabled></div>
+        <div><label>Time of Finish per Dough (min)</label><input id="calcFinishPerDoughMin" disabled></div>
+      </div>
+      <div class="btnrow">
+        <button class="btn secondary can-write" onclick="applyCalculatorToProductForm()">↓ Apply to Product Dough Form</button>
+        <button class="btn secondary" onclick="resetProcessTimeCalculator()">Clear Calculator</button>
+      </div>
+    </div>
+    <div class="card">
       <div class="filterbar">
         <input id="prodSearch" placeholder="Search product / line..." oninput="renderProductsTable()">
       </div>
-      <div class="tablewrap"><table><thead><tr>
-        <th>Product Dough</th><th>Line</th><th>Yield</th><th>Weight/batch (kg)</th><th>Mixing (min/batch)</th><th>Lactic Acid Oil</th><th>Remark</th><th></th>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Click a Product Dough's name to expand Lactic Acid Oil and the compound roller / steamer process times.</p>
+      <div class="tablewrap"><table id="productsTableEl"><thead><tr>
+        <th>Product Dough</th><th>Line</th><th>Yield</th><th>Weight/batch (kg)</th><th>Mixing (min/batch)</th><th>Remark</th><th></th>
       </tr></thead><tbody id="productsTable"></tbody></table></div>
       <div class="empty" id="productsEmpty" style="display:none">No products yet</div>
     </div>
@@ -973,15 +1003,18 @@
     <div class="card can-write">
       <h3 id="lineFormTitle">Add New Line</h3>
       <input type="hidden" id="lineEditId">
-      <label>Line Name</label>
-      <input id="lineName" placeholder="e.g. Line 1">
+      <div class="row">
+        <div><label>Line Name</label><input id="lineName" placeholder="e.g. Line 1"></div>
+        <div><label>Packing Offset (days)</label><input type="number" step="1" id="linePackingOffset" placeholder="0" value="0"></div>
+      </div>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">0 = packed same day it's produced. 1 = packed the next day (e.g. Line 6).</p>
       <div class="btnrow">
         <button class="btn" id="lineSubmitBtn" onclick="submitLine()">＋ Save Line</button>
         <button class="btn secondary" onclick="resetLineForm()">✕ Cancel</button>
       </div>
     </div>
     <div class="card">
-      <div class="tablewrap"><table><thead><tr><th>Line</th><th>Product Doughs using it</th><th></th></tr></thead>
+      <div class="tablewrap"><table><thead><tr><th>Line</th><th>Packing Offset (days)</th><th>Product Doughs using it</th><th></th></tr></thead>
       <tbody id="linesTable"></tbody></table></div>
       <div class="empty" id="linesEmpty" style="display:none">No lines yet</div>
     </div>
@@ -3112,7 +3145,7 @@ async function refreshFlourScreen(){
     renderFlourIngredientTable();
 
     FLOUR_RECIPE = await sbGet('erp_flour_recipe?select=id,product_name,ingredient_id,qty_per_batch,qty_unit&order=product_name.asc&limit=2000');
-    PRODUCTS = await sbGet('erp_products?select=id,name,line,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil&order=name.asc&limit=1000');
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil,compound_roller_to_steamer_min,steamer_through_min,steamer_to_packaging_min,finish_per_dough_min&order=name.asc&limit=1000');
     document.getElementById('flourRecProduct').innerHTML = buildProductOptionsHtml();
     renderFlourRecipeBrowseProductOptions();
     renderFlourRecipeTable();
@@ -3813,7 +3846,7 @@ async function refreshScheduleScreen(){
   document.getElementById('previewViewDate').value = document.getElementById('previewViewDate').value || todayStr();
   document.getElementById('confirmViewDate').value = document.getElementById('confirmViewDate').value || todayStr();
   try{
-    LINES = await sbGet('erp_lines?select=id,name&order=name.asc&limit=500');
+    LINES = await sbGet('erp_lines?select=id,name,packing_offset_days&order=name.asc&limit=500');
     // Rebuilding these options wipes out whatever was selected (e.g. editProduct() just set
     // this ahead of the background refresh showScreen() kicks off) — keep and restore it.
     const prodLineSel = document.getElementById('prodLine');
@@ -3821,7 +3854,7 @@ async function refreshScheduleScreen(){
     prodLineSel.innerHTML = '<option value="">(none)</option>' + LINES.map(l=>`<option>${l.name}</option>`).join('');
     if(keepProdLine && LINES.some(l=>l.name===keepProdLine)) prodLineSel.value = keepProdLine;
 
-    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil&order=name.asc&limit=1000');
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil,compound_roller_to_steamer_min,steamer_through_min,steamer_to_packaging_min,finish_per_dough_min&order=name.asc&limit=1000');
     document.getElementById('runProduct').innerHTML = buildProductOptionsHtml();
     renderProductsTable();
     renderLinesTable();
@@ -3843,9 +3876,15 @@ async function renderScheduledDaysList(listElId, emptyElId, jumpFnName, selected
   const listEl = document.getElementById(listElId);
   if(!listEl) return;
   try{
-    const rows = await sbGetAll(`erp_production_runs?select=run_date&run_date=gte.${todayStr()}&order=run_date.asc`);
+    // OR'd with packing_date so a Line-6-style run (packed a different day than it's made)
+    // also surfaces its packing day as a jump-to chip, not just its production day.
+    const rows = await sbGetAll(`erp_production_runs?select=run_date,packing_date&or=(run_date.gte.${todayStr()},packing_date.gte.${todayStr()})&order=run_date.asc`);
     const counts = {};
-    rows.forEach(r => { counts[r.run_date] = (counts[r.run_date]||0) + 1; });
+    rows.forEach(r => {
+      if(r.run_date >= todayStr()) counts[r.run_date] = (counts[r.run_date]||0) + 1;
+      const packDate = r.packing_date || r.run_date;
+      if(packDate !== r.run_date && packDate >= todayStr()) counts[packDate] = (counts[packDate]||0) + 1;
+    });
     const days = Object.keys(counts).sort();
     const today = todayStr();
     listEl.innerHTML = days.map(d => {
@@ -3876,7 +3915,7 @@ async function renderConfirmScheduledDaysList(){
   const listEl = document.getElementById('scheduledDaysListConfirm');
   if(!listEl) return;
   try{
-    const runs = await sbGetAll(`erp_production_runs?select=id,run_date,status&order=run_date.asc`);
+    const runs = await sbGetAll(`erp_production_runs?select=id,run_date,packing_date,status&order=run_date.asc`);
     if(!runs.length){ listEl.innerHTML = ''; document.getElementById('scheduledDaysEmptyConfirm').style.display = 'block'; return; }
     const runIds = runs.map(r=>r.id);
     const items = await sbGetAll(`erp_production_run_items?select=id,run_id,status&run_id=in.(${runIds.join(',')})`);
@@ -3887,13 +3926,20 @@ async function renderConfirmScheduledDaysList(){
       return (itemsByRun[r.id]||[]).some(it => it.status !== 'Confirmed');
     });
     if(!pendingRuns.length){ listEl.innerHTML = ''; document.getElementById('scheduledDaysEmptyConfirm').style.display = 'block'; return; }
+    // Batch confirmation (flour/dough) is a production-day concern, so it buckets under
+    // run_date; item confirmation (Finished Goods) is a packing-day concern, so it buckets
+    // under packing_date — for Line 6 (next-day packing) those are two different dates, and a
+    // run can land in both buckets at once if neither has been done yet.
     const runCounts = {}, itemCounts = {};
     pendingRuns.forEach(r => {
-      runCounts[r.run_date] = (runCounts[r.run_date]||0) + 1;
+      if(r.status !== 'Confirmed') runCounts[r.run_date] = (runCounts[r.run_date]||0) + 1;
       const pendingItems = (itemsByRun[r.id]||[]).filter(it => it.status !== 'Confirmed').length;
-      itemCounts[r.run_date] = (itemCounts[r.run_date]||0) + pendingItems;
+      if(pendingItems > 0){
+        const packDate = r.packing_date || r.run_date;
+        itemCounts[packDate] = (itemCounts[packDate]||0) + pendingItems;
+      }
     });
-    const days = Object.keys(runCounts).sort();
+    const days = Array.from(new Set([...Object.keys(runCounts), ...Object.keys(itemCounts)])).sort();
     const today = todayStr();
     listEl.innerHTML = days.map(d => {
       const isToday = d === today;
@@ -3919,6 +3965,7 @@ function resetLineForm(){
   document.getElementById('lineFormTitle').textContent = 'Add New Line';
   document.getElementById('lineSubmitBtn').textContent = '＋ Save Line';
   document.getElementById('lineName').value = '';
+  document.getElementById('linePackingOffset').value = '0';
 }
 function editLine(id){
   const l = LINES.find(x => x.id === id);
@@ -3927,17 +3974,19 @@ function editLine(id){
   document.getElementById('lineFormTitle').textContent = 'Edit Line';
   document.getElementById('lineSubmitBtn').textContent = 'Save Changes';
   document.getElementById('lineName').value = l.name;
+  document.getElementById('linePackingOffset').value = l.packing_offset_days ?? 0;
   showScreen('schedule-lines'); window.scrollTo(0,0);
 }
 async function submitLine(){
   if(!canWrite()){ toast('You have read-only access'); return; }
   const name = document.getElementById('lineName').value.trim();
   if(!name){ toast('Please enter a line name'); return; }
+  const packingOffsetDays = parseInt(document.getElementById('linePackingOffset').value, 10) || 0;
   const editId = document.getElementById('lineEditId').value;
   try{
     if(editId){
       const old = LINES.find(x => x.id === Number(editId));
-      await sbUpdate('erp_lines', editId, { name });
+      await sbUpdate('erp_lines', editId, { name, packing_offset_days: packingOffsetDays });
       // keep every Product Dough already using the old name in sync
       if(old && old.name !== name){
         const affected = PRODUCTS.filter(p => p.line === old.name);
@@ -3945,7 +3994,7 @@ async function submitLine(){
       }
       toast('Line updated');
     } else {
-      await sbInsert('erp_lines', [{ name }]);
+      await sbInsert('erp_lines', [{ name, packing_offset_days: packingOffsetDays }]);
       toast('Line added');
     }
     resetLineForm();
@@ -3962,7 +4011,7 @@ function renderLinesTable(){
   document.getElementById('linesTable').innerHTML = LINES.map(l => {
     const count = PRODUCTS.filter(p => p.line === l.name).length;
     return `<tr>
-      <td>${l.name}</td><td>${count}</td>
+      <td>${l.name}</td><td>${fmtNum(l.packing_offset_days || 0)}</td><td>${count}</td>
       <td class="no-print can-write" style="white-space:nowrap">
         <div style="display:flex;gap:6px;flex-wrap:nowrap">
           <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="editLine(${l.id})">✎ Edit</button>
@@ -3973,10 +4022,56 @@ function renderLinesTable(){
   }).join('');
   document.getElementById('linesEmpty').style.display = LINES.length ? 'none' : 'block';
 }
+// Time-of-day process checkpoints ("8:15") are stored as "HH:MM" strings (input type=time) —
+// converted to minutes-since-midnight here so the calculator's four derived legs can be
+// computed as plain duration subtraction. Crossing midnight isn't a realistic case for a
+// single dough's process window, so no day-wrap handling.
+function timeStrToMinutes(t){
+  if(!t) return null;
+  const m = /^(\d{1,2}):(\d{2})/.exec(t);
+  if(!m) return null;
+  return parseInt(m[1],10)*60 + parseInt(m[2],10);
+}
+// The Process Time Calculator is a standalone helper, separate from the Product Dough form's
+// own four minute fields — it never writes to erp_products directly. Its output only reaches
+// the product record if/when the user clicks "Apply to Product Dough Form".
+function recalcProcessTimeCalculator(){
+  const crBegin = timeStrToMinutes(document.getElementById('calcCrBegin').value);
+  const crEnd = timeStrToMinutes(document.getElementById('calcCrEnd').value);
+  const steamerIn = timeStrToMinutes(document.getElementById('calcSteamerIn').value);
+  const steamerOut = timeStrToMinutes(document.getElementById('calcSteamerOut').value);
+  const packagingOut = timeStrToMinutes(document.getElementById('calcPackagingOut').value);
+  const crToSteamerMin = (crBegin!=null && steamerIn!=null) ? (steamerIn - crBegin) : null;
+  const throughMin = (steamerIn!=null && steamerOut!=null) ? (steamerOut - steamerIn) : null;
+  const steamerToPackagingMin = (steamerOut!=null && packagingOut!=null) ? (packagingOut - steamerOut) : null;
+  // Time of finish per dough = (end of compound roller - beginning of compound roller)
+  // + Compound Roller to Steamer + Go Through Steamer + Steamer to Packaging Dept.
+  const finishMin = (crBegin!=null && crEnd!=null && crToSteamerMin!=null && throughMin!=null && steamerToPackagingMin!=null)
+    ? (crEnd - crBegin) + crToSteamerMin + throughMin + steamerToPackagingMin : null;
+  document.getElementById('calcCrToSteamerMin').value = crToSteamerMin!=null ? fmtNum(crToSteamerMin) : '';
+  document.getElementById('calcSteamerThroughMin').value = throughMin!=null ? fmtNum(throughMin) : '';
+  document.getElementById('calcSteamerToPackagingMin').value = steamerToPackagingMin!=null ? fmtNum(steamerToPackagingMin) : '';
+  document.getElementById('calcFinishPerDoughMin').value = finishMin!=null ? fmtNum(finishMin) : '';
+  return { crToSteamerMin, throughMin, steamerToPackagingMin, finishMin };
+}
+function resetProcessTimeCalculator(){
+  ['calcCrBegin','calcSteamerIn','calcSteamerOut','calcPackagingOut','calcCrEnd',
+   'calcCrToSteamerMin','calcSteamerThroughMin','calcSteamerToPackagingMin','calcFinishPerDoughMin']
+    .forEach(id=>document.getElementById(id).value='');
+}
+function applyCalculatorToProductForm(){
+  const { crToSteamerMin, throughMin, steamerToPackagingMin, finishMin } = recalcProcessTimeCalculator();
+  document.getElementById('prodCrToSteamerMin').value = crToSteamerMin ?? '';
+  document.getElementById('prodSteamerThroughMin').value = throughMin ?? '';
+  document.getElementById('prodSteamerToPackagingMin').value = steamerToPackagingMin ?? '';
+  document.getElementById('prodFinishPerDoughMin').value = finishMin ?? '';
+  toast('Calculator results applied to the Product Dough form — remember to Save.');
+}
 function resetProductForm(){
   document.getElementById('prodEditId').value = '';
   document.getElementById('prodFormTitle').textContent = 'Add New Product';
-  ['prodName','prodLine','prodYield','prodWeightKg','prodMixMin','prodLacticAcidOil','prodRemark'].forEach(id=>document.getElementById(id).value='');
+  ['prodName','prodLine','prodYield','prodWeightKg','prodMixMin','prodLacticAcidOil','prodRemark',
+   'prodCrToSteamerMin','prodSteamerThroughMin','prodSteamerToPackagingMin','prodFinishPerDoughMin'].forEach(id=>document.getElementById(id).value='');
 }
 function editProduct(id){
   const p = PRODUCTS.find(x => x.id === id);
@@ -3989,6 +4084,10 @@ function editProduct(id){
   document.getElementById('prodWeightKg').value = p.weight_per_mix_kg ?? '';
   document.getElementById('prodMixMin').value = p.mixing_min_per_mix ?? '';
   document.getElementById('prodLacticAcidOil').value = p.lactic_acid_oil ?? '';
+  document.getElementById('prodCrToSteamerMin').value = p.compound_roller_to_steamer_min ?? '';
+  document.getElementById('prodSteamerThroughMin').value = p.steamer_through_min ?? '';
+  document.getElementById('prodSteamerToPackagingMin').value = p.steamer_to_packaging_min ?? '';
+  document.getElementById('prodFinishPerDoughMin').value = p.finish_per_dough_min ?? '';
   document.getElementById('prodRemark').value = p.remark || '';
   showScreen('schedule-products'); window.scrollTo(0,0);
 }
@@ -4004,6 +4103,10 @@ async function submitProduct(){
     weight_per_mix_kg: document.getElementById('prodWeightKg').value ? parseFloat(document.getElementById('prodWeightKg').value) : null,
     mixing_min_per_mix: document.getElementById('prodMixMin').value ? parseFloat(document.getElementById('prodMixMin').value) : null,
     lactic_acid_oil: document.getElementById('prodLacticAcidOil').value.trim() || null,
+    compound_roller_to_steamer_min: document.getElementById('prodCrToSteamerMin').value ? parseFloat(document.getElementById('prodCrToSteamerMin').value) : null,
+    steamer_through_min: document.getElementById('prodSteamerThroughMin').value ? parseFloat(document.getElementById('prodSteamerThroughMin').value) : null,
+    steamer_to_packaging_min: document.getElementById('prodSteamerToPackagingMin').value ? parseFloat(document.getElementById('prodSteamerToPackagingMin').value) : null,
+    finish_per_dough_min: document.getElementById('prodFinishPerDoughMin').value ? parseFloat(document.getElementById('prodFinishPerDoughMin').value) : null,
     remark: document.getElementById('prodRemark').value.trim() || null
   };
   try{
@@ -4015,14 +4118,14 @@ async function submitProduct(){
       toast('Product added');
     }
     resetProductForm();
-    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil&order=name.asc&limit=1000');
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil,compound_roller_to_steamer_min,steamer_through_min,steamer_to_packaging_min,finish_per_dough_min&order=name.asc&limit=1000');
     document.getElementById('runProduct').innerHTML = buildProductOptionsHtml();
     renderProductsTable();
   }catch(e){ toast('Save failed: ' + e.message); }
 }
 async function deleteProduct(id){
   await deleteRow('erp_products', id, async()=>{
-    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil&order=name.asc&limit=1000');
+    PRODUCTS = await sbGet('erp_products?select=id,name,line,remark,yield_factor,weight_per_mix_kg,mixing_min_per_mix,lactic_acid_oil,compound_roller_to_steamer_min,steamer_through_min,steamer_to_packaging_min,finish_per_dough_min&order=name.asc&limit=1000');
     document.getElementById('runProduct').innerHTML = buildProductOptionsHtml();
     renderProductsTable();
   });
@@ -4031,21 +4134,52 @@ function renderProductsTable(){
   const q = (document.getElementById('prodSearch')?.value || '').trim().toLowerCase();
   let rows = PRODUCTS;
   if(q) rows = rows.filter(p => (p.name||'').toLowerCase().includes(q) || (p.line||'').toLowerCase().includes(q));
-  document.getElementById('productsTable').innerHTML = rows.map(p => `<tr>
-    <td>${p.name}</td><td>${p.line||''}</td><td>${fmtNum(p.yield_factor)}</td><td>${fmtNum(p.weight_per_mix_kg)}</td><td>${fmtNum(p.mixing_min_per_mix)}</td><td>${p.lactic_acid_oil||''}</td><td>${p.remark||''}</td>
+  document.getElementById('productsTable').innerHTML = rows.map((p,i) => {
+    const rowId = 'prod-detail-'+p.id;
+    // #productsTable's rows come in pairs (visible row + hidden detail row), which breaks the
+    // usual nth-child(odd) zebra striping — every visible row lands on an odd position, so
+    // ALL of them stripe instead of alternating. Striping by product index instead (matching
+    // the erp_inout / etc. convention) fixes that; see the .zrow CSS rule and its #productsTable entry.
+    const z = (i % 2 === 0) ? ' zrow' : '';
+    return `<tr class="${z}">
+    <td style="cursor:pointer" title="Click to show Lactic Acid Oil and process times" onclick="toggleRowDetail('${rowId}')">▸ ${p.name}</td>
+    <td>${p.line||''}</td><td>${fmtNum(p.yield_factor)}</td><td>${fmtNum(p.weight_per_mix_kg)}</td><td>${fmtNum(p.mixing_min_per_mix)}</td>
+    <td>${p.remark||''}</td>
     <td class="no-print" style="white-space:nowrap">
       <div style="display:flex;gap:6px;flex-wrap:nowrap">
         <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto" onclick="editProduct(${p.id})">✎ Edit</button>
         <button class="btn secondary can-write" style="padding:6px 10px;font-size:12px;flex:0 0 auto;color:var(--danger)" onclick="deleteProduct(${p.id})">✕ Delete</button>
       </div>
     </td>
-  </tr>`).join('');
+  </tr>
+  <tr id="${rowId}" class="${z.trim()}" style="display:none"><td colspan="7">
+    <div class="dash-detail-grid">
+      <div><span class="l">Lactic Acid Oil</span>${p.lactic_acid_oil||'–'}</div>
+      <div><span class="l">Compound Roller to Steamer (min)</span>${fmtNum(p.compound_roller_to_steamer_min)}</div>
+      <div><span class="l">Go Through Steamer (min)</span>${fmtNum(p.steamer_through_min)}</div>
+      <div><span class="l">Steamer to Packaging Dept. (min)</span>${fmtNum(p.steamer_to_packaging_min)}</div>
+      <div><span class="l">Time of Finish per Dough (min)</span>${fmtNum(p.finish_per_dough_min)}</div>
+    </div>
+  </td></tr>`;
+  }).join('');
   document.getElementById('productsEmpty').style.display = rows.length ? 'none' : 'block';
 }
 function onRunProductChange(){
   const name = document.getElementById('runProduct').value;
   const p = PRODUCTS.find(x => x.name === name);
   document.getElementById('runLine').value = p ? (p.line||'') : '';
+  recalcRunPackingDate();
+}
+// Auto-fills Packing Date from Run Date + the selected Line's packing_offset_days (0 for most
+// lines, e.g. 1 for Line 6 which packs the next day) — always overwrites, since this only runs
+// on Run Date / Product changes, both of which mean "start over" for the suggestion. The field
+// stays a plain editable date input so a one-off exception can still be typed in afterward.
+function recalcRunPackingDate(){
+  const runDate = document.getElementById('runDate').value;
+  const lineName = document.getElementById('runLine').value;
+  const line = LINES.find(l => l.name === lineName);
+  const offset = line ? (parseInt(line.packing_offset_days, 10) || 0) : 0;
+  document.getElementById('runPackingDate').value = runDate ? addDaysToDateStr(runDate, offset) : '';
 }
 async function submitProductionRun(){
   if(!canWrite()){ toast('You have read-only access'); return; }
@@ -4054,13 +4188,15 @@ async function submitProductionRun(){
   const runDate = document.getElementById('runDate').value || todayStr();
   const mixes = parseFloat(document.getElementById('runMixes').value) || 0;
   const line = document.getElementById('runLine').value || null;
+  const packingDate = document.getElementById('runPackingDate').value || runDate;
   const remark = document.getElementById('runRemark').value.trim();
   try{
-    await sbInsert('erp_production_runs', [{ run_date: runDate, line, product_name: productName, planned_mixes: mixes, remark: remark||null }]);
+    await sbInsert('erp_production_runs', [{ run_date: runDate, packing_date: packingDate, line, product_name: productName, planned_mixes: mixes, remark: remark||null }]);
     toast('Production run started');
     document.getElementById('runProduct').value = '';
     document.getElementById('runLine').value = '';
     document.getElementById('runMixes').value = '';
+    document.getElementById('runPackingDate').value = '';
     document.getElementById('runRemark').value = '';
     document.getElementById('itemsPackDate').value = runDate;
     document.getElementById('previewViewDate').value = runDate;
@@ -4073,8 +4209,14 @@ async function confirmProductionRun(runId){
     const rows = await sbGet(`erp_production_runs?select=id,run_date,product_name,planned_mixes&id=eq.${runId}`);
     const run = rows[0];
     if(!run){ toast('Run not found'); return; }
-    const mixes = parseFloat(run.planned_mixes) || 0; // batches can be fractional (e.g. 0.6) — don't round
-    if(!confirm(`Confirm ${fmtNum(mixes)} batches of ${run.product_name}?\n\nThis is the ACTUAL number of batches mixed — double-check it's not just the plan before continuing (edit the Batches field first if it's wrong). This deducts flour and cannot be undone.`)) return;
+    // The "Actual" field (see buildRunCardHtml) is deliberately separate from planned_mixes —
+    // reading planned_mixes here would conflate the plan with the actual count and, once this
+    // Confirm write locks confirmed_mixes in, permanently collapse the Confirmed (X/Y) ratio
+    // to X/X. Falls back to planned_mixes only if the input isn't on the page (e.g. a stale
+    // programmatic call), matching the old behavior in that edge case.
+    const actualInput = document.getElementById(`runActualMixes_${runId}`);
+    const mixes = (actualInput && actualInput.value !== '') ? (parseFloat(actualInput.value) || 0) : (parseFloat(run.planned_mixes) || 0); // batches can be fractional (e.g. 0.6) — don't round
+    if(!confirm(`Confirm ${fmtNum(mixes)} batches of ${run.product_name} (planned: ${fmtNum(run.planned_mixes)})?\n\nThis is the ACTUAL number of batches mixed — double-check it's not just the plan before continuing (edit the Actual field first if it's wrong). This deducts flour and cannot be undone.`)) return;
     if(mixes > 0){
       // re-fetch the recipe AND the ingredients fresh in case they were edited since this
       // page last loaded — deductFlourForProduct needs FLOUR_INGREDIENTS (for kg_per_unit
@@ -4305,7 +4447,13 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const confirmBtn = (showConfirmButton && run.status!=='Confirmed')
     ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="confirmProductionRun(${run.id})">✔ Confirm Batches</button>`
     : '';
-  const mixesCanEdit = (itemsEditable || showConfirmButton) && run.status!=='Confirmed' && canWrite();
+  // Deliberately a SEPARATE field from the "batches of" plan input below — editing it here
+  // must never overwrite planned_mixes, or the original plan is destroyed and the eventual
+  // Confirmed (actual/planned) chip degenerates into e.g. "9/9" instead of "9/16".
+  const actualMixesBlock = (showConfirmButton && run.status!=='Confirmed' && canWrite())
+    ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:12px;color:var(--muted)">Actual: <input type="number" step="any" value="${run.planned_mixes||0}" id="runActualMixes_${run.id}" style="width:70px" title="The ACTUAL number of batches mixed, if different from the plan"></span>`
+    : '';
+  const mixesCanEdit = itemsEditable && run.status!=='Confirmed' && canWrite();
   const reorderBtns = (itemsEditable && canWrite())
     ? `<button class="btn secondary" style="padding:4px 8px;font-size:12px" title="Move up within this Line" onclick="moveRunOrder(${run.id}, 'up')">▲</button>
        <button class="btn secondary" style="padding:4px 8px;font-size:12px" title="Move down within this Line" onclick="moveRunOrder(${run.id}, 'down')">▼</button>`
@@ -4319,6 +4467,15 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const runDateBlock = dateCanEdit
     ? `<input type="date" value="${run.run_date}" title="Move this run to a different production date" style="width:150px;display:inline-block;margin-left:8px" onchange="updateRunDate(${run.id}, this.value)">`
     : '';
+  // Only shown when packing genuinely happens on a different day than production (e.g. Line 6,
+  // next-day packing) — for every ordinary same-day line packing_date === run_date and this
+  // stays blank, so the card looks exactly like it did before this feature existed.
+  const packingDiffers = run.packing_date && run.packing_date !== run.run_date;
+  const packsBlock = packingDiffers
+    ? (dateCanEdit
+        ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-size:12px;color:var(--text-accent, var(--muted))">📦 Packs: <input type="date" value="${run.packing_date}" title="The date this run's items actually get packed" style="width:150px" onchange="updateRunPackingDate(${run.id}, this.value)"></span>`
+        : `<span class="chip" style="margin-left:8px" title="The date this run's items actually get packed">📦 Packs: ${run.packing_date}</span>`)
+    : '';
   return `<div class="card" style="margin-bottom:12px" data-run-total-kg="${totalKg}" data-run-used-kg="${usedKg}">
     <div class="row" style="align-items:center;margin-bottom:6px">
       <div style="flex:2">
@@ -4330,7 +4487,9 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
         <strong>${run.product_name}</strong>
         ${run.line ? `<span class="chip" style="margin-left:6px">${run.line}</span>` : ''}
         <span style="margin-left:6px">${statusChip}</span>
+        ${actualMixesBlock}
         ${runDateBlock}
+        ${packsBlock}
       </div>
       ${confirmBtn}
       ${itemsEditable ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" title="Delete run" onclick="deleteProductionRun(${run.id})">🗑 Delete Run</button>` : ''}
@@ -4346,6 +4505,9 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
       const itStatus = it.status==='Confirmed'
         ? `<span class="chip ok">Confirmed</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedItem(${it.id})">✎ Correct</button>`
         : `<span class="chip">Planned</span>`;
+      // Once Confirmed, the actual cases packed can differ from the plan — show that, not a
+      // stale planned number, mirroring runActualYield's own confirmed_cases-first convention.
+      const dispCases = it.status==='Confirmed' ? it.confirmed_cases : it.planned_cases;
       const rowEditable = (itemsEditable || showItemConfirmButtons) && it.status!=='Confirmed';
       // Only items actually tracking an expiry date (Cooler/Freezer) get an editable date —
       // a plain "Prod: ..." item's date is just the run's own date, not meant to be
@@ -4372,8 +4534,8 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
             ? `<input placeholder="Remark..." value="${(it.remark||'').replace(/"/g,'&quot;')}" style="display:block;margin-top:4px;font-size:11px;padding:3px 6px;width:100%;color:var(--danger);font-weight:700;font-style:italic" onchange="updateRunItemRemark(${it.id}, this.value)">`
             : (it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${it.remark}</div>`:'')}
         </td>
-        <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, it.planned_cases)}</td>
-        <td>${(rowEditable && canWrite()) ? `<input type="number" step="1" value="${Math.round(it.planned_cases)}" style="width:80px" onchange="updateRunItemCases(${it.id}, this.value)">` : fmtNum(it.planned_cases)}${componentShortfallNoteHtml(it.item_no, it.planned_cases)}</td>
+        <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, dispCases)}</td>
+        <td>${(rowEditable && canWrite()) ? `<input type="number" step="1" value="${Math.round(it.planned_cases)}" style="width:80px" onchange="updateRunItemCases(${it.id}, this.value)">` : fmtNum(dispCases)}${componentShortfallNoteHtml(it.item_no, it.planned_cases)}</td>
         <td>${it.packing_hrs?fmtHrs(it.packing_hrs)+'h':'–'}</td><td>${dateCell}</td><td>${itStatus}</td>
         ${(itemsEditable || showItemConfirmButtons) ? `<td class="no-print can-write" style="white-space:nowrap">
           <div style="display:flex;gap:6px;flex-wrap:nowrap">
@@ -4490,7 +4652,11 @@ function renderRunCardsGroupedByLine(runs, allItems, containerId, prefix, showCo
   if(itemsEditable){ cardEntries.forEach(e => registerRunItemPickCallback(e.gid, e.run, allItems)); }
 }
 async function fetchRunsAndItems(date){
-  const runs = await sbGet(`erp_production_runs?select=id,run_date,line,product_name,planned_mixes,confirmed_mixes,status,remark,sort_order&run_date=eq.${date}&order=sort_order.asc.nullslast,id.asc&limit=200`);
+  // OR'd on both dates so a run whose packing happens on a different day than its production
+  // (Line 6, see recalcRunPackingDate) shows up under BOTH: its production day (to confirm
+  // batches / see what to make) and its packing day (to confirm items). Ordinary same-day
+  // lines have run_date===packing_date, so this is a no-op for them — one match, one row.
+  const runs = await sbGet(`erp_production_runs?select=id,run_date,packing_date,line,product_name,planned_mixes,confirmed_mixes,status,remark,sort_order&or=(run_date.eq.${date},packing_date.eq.${date})&order=sort_order.asc.nullslast,id.asc&limit=200`);
   const items = runs.length
     ? await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,machines,cycles,bags_per_cycle,packing_hrs,production_date,expired_date,status,confirmed_cases,remark,date_display_mode,sort_order&run_id=in.(${runs.map(r=>r.id).join(',')})&order=sort_order.asc.nullslast,id.asc&limit=1000`)
     : [];
@@ -4611,6 +4777,18 @@ async function updateRunDate(runId, newDate){
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
+// Packing Date is independent of Production Date (see recalcRunPackingDate) — moving one
+// never moves the other. Doesn't touch packed items' own production_date/expired_date, unlike
+// updateRunDate, since those describe when the dough was made, not when it gets packed.
+async function updateRunPackingDate(runId, newDate){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  if(!newDate) return;
+  try{
+    await sbUpdate('erp_production_runs', runId, { packing_date: newDate });
+    toast(`Packing date moved to ${newDate}`);
+    await refreshScheduleScreen();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
 // Reorders runs within their own Line group only (order across different Lines isn't
 // meaningful). Normalizes the whole group to its current display order first, then swaps
 // the moved run with its neighbor, so this works correctly even before any sort_order has
@@ -4662,10 +4840,24 @@ async function updateRunItemCases(id, value){
   try{
     // Cases changed manually here too — recompute packing_hrs the same way the batches-driven
     // auto-recalc does, so "Total packing hours for this run" doesn't go stale.
-    const rows = await sbGet(`erp_production_run_items?select=item_no,machines,cycles,bags_per_cycle&id=eq.${id}`);
+    const rows = await sbGet(`erp_production_run_items?select=run_id,item_no,machines,cycles,bags_per_cycle&id=eq.${id}`);
     const it = rows[0];
     const newPackingHrs = it ? computePackingHrs(cases, ITEMS_BY_NO[it.item_no], it.machines, it.cycles, it.bags_per_cycle) : null;
     await sbUpdate('erp_production_run_items', id, { planned_cases: cases, packing_hrs: newPackingHrs });
+    // Editing one item's Cases changes how much dough weight is left over for whichever item
+    // is "last" in the run (the one that absorbs the remainder — see recalcLastItemCasesForRun),
+    // so that item needs re-deriving too. Skip it when the edited item IS the last one, or this
+    // would immediately overwrite the value the user just typed with a re-derived suggestion.
+    if(it && it.run_id){
+      const pendingRows = await sbGet(`erp_production_run_items?select=id,status&run_id=eq.${it.run_id}&order=sort_order.asc.nullslast,id.asc&limit=1000`);
+      const pending = pendingRows.filter(r => r.status !== 'Confirmed');
+      const lastItemId = pending.length ? pending[pending.length-1].id : null;
+      if(lastItemId != null && lastItemId !== id){
+        const runRows = await sbGet(`erp_production_runs?select=id,planned_mixes&id=eq.${it.run_id}`);
+        const run = runRows[0];
+        if(run) await recalcLastItemCasesForRun(it.run_id, parseFloat(run.planned_mixes) || 0);
+      }
+    }
     toast('Cases updated');
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
@@ -6331,7 +6523,13 @@ function runReportPrint(html){
 }
 async function printProductionReport(){
   const date = document.getElementById('previewViewDate').value || todayStr();
-  const { runs } = await fetchRunsAndItems(date);
+  // fetchRunsAndItems OR's in packing_date too (see its own comment) so the shared Preview
+  // screen can show a Line-6-style run on both its production and packing day — but this
+  // report is specifically "what to make today," so it re-narrows to run_date itself, or a
+  // run that's only passing through on its packing day would wrongly get listed as due for
+  // production here.
+  const { runs: allRuns } = await fetchRunsAndItems(date);
+  const runs = allRuns.filter(r => r.run_date === date);
   if(!runs.length){ toast('No runs to print for this date'); return; }
   // Line 2-T's batches are excluded from the grand total (still shown in its own line section below)
   const totalBatches = runs.reduce((s,r)=>{
@@ -6361,6 +6559,10 @@ async function printProductionReport(){
 }
 async function printPackagingReport(){
   const date = document.getElementById('previewViewDate').value || todayStr();
+  // Includes a run on BOTH its production day and its packing day when those differ (e.g.
+  // Line 6): printed on the production day it's an advance preview so production/packaging
+  // staff can see it's coming, printed on the actual packing day it's the real due-today task.
+  // Each run's block below is labeled accordingly so the two prints are never confused.
   const { runs, items } = await fetchRunsAndItems(date);
   if(!runs.length){ toast('No runs to print for this date'); return; }
   const byLine = {};
@@ -6375,15 +6577,22 @@ async function printPackagingReport(){
   const html = `
     <h2>Packaging Team Report</h2>
     <p>Date: ${date}</p>
-    ${lines.map(l => {
+    ${lines.map((l,li) => {
       const rs = byLine[l];
-      return `<div class="pr-line">
+      return `<div class="pr-line"${li>0?' style="page-break-before:always"':''}>
         <h3>${l}</h3>
         ${rs.map(r => {
           const runItems = items.filter(it => it.run_id === r.id);
           const p = getProductInfo(r.product_name);
+          const packingDate = r.packing_date || r.run_date;
+          const isPackingDay = packingDate === date;
+          const packedOnDifferentDay = packingDate !== r.run_date;
+          const dateNote = !packedOnDifferentDay ? '' : isPackingDay
+            ? `<div style="font-size:12px;color:#c0392b;margin-bottom:4px">📦 Produced ${r.run_date}, packing today</div>`
+            : `<div style="font-size:12px;color:#c0392b;margin-bottom:4px">⏳ Advance preview — not due to pack until ${packingDate}</div>`;
           return `<div style="margin-bottom:10px">
             <div style="font-weight:700;font-style:italic;margin-bottom:4px">${r.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}</div>
+            ${dateNote}
             <table><colgroup><col style="width:10%"><col style="width:26%"><col style="width:30%"><col style="width:10%"><col style="width:24%"></colgroup><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Prod./Exp. Date</th></tr></thead>
             <tbody>${runItems.map(it => {
               const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
