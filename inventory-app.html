@@ -367,7 +367,8 @@
   .pyramid-row .bar{height:100%;display:flex;align-items:center;padding-left:8px;color:#fff;font-weight:700;font-size:11px;white-space:nowrap;border-radius:6px}
   .heat-cell{text-align:center;font-weight:700;border-radius:6px}
   .kpis4{grid-template-columns:repeat(4,1fr)}
-  @media (max-width:600px){ .kpis4{grid-template-columns:repeat(2,1fr)} }
+  .kpis5{grid-template-columns:repeat(5,1fr)}
+  @media (max-width:600px){ .kpis4, .kpis5{grid-template-columns:repeat(2,1fr)} }
   button.btn:disabled{opacity:.5;cursor:not-allowed}
   .btnrow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
   table{width:100%;border-collapse:collapse;font-size:13px}
@@ -393,7 +394,11 @@
      default 'auto' layout a table always grows to fit its widest cell's content regardless of
      padding/font-size, so a long Position string would keep forcing it wider. Fixed layout sizes
      every column purely from the colgroup and wraps overflowing text within that width instead. */
-  #staffScheduleGrid{font-size:12px;table-layout:fixed;width:100%}
+  #staffScheduleTableCard,#staffScheduleQuickView,#staffScheduleLegend,#staffScheduleHeadcount,.print-report .ss-qv-card,.print-report .ssp,.print-report .ssp-title{font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif}
+  .ss-qv-title{font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif!important}
+  #staffScheduleGrid{font-size:12px;table-layout:fixed;width:100%;background:#fff;color:#000}
+  #staffScheduleGrid th{background:#fff;color:#000}
+  .ss-qv-card{color:#000}
   #staffScheduleGrid th,#staffScheduleGrid td{padding:5px 6px;overflow-wrap:break-word}
   .ss-empty-cell .ss-empty-hint{opacity:0;transition:opacity .15s}
   .ss-empty-cell:hover .ss-empty-hint{opacity:1}
@@ -454,7 +459,7 @@
        (all real scrolling happens on html), so they never actually stick. html alone is
        enough to stop horizontal overflow — leave body's overflow at its default. */
     html{overflow-x:hidden;max-width:100vw}
-    .kpis, .kpis4{grid-template-columns:repeat(2,1fr) !important}
+    .kpis, .kpis4, .kpis5{grid-template-columns:repeat(2,1fr) !important}
     /* Every multi-column form row (New Run, Add Item, PO, Items, etc.) stacks to
        one field per line — this is what was causing the crowding/cut-off on phones,
        since a lot of those fields use a fixed inline max-width for desktop layout. */
@@ -561,6 +566,8 @@
      landscape, fit to one sheet. Assigned only to body.print-landscape via the `page` property so
      every other report (all portrait) is untouched. */
   @page ss-landscape{ size:landscape; margin:10mm }
+  /* Same idea for the Staff Schedule grid (Week/Range) print, which Chris wants portrait. */
+  @page ss-portrait{ size:portrait; margin:10mm }
   @media print{
     .topnav,.no-print{display:none!important}
     body{padding:0;background:#fff;color:#000}
@@ -572,6 +579,7 @@
        black-and-white text instead of matching their on-screen colors. */
     .print-report, .print-report *{-webkit-print-color-adjust:exact;print-color-adjust:exact;color-adjust:exact}
     body.print-landscape .print-report{page:ss-landscape;max-width:none}
+    body.print-portrait .print-report{page:ss-portrait;max-width:none}
     /* Staff Schedule prints: names and positions use lighter/muted colors on screen so they read
        well against the pale line/area background tints, but that same muted tone prints too
        faint to read clearly on paper — force full black (and a bolder name) for print only. */
@@ -1157,13 +1165,21 @@
 
     <div class="card can-write">
       <h3>New Production Run</h3>
+      <label style="display:flex;align-items:center;gap:8px;width:auto;margin:0 0 10px;padding:6px 10px;background:var(--chip);border-radius:8px;font-size:12px;cursor:pointer">
+        <input type="checkbox" id="runPackagingOnly" style="width:auto;flex:0 0 auto" onchange="onRunPackagingOnlyChange()"> <b>Packaging only</b> <span style="color:var(--muted)">— not made on a Line, just packed in Packaging</span>
+      </label>
       <div class="row">
         <div><label>Run Date</label><input type="date" id="runDate" onchange="renderRunsList(); recalcRunPackingDate()"></div>
-        <div><label>Product Dough</label>
+        <div id="runProductWrap"><label>Product Dough</label>
           <select id="runProduct" onchange="onRunProductChange()"><option value="">Select product...</option></select>
         </div>
+        <div id="runPkgProductWrap" style="display:none;flex:2"><label>Product</label>
+          <input id="runPkgProduct" list="runPkgProductList" placeholder="Type to search items..." autocomplete="off">
+          <datalist id="runPkgProductList"></datalist>
+        </div>
+        <div id="runPkgHeadcountWrap" style="display:none;max-width:140px"><label>People needed</label><input type="number" id="runPkgHeadcount" min="0" step="1" placeholder="e.g. 3"></div>
       </div>
-      <div class="row">
+      <div class="row" id="runLineRow">
         <div><label>Line (auto-filled)</label><input id="runLine" disabled></div>
         <div><label>Planned Batches</label><input type="number" id="runMixes" step="any"></div>
         <div><label>Packing Date <span style="color:var(--muted);font-weight:400">(auto, editable)</span></label><input type="date" id="runPackingDate"></div>
@@ -1282,8 +1298,18 @@
       <div class="btnrow no-print" style="margin:0">
         <button class="btn secondary active-option" id="staffScheduleModeBtn_day" onclick="setStaffScheduleMode('day')">Day</button>
         <button class="btn secondary" id="staffScheduleModeBtn_week" onclick="setStaffScheduleMode('week')">Week</button>
+        <button class="btn secondary" id="staffScheduleModeBtn_range" onclick="setStaffScheduleMode('range')">Range</button>
       </div>
       <input type="date" id="staffScheduleViewDate" onchange="refreshStaffScheduleScreen()" style="max-width:160px">
+      <div id="staffScheduleRangeBox" class="no-print" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--muted);width:auto">From</label>
+        <input type="date" id="staffScheduleRangeFrom" onchange="staffScheduleRangeChanged('from')" style="max-width:160px">
+        <label style="font-size:12px;color:var(--muted);width:auto">To</label>
+        <input type="date" id="staffScheduleRangeTo" onchange="staffScheduleRangeChanged('to')" style="max-width:160px">
+        <button class="btn secondary" style="padding:5px 10px;font-size:12px" onclick="staffScheduleRangePreset('day')">1 day</button>
+        <button class="btn secondary" style="padding:5px 10px;font-size:12px" onclick="staffScheduleRangePreset('week')">Whole week</button>
+        <span id="staffScheduleRangeInfo" style="font-size:12px;color:var(--muted)"></span>
+      </div>
       <label class="no-print" id="staffScheduleQuickViewLabel" style="display:flex;align-items:center;gap:6px;width:auto;margin-left:auto;font-size:12px;white-space:nowrap">
         <input type="checkbox" id="staffScheduleQuickViewToggle" style="width:auto;flex:0 0 auto" onchange="toggleStaffScheduleQuickView()"> Quick View
       </label>
@@ -1297,6 +1323,7 @@
     </div>
     <div id="staffScheduleQuickView" style="display:none"></div>
     <div class="row no-print" style="flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);align-items:center" id="staffScheduleLegend"></div>
+    <div class="no-print" id="staffScheduleHeadcount"></div>
   </section>
 
   <!-- MANAGE POSITIONS: shared master list, applied to Dough Process Steps (Manage Product Doughs),
@@ -1344,7 +1371,7 @@
     <div class="card">
       <div class="row" style="align-items:center">
         <h3 style="flex:2">Awaiting Confirmation</h3>
-        <input type="date" id="confirmViewDate" onchange="renderConfirmRunCards()" style="max-width:160px">
+        <input type="date" id="confirmViewDate" onchange="renderConfirmRunCards();markConfirmDayChips('scheduledDaysListConfirm', this.value)" style="max-width:160px">
       </div>
       <div id="confirmRunsList"></div>
       <div class="empty" id="confirmEmpty" style="display:none">Nothing left to confirm for this date 🎉</div>
@@ -1368,12 +1395,21 @@
       </div>
     </div>
     <div class="card" id="historySummaryCard" style="display:none">
-      <div class="kpis kpis4">
+      <div class="kpis kpis5">
         <div class="kpi"><div class="n" id="historyKpiRuns">0</div><div class="l">Runs Found</div></div>
         <div class="kpi"><div class="n" id="historyKpiDays">0</div><div class="l">Days Covered</div></div>
+        <div class="kpi"><div class="n" id="historyKpiMixes">0</div><div class="l">Mixes Done (confirmed / planned)</div></div>
         <div class="kpi"><div class="n" id="historyKpiPlanned">0</div><div class="l">Planned Cases</div></div>
         <div class="kpi"><div class="n" id="historyKpiConfirmed">0</div><div class="l">Confirmed Cases</div></div>
       </div>
+    </div>
+    <div class="card" id="historyTotalsCard" style="display:none">
+      <h3>Totals by Product</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Everything in the date range added up — mixes per <span id="historyTotalsKind">dough</span>, then cases per packed item. Cancelled runs are left out.</p>
+      <div class="tablewrap"><table><thead><tr><th id="historyTotalsKindHead">Dough</th><th>Runs</th><th>Mixes (confirmed / planned)</th><th>Cases (confirmed / planned)</th></tr></thead>
+      <tbody id="historyTotalsByProduct"></tbody></table></div>
+      <div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Planned Cases</th><th>Confirmed Cases</th></tr></thead>
+      <tbody id="historyTotalsByItem"></tbody></table></div>
     </div>
     <div id="historyResultsList"></div>
     <div class="empty" id="historyResultsEmpty" style="display:none">No results — try a different dough/sauce or date range</div>
@@ -1549,19 +1585,20 @@
     </div>
     <div class="card can-write">
       <h3 style="margin-top:0">Employee Leave / Time Off</h3>
-      <p style="color:var(--muted);font-size:12px;margin-top:0">Date ranges an employee is away — separate from their weekly Not Available days above, for vacation/sick leave/etc. The Staffing board warns before scheduling someone on a day inside one of their leave ranges.</p>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Dates an employee is away — separate from their weekly Not Available days above. Request off (a one-off day they asked for), Vacation or Sick. Staff Schedule shows each type in its own color, and the Staffing board warns before scheduling someone on one of these days.</p>
       <div class="row">
         <div><label>Employee</label><select id="leaveEmployeeId"></select></div>
-        <div><label>Start Date</label><input type="date" id="leaveStartDate"></div>
+        <div><label>Start Date</label><input type="date" id="leaveStartDate" onchange="const e=document.getElementById('leaveEndDate'); if(!e.value) e.value=this.value"></div>
         <div><label>End Date</label><input type="date" id="leaveEndDate"></div>
-        <div><label>Note (optional)</label><input id="leaveNote" placeholder="e.g. Vacation"></div>
+        <div><label>Type</label><select id="leaveType"><option value="request_off">Request off</option><option value="vacation">Vacation</option><option value="sick">Sick</option></select></div>
+        <div><label>Note (optional)</label><input id="leaveNote" placeholder="e.g. Dentist appointment"></div>
       </div>
       <div class="btnrow">
         <button class="btn" onclick="submitEmployeeLeave()">＋ Add Leave</button>
       </div>
       <div class="tablewrap"><table><thead><tr><th>Employee</th><th>Start Date</th><th>End Date</th><th>Type</th><th>Note</th><th></th></tr></thead>
       <tbody id="employeeLeaveTable"></tbody></table></div>
-      <div class="empty" id="employeeLeaveEmpty" style="display:none">No leave recorded</div>
+      <div class="empty" id="employeeLeaveEmpty" style="display:none">No upcoming leave</div>
     </div>
   </section>
 
@@ -1717,7 +1754,7 @@
     <div class="card">
       <div class="row" style="align-items:center">
         <h3 style="flex:2">Awaiting Confirmation</h3>
-        <input type="date" id="sauceConfirmDate" onchange="renderSauceConfirmTab()" style="max-width:160px">
+        <input type="date" id="sauceConfirmDate" onchange="renderSauceConfirmTab();markConfirmDayChips('scheduledDaysListSauceConfirm', this.value)" style="max-width:160px">
       </div>
       <div id="sauceConfirmDayInfo"></div>
       <div id="sauceConfirmTasksList"></div>
@@ -2351,7 +2388,7 @@
   <!-- MANAGE USERS (admin only) -->
   <section class="screen" id="screen-users">
     <h2>Manage Users</h2>
-    <p style="color:var(--muted);font-size:13px;margin-top:0">Change what role each signed-up user has. New sign-ups start as Viewer. People create their own account from the login screen — they just show up here afterward. What Viewers and Editors can each access as a group is set once for everyone under Settings → Role Permissions; use Extra Access below to open one additional screen for just one person without changing their whole role.</p>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">Change what role each signed-up user has. New sign-ups start as Viewer. People create their own account from the login screen — they just show up here afterward. What Viewers and Operators can each access as a group is set once for everyone under Settings → Role Permissions; use Customize menu below to open an extra screen for just one person, or hide one from them, without changing their whole role.</p>
     <div class="card">
       <h3>Pending Role Requests</h3>
       <div class="tablewrap"><table><thead><tr>
@@ -2361,10 +2398,11 @@
     </div>
     <div class="card">
       <div class="tablewrap"><table><thead><tr>
-        <th>Email</th><th>Joined</th><th>Role</th><th>Extra Access</th><th></th>
+        <th>Email</th><th>Joined</th><th>Role</th><th>Menu Access</th><th></th>
       </tr></thead><tbody id="usersTable"></tbody></table></div>
       <div class="empty" id="usersEmpty" style="display:none">No users yet</div>
     </div>
+    <div class="card" id="userMenuPanel" style="display:none"></div>
   </section>
 
   <!-- MY ACCOUNT -->
@@ -2391,9 +2429,9 @@
     </div>
     <div class="card">
       <h3>Request Access Upgrade</h3>
-      <p style="color:var(--muted);font-size:13px;margin-top:0">Ask an admin to raise you to Editor (can add/edit/delete data). Admin access can only be granted directly by an existing admin.</p>
+      <p style="color:var(--muted);font-size:13px;margin-top:0">Ask an admin to raise you to Operator (can add/edit/delete data). Admin access can only be granted directly by an existing admin.</p>
       <input type="hidden" id="acctRequestRole" value="editor">
-      <div class="btnrow"><button class="btn secondary" onclick="submitRoleRequest()">Request Editor Access</button></div>
+      <div class="btnrow"><button class="btn secondary" onclick="submitRoleRequest()">Request Operator Access</button></div>
       <p id="acctRequestStatus" style="font-size:12px;color:var(--muted);margin-top:10px"></p>
     </div>
   </section>
@@ -2451,7 +2489,7 @@
     <h2>Settings</h2>
     <div class="card">
       <h3>Supabase Connection</h3>
-      <p class="viewer-only" style="font-size:12px;color:var(--muted);display:none" id="cfgViewerStatus">Connected — contact an Editor or Admin to change this.</p>
+      <p class="viewer-only" style="font-size:12px;color:var(--muted);display:none" id="cfgViewerStatus">Connected — contact an Operator or Admin to change this.</p>
       <div class="can-write">
         <label>Project URL</label>
         <input id="cfgUrl" placeholder="https://xxxx.supabase.co">
@@ -2466,7 +2504,7 @@
     </div>
     <div class="card admin-only">
       <h3>Role Permissions</h3>
-      <p style="color:var(--muted);font-size:13px;margin-top:0">One shared setting per role — change it here once and it applies to every Viewer or Editor immediately, instead of configuring each person individually in Manage Users. Admins are never restricted.</p>
+      <p style="color:var(--muted);font-size:13px;margin-top:0">One shared setting per role — change it here once and it applies to every Viewer or Operator immediately, instead of configuring each person individually in Manage Users. Admins are never restricted.</p>
       <div id="rolePermBody">Loading...</div>
     </div>
     <div class="card">
@@ -2625,6 +2663,10 @@ let LOGIN_MODE = 'signin';
 // every Viewer/Editor at once — see isScreenAllowed/canEditRunLine. Defaults to fully-unrestricted
 // so a missing table or a blocked fetch (RLS not set up yet) never locks everyone out.
 let ROLE_PERMISSIONS = { viewer: {allowed_screens:null}, editor: {allowed_screens:null, assigned_lines:null} };
+// What each role is CALLED on screen. The stored value for the middle role stays 'editor' (database
+// rows, code checks), only the name people see is Operator.
+const ROLE_LABELS = { viewer: 'Viewer', editor: 'Operator', admin: 'Admin' };
+function roleLabel(role){ return ROLE_LABELS[role] || role || ''; }
 async function loadRolePermissions(){
   try{
     const rows = await sbGet('erp_role_permissions?select=role,allowed_screens,assigned_lines');
@@ -2770,7 +2812,10 @@ async function fetchProfile(){
   let rows = null;
   for(let attempt = 0; attempt < 2; attempt++){
     try{
-      rows = await sbGet(`erp_profiles?select=id,email,role,display_name,allowed_screens&id=eq.${SESSION.user.id}`);
+      // blocked_screens (fix60) may not exist yet — fall back to the old columns instead of
+      // treating a missing column as a failed login.
+      rows = await sbGet(`erp_profiles?select=id,email,role,display_name,allowed_screens,blocked_screens&id=eq.${SESSION.user.id}`)
+        .catch(() => sbGet(`erp_profiles?select=id,email,role,display_name,allowed_screens&id=eq.${SESSION.user.id}`));
       if(rows && rows.length) break;
     }catch(e){ /* fall through to retry/fallback below */ }
     if(attempt === 0) await new Promise(r => setTimeout(r, 1000));
@@ -2783,13 +2828,13 @@ async function fetchProfile(){
   }
   const badge = document.getElementById('roleBadge');
   badge.style.display = '';
-  badge.textContent = (CURRENT_USER.display_name || CURRENT_USER.email) + ' · ' + CURRENT_USER.role;
+  badge.textContent = (CURRENT_USER.display_name || CURRENT_USER.email) + ' · ' + roleLabel(CURRENT_USER.role).toLowerCase();
   badge.classList.toggle('admin', CURRENT_USER.role === 'admin');
   badge.classList.toggle('editor', CURRENT_USER.role === 'editor');
   document.body.classList.toggle('no-write', !canWrite());
   document.body.classList.toggle('no-admin', !isAdmin());
   document.getElementById('acctEmail').value = CURRENT_USER.email || '';
-  document.getElementById('acctRole').value = CURRENT_USER.role || '';
+  document.getElementById('acctRole').value = roleLabel(CURRENT_USER.role);
   document.getElementById('acctDisplayName').value = CURRENT_USER.display_name || '';
 }
 // editor + admin can add/edit/delete data; only admin can manage other users' roles
@@ -2915,6 +2960,10 @@ function moduleHasSubNav(mod){
 }
 function isScreenAllowed(screen){
   if(isAdmin()) return true; // admins are never restricted
+  // Per-user Block (Manage Users → Customize menu, fix60) wins over everything below: hidden for
+  // this one person even if their role (or a grant) would show it. My Account is never blockable.
+  const blocked = CURRENT_USER && Array.isArray(CURRENT_USER.blocked_screens) ? CURRENT_USER.blocked_screens : null;
+  if(blocked && screen !== 'account' && blocked.includes(screen)) return false;
   const perm = CURRENT_USER ? ROLE_PERMISSIONS[CURRENT_USER.role] : null;
   const allowed = perm && Array.isArray(perm.allowed_screens) ? perm.allowed_screens : null;
   if(!allowed || !allowed.length) return true; // no restriction set = full access
@@ -3448,7 +3497,7 @@ function renderDashboardTable(){
     const daysLabel = r._tier==='oos' ? 'Out of stock' : (isFinite(r._days) ? Math.floor(r._days)+'d' : '—');
     const action = r._overstock ? 'Overstocked — pause purchasing / promote' : (TIER_META[r._tier].action || '—');
     return `<tr class="${z}" style="cursor:pointer" onclick="toggleDashDetail('${rowId}')">
-      <td>${r.item_no}</td><td>${r.item_name||''}</td><td>${r.remark||''}</td>
+      <td>${r.item_no}</td><td>${r.item_name||''}</td><td style="white-space:pre-line;min-width:160px;max-width:280px;overflow-wrap:anywhere">${escapeHtml(r.remark||'')}</td>
       <td>${fmtNum(r.act_inventory_qty)}</td><td>${fmtNum(r.pending_qty)}</td><td>${fmtNum(r.ap_inventory_qty)}</td>
       <td>${daysLabel}</td>
       <td>${tierChip(r._tier)}${r._overstock?' <span class="tier-chip tier-caution">Overstock</span>':''}</td>
@@ -4877,8 +4926,21 @@ async function submitEmployee(){
   }catch(e){ toast('Save failed: ' + e.message); }
 }
 async function deleteEmployee(id){
-  const inUse = await sbGet(`erp_run_step_assignments?select=id&employee_id=eq.${id}&limit=1`);
-  if(inUse.length){ toast("Can't delete — this employee is still assigned to production steps. Set them Inactive instead."); return; }
+  // Every place an employee can be assigned from Staffing, not just production steps — Flour
+  // Mixing Room, Packaging Center (pool + fixed positions) and Sauce Production each keep their
+  // own table, and any one of them still pointing at this employee means deleting would orphan
+  // (or outright fail on) that row. The sauce table is non-fatal in case fix49 hasn't been run.
+  const checks = [
+    ['production steps', 'erp_run_step_assignments'],
+    ['Flour Mixing Room', 'erp_flour_mixing_room_staff'],
+    ['Packaging Center', 'erp_packaging_center_staff'],
+    ['Packaging Center positions', 'erp_packaging_center_positions'],
+    ['Sauce Production', 'erp_sauce_production_positions']
+  ];
+  const results = await Promise.all(checks.map(([, table]) =>
+    sbGet(`${table}?select=id&employee_id=eq.${id}&limit=1`).catch(() => [])));
+  const where = checks.filter((_, i) => results[i].length).map(([label]) => label);
+  if(where.length){ toast(`Can't delete — this employee is still assigned in ${where.join(', ')}. Remove them there first, or set them Inactive instead.`); return; }
   await deleteRow('erp_employees', id, refreshScheduleScreen);
 }
 function renderEmployeesTable(){
@@ -4930,8 +4992,8 @@ async function submitEmployeeLeave(){
   if(endDate < startDate){ toast('End Date must be on or after Start Date'); return; }
   const note = document.getElementById('leaveNote').value.trim();
   try{
-    await sbInsert('erp_employee_leave', [{ employee_id: Number(employeeId), start_date: startDate, end_date: endDate, note: note || null }]);
-    toast('Leave added');
+    await sbInsert('erp_employee_leave', [{ employee_id: Number(employeeId), start_date: startDate, end_date: endDate, type: document.getElementById('leaveType').value || 'vacation', note: note || null }]);
+    toast('Time off added');
     document.getElementById('leaveStartDate').value = '';
     document.getElementById('leaveEndDate').value = '';
     document.getElementById('leaveNote').value = '';
@@ -4941,16 +5003,32 @@ async function submitEmployeeLeave(){
 async function deleteEmployeeLeave(id){
   await deleteRow('erp_employee_leave', id, refreshScheduleScreen);
 }
+// Colors for each leave type — the Staff Schedule cells (screen and print) use the same ones, so a
+// type reads the same here as on the schedule.
+const LEAVE_TYPE_STYLE = {
+  request_off: { label: 'Request Off', bg: '#fde2e2', fg: '#791f1f' },
+  sick:        { label: 'Sick',        bg: '#e6f1fb', fg: '#0c447c' },
+  vacation:    { label: 'On Vacation', bg: '#000',    fg: '#fff' },
+  day_off:     { label: 'Day Off',     bg: '#eef1f4', fg: '#000' }
+};
+function leaveTypeBadgeHtml(type){
+  const s = LEAVE_TYPE_STYLE[type] || LEAVE_TYPE_STYLE.vacation;
+  return `<span style="background:${s.bg};color:${s.fg};border:1px solid rgba(0,0,0,.15);border-radius:99px;padding:1px 9px;font-size:11px;font-weight:600;white-space:nowrap">${s.label}</span>`;
+}
 function renderEmployeeLeaveTable(){
   const tbody = document.getElementById('employeeLeaveTable');
   if(!tbody) return;
-  const rows = EMPLOYEE_LEAVE.slice().sort((a,b) => a.start_date.localeCompare(b.start_date));
+  // Only what's still ahead (or underway): once a leave's End Date has passed it drops off this
+  // list. The record itself stays in erp_employee_leave, so past days on Staff Schedule still
+  // show it.
+  const today = todayStr();
+  const rows = EMPLOYEE_LEAVE.filter(l => l.end_date >= today).sort((a,b) => a.start_date.localeCompare(b.start_date));
   tbody.innerHTML = rows.map(l => {
     const emp = EMPLOYEES.find(e => e.id === l.employee_id);
     return `<tr>
       <td>${emp ? emp.name : '(deleted employee)'}</td>
       <td>${l.start_date}</td><td>${l.end_date}</td>
-      <td>${l.type === 'day_off' ? '<span class="chip">Day Off</span>' : 'Vacation'}</td>
+      <td>${leaveTypeBadgeHtml(l.type)}</td>
       <td>${l.note||''}</td>
       <td class="no-print can-write" style="white-space:nowrap">
         <button class="btn secondary" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteEmployeeLeave(${l.id})">✕ Delete</button>
@@ -5081,7 +5159,24 @@ async function staffingHiddenLineNames(){
     return new Set(rows.map(r => r.name));
   }catch(e){ return new Set(); } // fail open — a lookup error shouldn't hide every Line
 }
-async function refreshStaffingScreen(){
+// A refresh isn't just a read — it auto-fills Default Positions (inserting rows) after loading
+// what's already there. Two refreshes overlapping (date change + screen show, an interval tick,
+// a button's follow-up refresh…) each loaded an empty list before either inserted, so both
+// inserted the same person — duplicate chips. So only one runs at a time: a call that arrives
+// mid-refresh waits for it and triggers exactly one more pass afterward (so the newest date/data
+// still wins), and every caller's `await` resolves only once that settles.
+let STAFFING_REFRESH_PROMISE = null, STAFFING_REFRESH_AGAIN = false;
+function refreshStaffingScreen(){
+  if(STAFFING_REFRESH_PROMISE){ STAFFING_REFRESH_AGAIN = true; return STAFFING_REFRESH_PROMISE; }
+  STAFFING_REFRESH_PROMISE = (async () => {
+    try{
+      do{ STAFFING_REFRESH_AGAIN = false; await refreshStaffingScreenOnce(); }
+      while(STAFFING_REFRESH_AGAIN);
+    } finally { STAFFING_REFRESH_PROMISE = null; }
+  })();
+  return STAFFING_REFRESH_PROMISE;
+}
+async function refreshStaffingScreenOnce(){
   if(!connected) return;
   const dateEl = document.getElementById('staffingViewDate');
   dateEl.value = dateEl.value || todayStr();
@@ -5111,11 +5206,18 @@ async function refreshStaffingScreen(){
       if(p.packaging_headcount != null) PRODUCT_PACKAGING_HEADCOUNT[p.name] = p.packaging_headcount;
     });
     const hiddenLines = await staffingHiddenLineNames();
-    const allRunsToday = await sbGet(`erp_production_runs?select=id,run_date,line,product_name,planned_mixes,confirmed_mixes,status,remark&run_date=eq.${date}&order=sort_order.asc.nullslast,id.asc&limit=200`);
+    const runColsToday = 'id,run_date,line,product_name,planned_mixes,confirmed_mixes,status,remark';
+    const runFilterToday = `&run_date=eq.${date}&order=sort_order.asc.nullslast,id.asc&limit=200`;
+    const allRunsToday = await sbGet(`erp_production_runs?select=${runColsToday},packaging_headcount${runFilterToday}`)
+      .catch(() => sbGet(`erp_production_runs?select=${runColsToday}${runFilterToday}`)); // fix59 not run yet
+    // Packaging-only runs (see PACKAGING_ONLY_LINE) have no Line, steps or positions — they only
+    // add to the Packaging pool's headcount (packagingCenterPoolNeeded) — so they're kept out of
+    // the Line-based Staffing board but still handed to the pool calculation.
+    STAFFING_PACKAGING_ONLY_RUNS = allRunsToday.filter(isPackagingOnlyRun);
     // A Line with "Show in Production Staffing" off is skipped entirely here — Create/Preview/
     // Confirm Completion are untouched (they query erp_production_runs directly, not this
     // screen), only the Staffing board/Staff Schedule/printed reports honor this flag.
-    const runs = allRunsToday.filter(r => !r.line || !hiddenLines.has(r.line));
+    const runs = allRunsToday.filter(r => !isPackagingOnlyRun(r) && (!r.line || !hiddenLines.has(r.line)));
     const runIds0 = runs.map(r => r.id);
     const haveSteps = runIds0.length
       ? new Set((await sbGet(`erp_run_steps?select=run_id&run_id=in.(${runIds0.join(',')})&limit=2000`)).map(s => s.run_id))
@@ -5132,6 +5234,7 @@ async function refreshStaffingScreen(){
       : [];
     assignments.sort((a,b) => a.position_label.localeCompare(b.position_label, undefined, {numeric:true}));
     STAFFING_RUNS = runs; STAFFING_STEPS = steps; STAFFING_ASSIGNMENTS = assignments;
+    await loadStaffingOverrides(date);
     await autoFillDefaultPositions(date);
     renderStaffingBoard();
   }catch(e){ toast('Failed to load staffing data: ' + e.message); }
@@ -5176,9 +5279,14 @@ function employeeUnavailableReason(employee, dateStr){
   if(leave){
     // type 'day_off' is a single date marked off from the Staff Schedule grid (see fix48) — same
     // erp_employee_leave row shape as an actual multi-day leave/vacation, just a different label.
-    return leave.type === 'day_off'
-      ? { short: 'Day Off', full: `marked off work on ${leave.start_date}${leave.note?` (${leave.note})`:''}` }
-      : { short: 'On Leave', full: `on leave from ${leave.start_date} to ${leave.end_date}${leave.note?` (${leave.note})`:''}` };
+    // 'request_off' / 'sick' (fix57) are called out by name so the warning says it's a special
+    // request for this date, not just their usual weekly day off.
+    const span = leave.start_date === leave.end_date ? `on ${leave.start_date}` : `from ${leave.start_date} to ${leave.end_date}`;
+    const note = leave.note ? ` (${leave.note})` : '';
+    if(leave.type === 'day_off') return { short: 'Day Off', full: `marked off work on ${leave.start_date}${note}` };
+    if(leave.type === 'request_off') return { short: 'Request off', full: `off ${span} by special request${note}` };
+    if(leave.type === 'sick') return { short: 'Sick', full: `marked sick ${span}${note}` };
+    return { short: 'On Leave', full: `on leave from ${leave.start_date} to ${leave.end_date}${note}` };
   }
   return null;
 }
@@ -5189,6 +5297,7 @@ async function updateAssignmentEmployee(assignmentId, employeeIdStr){
   const step = STAFFING_STEPS.find(s => s.id === a.run_step_id);
   const run = step ? STAFFING_RUNS.find(r => r.id === step.run_id) : null;
   const employee = employeeId ? EMPLOYEES.find(e => e.id === employeeId) : null;
+  const previousEmployeeId = a.employee_id; // before this change — see propagateStationAssignment
   // A soft block, not a hard one — floor staff sometimes need to override this in a pinch, but
   // they should have to confirm it rather than assign someone on their day off/leave by accident.
   const reason = employee && run ? employeeUnavailableReason(employee, run.run_date) : null;
@@ -5235,8 +5344,50 @@ async function updateAssignmentEmployee(assignmentId, employeeIdStr){
         a.start_time = fallbackTime;
       }
     }
+    // They were deliberately placed on a day they're normally off — remember that so the next
+    // refresh's self-heal doesn't mistake it for a stale auto-fill and clear it.
+    if(reason && employeeId != null && run) await recordStaffingOverride(employeeId, run.run_date);
+    // Skipped when the user had to override an unavailable warning above — that confirm was for
+    // this one slot only, so it isn't carried into other runs.
+    const carried = !reason ? await propagateStationAssignment(a, previousEmployeeId) : 0;
     renderStaffingBoard();
+    if(carried) toast(`${employeeId != null ? 'Assigned' : 'Cleared'} — also ${employeeId != null ? 'set' : 'cleared'} ${step.step_name} in ${carried} other run${carried===1?'':'s'}`);
   }catch(e){ toast('Update failed: ' + e.message); }
+}
+// The same physical station (same Line + exact same position name — staffingAssignmentStationKey)
+// usually has the same person in every dough that runs through it that day, so assigning or
+// changing someone here carries to that station's matching slot (same position number) in the
+// Line's other runs: empty slots get filled, and slots still holding whoever this one just
+// replaced get switched to the new person too. Going back to "— Unassigned" carries the same way —
+// the other runs' slots still holding the person who was just removed get cleared. Anyone else
+// already placed in another run is a deliberate choice and is left alone; Cancelled runs are
+// skipped. Returns how many other slots were changed.
+async function propagateStationAssignment(a, previousEmployeeId){
+  const stationKey = staffingAssignmentStationKey(a);
+  if(!stationKey) return 0;
+  // Clearing with nobody there before has nothing to carry (and must never wipe empty-matching slots)
+  if(a.employee_id == null && previousEmployeeId == null) return 0;
+  let count = 0;
+  const targets = STAFFING_ASSIGNMENTS.filter(x => {
+    if(x.id === a.id || x.run_step_id === a.run_step_id || x.position_label !== a.position_label) return false;
+    if(staffingAssignmentStationKey(x) !== stationKey) return false;
+    const step = STAFFING_STEPS.find(s => s.id === x.run_step_id);
+    const run = step ? STAFFING_RUNS.find(r => r.id === step.run_id) : null;
+    if(!run || run.status === 'Cancelled') return false;
+    // Empty slots only get filled when there's a new person; a clear just follows the old person out
+    if(x.employee_id == null) return a.employee_id != null;
+    return previousEmployeeId != null && x.employee_id === previousEmployeeId;
+  });
+  for(const x of targets){
+    try{
+      await sbUpdate('erp_run_step_assignments', x.id, { employee_id: a.employee_id, start_time: a.start_time });
+      x.employee_id = a.employee_id;
+      x.erp_employees = a.erp_employees;
+      x.start_time = a.start_time;
+      count++;
+    }catch(e){ console.error('propagateStationAssignment failed', e); }
+  }
+  return count;
 }
 // Same person working the same physical station (see staffingAssignmentStationKey) across
 // multiple doughs on one Line starts at the same time — so filling this in once also fills every
@@ -5391,7 +5542,11 @@ async function staffingVacateEmployee(employeeId, opts){
 async function staffingSetDayOff(employeeId, employeeName, kind, recordId, label){
   if(!canWrite()){ toast('You have read-only access'); return; }
   const date = document.getElementById('staffingViewDate').value || todayStr();
-  if(!confirm(`Mark ${employeeName} as Day Off on ${date}? This will remove them from ${label}.`)) return;
+  // kind 'unassigned' = someone not placed anywhere (the Unassigned pool) — nothing to clear first.
+  const confirmMsg = kind === 'unassigned'
+    ? `Mark ${employeeName} as Day Off on ${date}?\n\nThey'll leave the Unassigned list and show as Day Off in Staff Schedule.`
+    : `Mark ${employeeName} as Day Off on ${date}? This will remove them from ${label}.`;
+  if(!confirm(confirmMsg)) return;
   try{
     if(kind === 'assignment'){
       await sbUpdate('erp_run_step_assignments', recordId, { employee_id: null, start_time: null });
@@ -5411,7 +5566,12 @@ async function staffingSetDayOff(employeeId, employeeName, kind, recordId, label
       await sbDelete('erp_sauce_production_positions', recordId);
       SAUCE_PRODUCTION_POSITIONS = SAUCE_PRODUCTION_POSITIONS.filter(p => p.id !== recordId);
     }
-    await sbInsert('erp_employee_leave', [{ employee_id: employeeId, start_date: date, end_date: date, type: 'day_off' }]);
+    const leaveRow = { employee_id: employeeId, start_date: date, end_date: date, type: 'day_off' };
+    const inserted = await sbInsert('erp_employee_leave', [leaveRow]);
+    // EMPLOYEE_LEAVE is only reloaded by refreshStaffingScreen — without adding the new row here,
+    // employeeUnavailableReason() wouldn't know about it yet and the person would keep showing in
+    // the Unassigned pool (and stay eligible for auto-fill) until the next full refresh.
+    EMPLOYEE_LEAVE.push((Array.isArray(inserted) && inserted[0]) || leaveRow);
     toast('Marked as Day Off');
     renderStaffingBoard();
   }catch(e){ toast('Failed to mark Day Off: ' + e.message); }
@@ -5426,6 +5586,24 @@ async function staffingSetDayOff(employeeId, employeeName, kind, recordId, label
 // mutates the underlying globals in place — that's also what lets the same default employee land
 // in two Runs' same-named station on the same Line (see staffingAssignmentStationKey) while still
 // being correctly blocked from a genuinely different station/pool once they're placed.
+// Someone deliberately put on a day they're normally off (the "Assign anyway?" confirm, or picked
+// straight into Sauce Production) can't be told apart from an auto-filled Default Position by
+// looking at the assignment alone — so autoFillDefaultPositions' self-heal below was clearing
+// those manual placements on the next refresh. These per-date override rows (fix56) are the
+// record that it was a human decision, which the self-heal then leaves alone. Both the lookup and
+// the insert fail soft, so nothing changes until the setup SQL has been run.
+let STAFFING_OVERRIDES = new Set();
+async function loadStaffingOverrides(date){
+  try{
+    const rows = await sbGet(`erp_staffing_overrides?select=employee_id&staff_date=eq.${date}&limit=1000`);
+    STAFFING_OVERRIDES = new Set(rows.map(r => r.employee_id));
+  }catch(e){ STAFFING_OVERRIDES = new Set(); }
+}
+async function recordStaffingOverride(employeeId, date){
+  STAFFING_OVERRIDES.add(employeeId);
+  try{ await sbInsert('erp_staffing_overrides', [{ employee_id: employeeId, staff_date: date }]); }
+  catch(e){ /* already recorded for that day, or fix56 not run yet — harmless either way */ }
+}
 async function autoFillDefaultPositions(date){
   if(!canWrite()) return;
   const eligible = e => e.active && !employeeUnavailableReason(e, date);
@@ -5442,7 +5620,7 @@ async function autoFillDefaultPositions(date){
   for(const a of STAFFING_ASSIGNMENTS){
     if(a.employee_id == null) continue;
     const employee = EMPLOYEES.find(e => e.id === a.employee_id);
-    if(!employee || eligible(employee)) continue;
+    if(!employee || eligible(employee) || STAFFING_OVERRIDES.has(employee.id)) continue;
     const step = STAFFING_STEPS.find(s => s.id === a.run_step_id);
     const run = step ? STAFFING_RUNS.find(r => r.id === step.run_id) : null;
     if(!step || !run) continue;
@@ -5455,7 +5633,7 @@ async function autoFillDefaultPositions(date){
   for(const p of PACKAGING_CENTER_POSITIONS){
     if(p.employee_id == null) continue;
     const employee = EMPLOYEES.find(e => e.id === p.employee_id);
-    if(!employee || eligible(employee)) continue;
+    if(!employee || eligible(employee) || STAFFING_OVERRIDES.has(employee.id)) continue;
     if(employee.default_position_type !== 'packaging' || employee.default_position_label !== p.position_label) continue;
     try{
       await sbUpdate('erp_packaging_center_positions', p.id, { employee_id: null, start_time: null });
@@ -5466,7 +5644,7 @@ async function autoFillDefaultPositions(date){
   // removes the row entirely instead of nulling employee_id, same as Flour/Packaging pool below.
   for(const p of SAUCE_PRODUCTION_POSITIONS.slice()){
     const employee = EMPLOYEES.find(e => e.id === p.employee_id);
-    if(!employee || eligible(employee)) continue;
+    if(!employee || eligible(employee) || STAFFING_OVERRIDES.has(employee.id)) continue;
     if(employee.default_position_type !== 'run' || employee.default_position_line !== 'Line 4' || employee.default_position_label !== p.position_label) continue;
     try{
       await sbDelete('erp_sauce_production_positions', p.id);
@@ -5826,13 +6004,14 @@ function renderUnassignedPoolBanner(){
   const editable = canWrite();
   const chips = pool.map(e => `<span class="chip" ${editable?`draggable="true" ondragstart="staffingDragStart(event, ${e.id})"`:''} style="display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line)${editable?';cursor:grab':''}">
       <span style="width:6px;height:6px;border-radius:50%;background:var(--muted);flex:0 0 auto"></span>${escapeHtml(e.name)}
+      ${editable ? `<button onclick="staffingSetDayOff(${e.id}, '${e.name.replace(/'/g,"\\'")}', 'unassigned', 0, 'Unassigned')" title="Mark Day Off" style="border:none;background:none;color:var(--danger);cursor:pointer;padding:0;font-size:12px;line-height:1;font-family:inherit">🌙</button>` : ''}
     </span>`).join('');
   el.innerHTML = `<div class="card" style="margin-bottom:14px;background:var(--chip)">
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <strong style="font-size:13px;white-space:nowrap">Unassigned (${pool.length})</strong>
       <div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>
     </div>
-    ${editable ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">Drag someone onto a position below to assign them.</div>` : ''}
+    ${editable ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">Drag someone onto a position below to assign them, or click 🌙 to mark them Day Off for this date.</div>` : ''}
   </div>`;
 }
 function renderStaffingBoard(){
@@ -6069,6 +6248,7 @@ async function updatePackagingCenterPositionEmployee(positionId, employeeIdStr){
       await sbUpdate('erp_packaging_center_positions', positionId, { start_time: employee.default_start_time });
       p.start_time = employee.default_start_time;
     }
+    if(reason && employeeId != null) await recordStaffingOverride(employeeId, date); // see autoFillDefaultPositions
     renderStaffingBoard(); // also refreshes every other select's "taken elsewhere" exclusion
   }catch(e){ toast('Update failed: ' + e.message); }
 }
@@ -6117,6 +6297,13 @@ function packagingCenterPositionSelectHtml(p, date){
 // Lines. This pool is entirely separate from — and additional to — the 3 fixed roles above.
 // Shared by renderPackagingCenterBanner (display) and autoFillDefaultPositions (auto-fill) so
 // the two never disagree on how many the dynamic pool actually needs.
+// Today's Packaging-only runs (see PACKAGING_ONLY_LINE) — they need Packaging people but no Line.
+let STAFFING_PACKAGING_ONLY_RUNS = [];
+// Their hand-typed "people needed", summed — each is its own job, so unlike the per-Line MAX below
+// (sequential runs on one Line share their people) these add up.
+function packagingOnlyHeadcount(runs){
+  return runs.filter(r => isPackagingOnlyRun(r) && r.status !== 'Cancelled').reduce((sum, r) => sum + (parseInt(r.packaging_headcount, 10) || 0), 0);
+}
 function packagingCenterPoolNeeded(){
   const relevantRuns = STAFFING_RUNS.filter(r => FLOUR_MIXING_ROOM_LINES.includes(r.line));
   const maxByLine = {};
@@ -6124,7 +6311,8 @@ function packagingCenterPoolNeeded(){
     const h = PRODUCT_PACKAGING_HEADCOUNT[r.product_name] || 0;
     if(h > (maxByLine[r.line] || 0)) maxByLine[r.line] = h;
   });
-  return { needed: Object.values(maxByLine).reduce((sum, h) => sum + h, 0), relevantRunCount: relevantRuns.length };
+  const extra = packagingOnlyHeadcount(STAFFING_PACKAGING_ONLY_RUNS);
+  return { needed: Object.values(maxByLine).reduce((sum, h) => sum + h, 0) + extra, relevantRunCount: relevantRuns.length };
 }
 function renderPackagingCenterBanner(){
   const el = document.getElementById('packagingCenterBanner');
@@ -6202,6 +6390,18 @@ function renderPackagingCenterBanner(){
 let SAUCE_PRODUCTION_POSITIONS = [];
 async function ensureSauceProductionPositions(date){
   SAUCE_PRODUCTION_POSITIONS = await sbGet(`erp_sauce_production_positions?select=id,position_label,employee_id,start_time&staff_date=eq.${date}&order=id.asc`);
+  // One person can only be in one place a day, so a second row for the same employee is always a
+  // leftover duplicate (an overlapping refresh used to insert them) — drop the later ones, keep
+  // the first, so existing duplicates clean themselves up the next time that day is opened.
+  const seen = new Set();
+  const dupes = SAUCE_PRODUCTION_POSITIONS.filter(p => { if(seen.has(p.employee_id)) return true; seen.add(p.employee_id); return false; });
+  for(const d of dupes){
+    try{ await sbDelete('erp_sauce_production_positions', d.id); }catch(e){ console.error('removing duplicate sauce production row failed', e); }
+  }
+  if(dupes.length){
+    const gone = new Set(dupes.map(d => d.id));
+    SAUCE_PRODUCTION_POSITIONS = SAUCE_PRODUCTION_POSITIONS.filter(p => !gone.has(p.id));
+  }
 }
 // What Sauce Production actually has scheduled for the Staffing-viewed date (erp_sauce_schedule_
 // days/tasks) — shown above the 3 role lists so the card reads "here's what's being made, here's
@@ -6249,6 +6449,9 @@ async function addSauceProductionStaff(label, employeeIdStr){
     if(elsewhere) await staffingVacateEmployee(employeeId, {});
     const inserted = await sbInsert('erp_sauce_production_positions', [{ staff_date: date, position_label: label, employee_id: employeeId, start_time: employee ? employee.default_start_time : null }]);
     SAUCE_PRODUCTION_POSITIONS.push(inserted[0]);
+    // The picker lists everyone active, including people off today — if this is one of them it was
+    // a deliberate choice, so remember it (see autoFillDefaultPositions' self-heal).
+    if(employee && employeeUnavailableReason(employee, date)) await recordStaffingOverride(employeeId, date);
     renderStaffingBoard(); // also refreshes every other select's "taken elsewhere" exclusion
     toast('Added to ' + label);
   }catch(e){ toast('Failed to add: ' + e.message); }
@@ -6842,8 +7045,59 @@ function setStaffScheduleMode(mode){
   STAFF_SCHEDULE_MODE = mode;
   document.getElementById('staffScheduleModeBtn_day').classList.toggle('active-option', mode==='day');
   document.getElementById('staffScheduleModeBtn_week').classList.toggle('active-option', mode==='week');
+  document.getElementById('staffScheduleModeBtn_range').classList.toggle('active-option', mode==='range');
   document.getElementById('staffScheduleQuickViewLabel').style.display = mode==='day' ? '' : 'none';
+  // Range mode swaps the single date picker for From/To (seeded from the picked date's week the
+  // first time, so it opens on something sensible instead of blank).
+  document.getElementById('staffScheduleViewDate').style.display = mode==='range' ? 'none' : '';
+  document.getElementById('staffScheduleRangeBox').style.display = mode==='range' ? 'flex' : 'none';
+  if(mode === 'range' && !document.getElementById('staffScheduleRangeFrom').value){
+    const week = staffScheduleWeekRange(document.getElementById('staffScheduleViewDate').value || todayStr());
+    document.getElementById('staffScheduleRangeFrom').value = week[0];
+    document.getElementById('staffScheduleRangeTo').value = week[6];
+  }
   refreshStaffScheduleScreen();
+}
+// A custom Range is capped at 7 days — a longer span doesn't fit one printed page legibly, and the
+// grid itself is only designed around a week's width. Changing From past To (or To before From, or
+// a span over 7 days) pulls the other end along rather than rejecting the pick.
+const STAFF_SCHEDULE_MAX_RANGE_DAYS = 7;
+function staffScheduleRangeChanged(changed){
+  const fromEl = document.getElementById('staffScheduleRangeFrom'), toEl = document.getElementById('staffScheduleRangeTo');
+  if(!fromEl.value && !toEl.value) return;
+  if(!fromEl.value) fromEl.value = toEl.value;
+  if(!toEl.value) toEl.value = fromEl.value;
+  if(toEl.value < fromEl.value){
+    if(changed === 'from') toEl.value = fromEl.value; else fromEl.value = toEl.value;
+  }
+  const span = Math.round((new Date(toEl.value+'T00:00:00') - new Date(fromEl.value+'T00:00:00')) / 86400000) + 1;
+  if(span > STAFF_SCHEDULE_MAX_RANGE_DAYS){
+    if(changed === 'to') fromEl.value = addDaysStr(toEl.value, -(STAFF_SCHEDULE_MAX_RANGE_DAYS-1));
+    else toEl.value = addDaysStr(fromEl.value, STAFF_SCHEDULE_MAX_RANGE_DAYS-1);
+    toast(`A range can be up to ${STAFF_SCHEDULE_MAX_RANGE_DAYS} days — adjusted`);
+  }
+  refreshStaffScheduleScreen();
+}
+function staffScheduleRangePreset(kind){
+  const fromEl = document.getElementById('staffScheduleRangeFrom'), toEl = document.getElementById('staffScheduleRangeTo');
+  const anchor = fromEl.value || todayStr();
+  if(kind === 'day'){ fromEl.value = anchor; toEl.value = anchor; }
+  else { const week = staffScheduleWeekRange(anchor); fromEl.value = week[0]; toEl.value = week[6]; }
+  refreshStaffScheduleScreen();
+}
+// The dates the screen (and Print) cover: one day, the Sunday-first week around the picked date, or
+// the From/To range (already clamped to 7 days by staffScheduleRangeChanged).
+function staffScheduleCurrentDates(pickedDate){
+  if(STAFF_SCHEDULE_MODE === 'week') return staffScheduleWeekRange(pickedDate);
+  if(STAFF_SCHEDULE_MODE === 'range'){
+    const from = document.getElementById('staffScheduleRangeFrom').value || pickedDate;
+    let to = document.getElementById('staffScheduleRangeTo').value || from;
+    if(to < from) to = from;
+    const dates = [];
+    for(let d = from; d <= to && dates.length < STAFF_SCHEDULE_MAX_RANGE_DAYS; d = addDaysStr(d, 1)) dates.push(d);
+    return dates;
+  }
+  return [pickedDate];
 }
 function toggleStaffScheduleQuickView(){
   STAFF_SCHEDULE_QUICK_VIEW = document.getElementById('staffScheduleQuickViewToggle').checked;
@@ -6876,15 +7130,15 @@ function staffScheduleQuickViewHtml(scale){
     sec.groups.forEach(g => {
       const rows = g.rows.filter(r => {
         const c = r.cells[0];
-        return c && !c.empty && !c.onLeave && !c.dayOff;
+        return c && !c.empty && !c.onLeave && !c.dayOff && !c.requestOff && !c.sick;
       });
-      if(rows.length) cards.push({ label: g.label || sec.name, rows });
+      if(rows.length) cards.push({ label: g.label || sec.name, rows, color: sec.name === 'Packaging' ? staffSchedulePackagingColor() : null });
     });
   });
   if(!cards.length) return `<div class="card"><div class="empty">No one scheduled ${staffScheduleDateLabel(dateStr)}</div></div>`;
   const totalPeople = cards.reduce((sum,c) => sum + c.rows.length, 0);
   const cardsHtml = cards.map(c => {
-    const color = c.rows[0].cells[0].color || 'var(--chip)';
+    const color = c.color || c.rows[0].cells[0].color || 'var(--chip)';
     // Stacked, not side-by-side — a long combined "7:30am - 4:00pm · Line 2 Compound Roller"
     // next to a long name had nowhere to wrap (nowrap on one side just forced it past the card's
     // edge), so each line now gets the card's full width and wraps normally instead of overflowing.
@@ -6892,7 +7146,7 @@ function staffScheduleQuickViewHtml(scale){
       const cell = r.cells[0];
       return `<div class="ss-qv-row" style="padding:${s(6)}px 0;border-top:1px solid rgba(0,0,0,.1)">
         <div class="ss-qv-name" style="font-weight:600;font-size:${s(15)}px">${escapeHtml(r.employee.name)}</div>
-        <div class="ss-qv-detail" style="font-size:${s(12.5)}px;color:var(--muted)">${escapeHtml([cell.time, cell.position].filter(Boolean).join(' · '))}</div>
+        <div class="ss-qv-detail" style="font-size:${s(12.5)}px">${escapeHtml([cell.time, cell.position].filter(Boolean).join(' · '))}</div>
       </div>`;
     }).join('');
     return `<div class="ss-qv-card" style="border-radius:10px;padding:${s(14)}px;background:${color}">
@@ -6922,7 +7176,10 @@ function staffScheduleWeekRange(dateStr){
 // text color on the same fill) because the light palette's pale pastels go low-contrast/washed-out
 // against the light body text this app switches to in dark mode — dark mode gets its own deeper,
 // more saturated fills tuned to read clearly under light text instead.
-function staffScheduleIsDark(){ return document.documentElement.dataset.theme === 'dark'; }
+// Always false: Staff Schedule shows the same colors the printout uses (light cell colors, black
+// text) in either app theme, so what's on screen is what comes out of the printer. The dark
+// palettes below are left in place but never selected.
+function staffScheduleIsDark(){ return false; }
 const STAFF_SCHEDULE_LINE_PALETTE_LIGHT = ['#c7e3c0','#f4e2a8','#f3c99a','#e2c6e6','#bcdcec','#8fbfe0','#f5c2c2','#d8e0a0'];
 const STAFF_SCHEDULE_LINE_PALETTE_DARK  = ['#2f4a2a','#4a3f1f','#4a3423','#3a2c40','#1f3a4a','#1c3350','#452630','#3a3f1f'];
 // The curated swatches offered on Manage Lines / Staff Schedule Area Colors — same hues as the
@@ -7020,12 +7277,14 @@ async function refreshStaffScheduleScreen(){
   const dateEl = document.getElementById('staffScheduleViewDate');
   dateEl.value = dateEl.value || todayStr();
   const pickedDate = dateEl.value;
-  const dates = STAFF_SCHEDULE_MODE === 'week' ? staffScheduleWeekRange(pickedDate) : [pickedDate];
+  const dates = staffScheduleCurrentDates(pickedDate);
   const from = dates[0], to = dates[dates.length-1];
+  const rangeInfoEl = document.getElementById('staffScheduleRangeInfo');
+  if(rangeInfoEl) rangeInfoEl.textContent = `${from} → ${to} · ${dates.length} day${dates.length===1?'':'s'}`;
   try{
     await loadStaffScheduleColors();
     const employees = await sbGet('erp_employees?select=id,name,active,default_position_type,default_position_line,no_available_days&order=name.asc&limit=1000');
-    const employeeLeave = await sbGet('erp_employee_leave?select=id,employee_id,start_date,end_date,type&limit=5000');
+    const employeeLeave = await sbGet('erp_employee_leave?select=id,employee_id,start_date,end_date,type,note&limit=5000');
     const hiddenLines = await staffingHiddenLineNames();
     const allRuns = await sbGet(`erp_production_runs?select=id,line,run_date&run_date=gte.${from}&run_date=lte.${to}&limit=2000`);
     const runs = allRuns.filter(r => !r.line || !hiddenLines.has(r.line));
@@ -7056,7 +7315,10 @@ async function refreshStaffScheduleScreen(){
       if(!step || !run) return;
       // Step names already carry the Line in this shop's naming convention (e.g. "Line 5
       // Packing/Case packing") so the position label doesn't re-prefix the Line name.
-      setCell(a.employee_id, run.run_date, { time: staffScheduleFormatShift(a.start_time), rawTime: a.start_time, position: step.step_name, color: staffScheduleLineColor(run.line), dept: 'Line Production', line: run.line, kind: 'assignment', recordId: a.id });
+      // A Line that is itself the packaging line (name contains "Packag") is Packaging staff, so its
+      // cells sit in the Packaging section/headcount and share the Packaging color (`line` is kept).
+      const dept = /packag/i.test(run.line || '') ? 'Packaging' : 'Line Production';
+      setCell(a.employee_id, run.run_date, { time: staffScheduleFormatShift(a.start_time), rawTime: a.start_time, position: step.step_name, color: dept === 'Packaging' ? staffSchedulePackagingColor() : staffScheduleLineColor(run.line), dept, line: run.line, kind: 'assignment', recordId: a.id });
     });
     flourRows.forEach(s => {
       setCell(s.employee_id, s.staff_date, { time: staffScheduleFormatShift(s.start_time), rawTime: s.start_time, position: 'Flour Mixing Room', color: staffScheduleFlourColor(), dept: 'Flour Mixer Room', kind: 'flour', recordId: s.id });
@@ -7079,7 +7341,7 @@ async function refreshStaffScheduleScreen(){
     const SECTION_ORDER = ['Flour Mixer Room', 'Line Production', 'Packaging', 'Other'];
     const defaultSectionOf = e => e.default_position_type === 'flour' ? 'Flour Mixer Room'
       : (e.default_position_type === 'packaging' || e.default_position_type === 'packaging_pool') ? 'Packaging'
-      : e.default_position_type === 'run' ? 'Line Production'
+      : e.default_position_type === 'run' ? (/packag/i.test(e.default_position_line || '') ? 'Packaging' : 'Line Production')
       : 'Other';
     // Group by which department an employee actually worked over the shown date range (not just
     // their static Default Position — most staff are "assign manually each day" with no default
@@ -7114,33 +7376,25 @@ async function refreshStaffScheduleScreen(){
       const m = String(line).match(/(\d+)/);
       return m ? parseInt(m[1], 10) : Infinity;
     };
-    // Which (time, position) an employee most often actually worked over the shown range — same
-    // majority-vote idea as sectionOf/primaryLineOf above — used to sort Flour Mixer Room, each
-    // Line's own group, and Packaging by time then position instead of alphabetically by name.
-    // Uses each cell's raw "HH:MM" start_time (not the formatted "7:00am - 4:30pm" display string
-    // — that sorts "10:00am" before "7:00am" alphabetically, which raw 24h zero-padded time never
-    // does) so chronological order is always correct.
-    const primaryTimePositionOf = e => {
-      const cellsByDate = cellByEmployeeDate[e.id] || {};
-      const counts = {};
-      dates.forEach(d => {
-        const cell = cellsByDate[d];
-        if(!cell || !cell.rawTime) return;
-        const key = cell.rawTime + '|' + (cell.position || '');
-        counts[key] = (counts[key] || 0) + 1;
-      });
-      const keys = Object.keys(counts);
-      if(!keys.length) return null;
-      const best = keys.reduce((b, k) => counts[k] > counts[b] ? k : b);
-      const sep = best.indexOf('|');
-      return { time: best.slice(0, sep), position: best.slice(sep + 1) };
-    };
+    // Sorts Flour Mixer Room, each Line's own group, and Packaging by time then position instead of
+    // alphabetically by name: by the first date's time then position, ties broken by the second
+    // date's, and so on — so every day's column reads in order top to bottom as far as it can (a
+    // week-wide "most common" time/position left any single day's column looking shuffled).
+    // Someone with nothing that day (Day Off, vacation, blank) sorts after everyone who has a time.
+    // Uses each cell's raw start_time (not the formatted "7:00am - 4:30pm" display string, which
+    // sorts "10:00am" before "7:00am"), compared as minutes since midnight — it can come back as
+    // "07:00" or "07:00:00".
+    const timeKey = t => { const m = String(t || '').match(/^(\d{1,2}):(\d{2})/); return m ? +m[1] * 60 + +m[2] : 99999; };
     const timePositionCompare = (a, b) => {
-      const ta = primaryTimePositionOf(a), tb = primaryTimePositionOf(b);
-      const timeA = ta ? ta.time : '99:99', timeB = tb ? tb.time : '99:99'; // no time sorts last
-      if(timeA !== timeB) return timeA < timeB ? -1 : 1;
-      const posA = ta ? ta.position : '', posB = tb ? tb.position : '';
-      return posA.localeCompare(posB) || a.name.localeCompare(b.name);
+      for(const d of dates){
+        const ca = (cellByEmployeeDate[a.id] || {})[d], cb = (cellByEmployeeDate[b.id] || {})[d];
+        const ta = timeKey(ca && ca.rawTime), tb = timeKey(cb && cb.rawTime);
+        if(ta !== tb) return ta - tb;
+        const pa = (ca && ca.position) || '', pb = (cb && cb.position) || '';
+        const c = pa.localeCompare(pb, undefined, {numeric:true});
+        if(c) return c;
+      }
+      return a.name.localeCompare(b.name);
     };
     const buildRow = e => ({
       employee: e,
@@ -7152,7 +7406,14 @@ async function refreshStaffScheduleScreen(){
         // A single date manually marked off from this grid (type 'day_off', see fix48) renders
         // and behaves like the weekly recurring Day Off below, just with a leaveId attached so
         // the cell can offer to undo it — an actual multi-day leave/vacation can't be undone here.
-        if(leave) return leave.type === 'day_off' ? { dayOff: true, leaveId: leave.id } : { onLeave: true };
+        if(leave){
+          if(leave.type === 'day_off') return { dayOff: true, leaveId: leave.id };
+          // Request off / Sick (fix57) get their own cells, with the note, so they read differently
+          // from a weekly Day Off and from a vacation. Managed from Employee Leave / Time Off.
+          if(leave.type === 'request_off') return { requestOff: true, note: leave.note || '' };
+          if(leave.type === 'sick') return { sick: true, note: leave.note || '' };
+          return { onLeave: true };
+        }
         if((e.no_available_days||[]).includes(dow)) return { dayOff: true };
         return { empty: true, employeeId: e.id, date: d };
       })
@@ -7188,6 +7449,8 @@ function renderStaffScheduleTable(){
   if(!data || !data.sections.length){
     table.innerHTML = '';
     legend.innerHTML = '';
+    const headEmpty = document.getElementById('staffScheduleHeadcount');
+    if(headEmpty) headEmpty.innerHTML = '';
     document.getElementById('staffScheduleEmpty').style.display = 'block';
     return;
   }
@@ -7203,7 +7466,7 @@ function renderStaffScheduleTable(){
   const NAME_COL_PX = 96;
   const colgroup = `<colgroup><col style="width:${NAME_COL_PX}px">${dates.map(()=>`<col style="width:calc((100% - ${NAME_COL_PX}px) / ${dates.length})">`).join('')}</colgroup>`;
   // Sticky header stays visible while scrolling down a long roster.
-  const headStyle = 'position:sticky;top:0;z-index:2;background:var(--panel);padding:5px 6px';
+  const headStyle = 'position:sticky;top:0;z-index:2;background:#fff;color:#000;padding:5px 6px';
   // A stronger left border on each date's column marks where one day ends and the next begins —
   // plain 1px cell borders alone don't stand out enough between adjacent dates.
   const dateDividerBorder = 'border-left:2px solid var(--line)';
@@ -7211,10 +7474,10 @@ function renderStaffScheduleTable(){
     <tr><th style="${headStyle}"></th>${dates.map(d => `<th style="${headStyle};${dateDividerBorder};text-align:center;font-style:italic;white-space:normal">${staffScheduleDateLabel(d)}</th>`).join('')}</tr>
   </thead>`;
   const body = data.sections.map(sec => `
-    <tr><td colspan="${dates.length+1}" style="background:var(--chip);color:var(--danger);font-weight:700;font-style:italic">${sec.name}</td></tr>
+    <tr><td colspan="${dates.length+1}" style="background:#9fc0e4;color:#b00000;font-weight:700;font-style:italic">${sec.name}</td></tr>
     ${sec.groups.map(g => `
-      ${g.label ? `<tr><td colspan="${dates.length+1}" style="color:var(--text);font-weight:600;font-size:12px">${escapeHtml(g.label)}</td></tr>` : ''}
-      ${g.rows.map(r => `<tr><td style="font-weight:600;white-space:normal">${r.employee.name}</td>${r.cells.map((c, ci) => {
+      ${g.label ? `<tr><td colspan="${dates.length+1}" style="background:#dbe7f5;color:#000;font-weight:700;font-size:12px">${escapeHtml(g.label)}</td></tr>` : ''}
+      ${g.rows.map(r => `<tr><td style="font-weight:700;white-space:normal;color:#000">${r.employee.name}</td>${r.cells.map((c, ci) => {
         if(c.empty){
           // Nothing scheduled, no leave, not a weekly day off — previously just a blank cell with
           // no way to tell "nobody's assigned yet" from "deliberately off". Editors can click to
@@ -7226,35 +7489,88 @@ function renderStaffScheduleTable(){
           </td>`;
         }
         if(c.onLeave) return `<td style="${dateDividerBorder};background:#000;color:#fff;white-space:normal">On Vacation</td>`;
+        if(c.requestOff || c.sick){
+          const s = LEAVE_TYPE_STYLE[c.requestOff ? 'request_off' : 'sick'];
+          return `<td style="${dateDividerBorder};background:${s.bg};color:${s.fg};white-space:normal"><div style="font-weight:600">${s.label}</div>${c.note ? `<div>${escapeHtml(c.note)}</div>` : ''}</td>`;
+        }
         if(c.dayOff){
           const removeBtn = (c.leaveId && canWrite())
             ? `<button onclick="event.stopPropagation();removeStaffScheduleDayOff(${c.leaveId})" title="Remove this Day Off" style="position:absolute;top:1px;right:2px;border:none;background:none;color:var(--muted);cursor:pointer;padding:0;font-size:11px;line-height:1;font-family:inherit">✕</button>`
             : '';
-          return `<td style="${dateDividerBorder};background:var(--chip);color:var(--muted);white-space:normal;position:relative">Day Off${removeBtn}</td>`;
+          return `<td style="${dateDividerBorder};background:#eef1f4;color:#000;white-space:normal;position:relative">Day Off${removeBtn}</td>`;
         }
         // A filled cell (auto-filled or manually assigned) can be turned straight into a Day
         // Off too — one click clears whatever's actually sitting there (kind/recordId, see
         // refreshStaffScheduleScreen) and marks the date off, instead of needing a trip to
         // Staffing first to unassign them before this screen would let you touch it.
         if(!canWrite() || !c.kind){
-          return `<td style="${dateDividerBorder};background:${c.color};white-space:normal"><div style="font-weight:600">${c.time}</div><div style="color:var(--muted)">${c.position}</div></td>`;
+          return `<td style="${dateDividerBorder};background:${c.color};color:#000;white-space:normal"><div style="font-weight:600">${c.time}</div><div>${c.position}</div></td>`;
         }
         const empName = String(r.employee.name||'').replace(/'/g,"\\'");
         const currentLabel = String(c.line ? `${c.line} — ${c.position}` : c.position).replace(/'/g,"\\'");
-        return `<td style="${dateDividerBorder};background:${c.color};white-space:normal;position:relative;cursor:pointer" class="ss-filled-cell" onclick="staffScheduleSetDayOffFromCell(${r.employee.id}, '${dates[ci]}', '${empName}', '${c.kind}', ${c.recordId}, '${currentLabel}')" title="Click to set Day Off">
-          <div style="font-weight:600">${c.time}</div><div style="color:var(--muted)">${c.position}</div>
+        return `<td style="${dateDividerBorder};background:${c.color};color:#000;white-space:normal;position:relative;cursor:pointer" class="ss-filled-cell" onclick="staffScheduleSetDayOffFromCell(${r.employee.id}, '${dates[ci]}', '${empName}', '${c.kind}', ${c.recordId}, '${currentLabel}')" title="Click to set Day Off">
+          <div style="font-weight:600">${c.time}</div><div>${c.position}</div>
           <span class="ss-filled-hint" style="position:absolute;inset:2px;display:flex;align-items:center;justify-content:center;background:var(--panel);opacity:0;transition:opacity .15s;color:var(--danger);font-size:10.5px;font-weight:700;border:1px dashed var(--danger)">Click to set Day Off</span>
         </td>`;
       }).join('')}</tr>`).join('')}
     `).join('')}
   `).join('');
   table.innerHTML = colgroup + head + `<tbody>${body}</tbody>`;
+  // One day: the headcount rides on the legend itself ("Line 2 9"); several days: the legend stays
+  // as it was and a small per-day table underneath carries the same numbers, since one legend
+  // badge can't hold a different count for each day.
+  const counts = staffScheduleHeadcounts(data);
+  const single = data.dates.length === 1;
+  const badge = n => single ? ` <b style="background:var(--chip);border-radius:99px;padding:0 7px;color:var(--text)">${counts[0][n]}</b>` : '';
   legend.innerHTML = `<strong style="color:var(--text)">Legend:</strong>
-    ${[1,2,3,4,5,6].map(n => `<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:${staffScheduleLineColor('Line '+n)};display:inline-block;border:1px solid var(--line)"></span>Line ${n}${n===4?' (Sauce)':''}</span>`).join('')}
-    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:${staffScheduleFlourColor()};display:inline-block;border:1px solid var(--line)"></span>Flour Mixing Room</span>
-    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:${staffSchedulePackagingColor()};display:inline-block;border:1px solid var(--line)"></span>Packaging</span>
-    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:var(--chip);border:1px solid var(--line)"></span>Day Off</span>
-    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#000;border:1px solid var(--line)"></span>On Vacation</span>`;
+    ${[1,2,3,4,5,6].map(n => `<span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:${staffScheduleLineColor('Line '+n)};display:inline-block;border:1px solid var(--line)"></span>Line ${n}${n===4?' (Sauce)':''}${badge('Line '+n)}</span>`).join('')}
+    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:${staffScheduleFlourColor()};display:inline-block;border:1px solid var(--line)"></span>Flour Mixing Room${badge('flour')}</span>
+    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:${staffSchedulePackagingColor()};display:inline-block;border:1px solid var(--line)"></span>Packaging${badge('packaging')}</span>
+    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#eef1f4;border:1px solid var(--line)"></span>Day Off${badge('dayOff')}</span>
+    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:#000;border:1px solid var(--line)"></span>On Vacation${badge('onLeave')}</span>
+    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:${LEAVE_TYPE_STYLE.request_off.bg};border:1px solid var(--line)"></span>Request Off${badge('requestOff')}</span>
+    <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:12px;height:12px;background:${LEAVE_TYPE_STYLE.sick.bg};border:1px solid var(--line)"></span>Sick${badge('sick')}</span>`;
+  const headEl = document.getElementById('staffScheduleHeadcount');
+  if(!headEl) return;
+  if(single){
+    headEl.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-top:6px">Working today: <b style="color:var(--text)">${counts[0].working}</b> people</div>`;
+    return;
+  }
+  const rows = [
+    ...[1,2,3,4,5,6].map(n => ({ key: 'Line '+n, label: `Line ${n}${n===4?' (Sauce)':''}`, color: staffScheduleLineColor('Line '+n) })),
+    { key: 'flour', label: 'Flour Mixing Room', color: staffScheduleFlourColor() },
+    { key: 'packaging', label: 'Packaging', color: staffSchedulePackagingColor() },
+    { key: 'dayOff', label: 'Day Off', color: 'var(--chip)' },
+    { key: 'onLeave', label: 'On Vacation', color: '#000' },
+    { key: 'requestOff', label: 'Request Off', color: LEAVE_TYPE_STYLE.request_off.bg },
+    { key: 'sick', label: 'Sick', color: LEAVE_TYPE_STYLE.sick.bg }
+  ];
+  headEl.innerHTML = `<div class="card" style="margin-top:10px;padding:10px 14px"><div class="tablewrap"><table style="font-size:12.5px"><thead><tr>
+    <th style="text-align:left">People per area</th>${data.dates.map(d => `<th style="text-align:center">${staffScheduleDateLabel(d)}</th>`).join('')}</tr></thead><tbody>
+    ${rows.map(r => `<tr><td><span style="display:inline-block;width:10px;height:10px;background:${r.color};border:1px solid var(--line);margin-right:6px"></span>${r.label}</td>${counts.map(c => `<td style="text-align:center">${c[r.key]}</td>`).join('')}</tr>`).join('')}
+    <tr><td style="font-weight:700">Working</td>${counts.map(c => `<td style="text-align:center;font-weight:700">${c.working}</td>`).join('')}</tr>
+    </tbody></table></div></div>`;
+}
+// How many people are in each area on each shown date, counted straight off the grid's own cells
+// (so it always matches what's on screen, manual or auto-filled): Lines by the cell's Line, plus
+// Flour Mixing Room, Packaging, and the Day Off / On Vacation cells. "working" is everyone with a
+// real assignment that day — including any Line outside Line 1-6, which has no row of its own.
+function staffScheduleHeadcounts(data){
+  const blank = () => ({ 'Line 1':0, 'Line 2':0, 'Line 3':0, 'Line 4':0, 'Line 5':0, 'Line 6':0, flour:0, packaging:0, dayOff:0, onLeave:0, requestOff:0, sick:0, working:0 });
+  const counts = data.dates.map(blank);
+  data.sections.forEach(sec => sec.groups.forEach(g => g.rows.forEach(r => r.cells.forEach((c, i) => {
+    const t = counts[i];
+    if(!t || !c || c.empty) return;
+    if(c.onLeave){ t.onLeave++; return; }
+    if(c.requestOff){ t.requestOff++; return; }
+    if(c.sick){ t.sick++; return; }
+    if(c.dayOff){ t.dayOff++; return; }
+    t.working++;
+    if(c.dept === 'Flour Mixer Room') t.flour++;
+    else if(c.dept === 'Packaging') t.packaging++; // includes a Line named "Packaging" (see refreshStaffScheduleScreen)
+    else if(c.line && t[c.line] !== undefined) t[c.line]++;
+  }))));
+  return counts;
 }
 async function markStaffScheduleDayOff(employeeId, dateStr, employeeName){
   if(!canWrite()){ toast('You have read-only access'); return; }
@@ -7296,22 +7612,97 @@ async function removeStaffScheduleDayOff(leaveId){
 function printStaffSchedule(){
   if(!STAFF_SCHEDULE_DATA || !STAFF_SCHEDULE_DATA.sections.length){ toast('No employees to print'); return; }
   const dates = STAFF_SCHEDULE_DATA.dates;
-  if(STAFF_SCHEDULE_MODE === 'day'){
-    // A single day always prints as the wall-friendly Quick View — big text, name/time/position
-    // only — regardless of whether Quick View happens to be showing on screen right now; the
-    // dense grid is only worth printing for a multi-day Week range (see below). Measure the
-    // natural (full-size) height first, then — only if it would overflow one printed page —
-    // regenerate the same card at a smaller real scale so it actually fits: same layout, smaller
-    // text/spacing when there's more data, same as the on-screen version otherwise.
-    const PRINT_WIDTH_PX = 980, PRINT_HEIGHT_PX = 720;
-    const naturalHeight = measureOffscreenHeight(staffScheduleQuickViewHtml(1), PRINT_WIDTH_PX);
-    const scale = naturalHeight > PRINT_HEIGHT_PX ? Math.max(0.45, PRINT_HEIGHT_PX / naturalHeight) : 1;
-    runReportPrint(staffScheduleQuickViewHtml(scale), { landscape: true });
-    return;
-  }
-  const rangeLabel = `${dates[0]} to ${dates[dates.length-1]}`;
-  const html = `<h2>Staff Schedule</h2><p>${rangeLabel}</p>` + document.getElementById('staffScheduleGrid').outerHTML;
-  runReportPrint(html);
+  // One day, a week or a custom range all print the same way: a compact one-line-per-person sheet,
+  // portrait: Name | Time | Position for each day, laid out like the Excel schedule this replaces
+  // (staffScheduleGridPrintHtml). Usable page after the 10mm margins is ~720 x 940 CSS px —
+  // conservative enough for both Letter and A4. (The Quick View cards are screen-only now.)
+  const PRINT_WIDTH_PX = 720, PRINT_HEIGHT_PX = 940;
+  // A single day is much narrower than a week, so it can print larger than the base size to use
+  // the page; more days start from the base size.
+  const MAX_SCALE = dates.length === 1 ? 1.5 : 1;
+  // Fits when the nowrap table is no wider than the page and no taller than it. Type is the only
+  // thing scaled, and everything is measured for real (offscreen) rather than estimated, since
+  // width and height both change as the type does. Biggest type that fits wins; if even the
+  // smallest readable size (MIN_SCALE, 8px type — Chris's floor) is too wide, Position cells are
+  // allowed to wrap onto a second line, and only if THAT still doesn't fit does it run onto a
+  // second page rather than print smaller.
+  const MIN_SCALE = 0.8;
+  const fits = (s, wrap) => {
+    const m = measureOffscreenBox(staffScheduleGridPrintHtml(s, wrap), PRINT_WIDTH_PX);
+    return m.w <= PRINT_WIDTH_PX + 1 && m.h <= PRINT_HEIGHT_PX;
+  };
+  const bestScale = wrap => {
+    if(fits(MAX_SCALE, wrap)) return MAX_SCALE;
+    if(!fits(MIN_SCALE, wrap)) return null;
+    let lo = MIN_SCALE, hi = MAX_SCALE;
+    for(let i = 0; i < 8; i++){ const mid = (lo + hi) / 2; if(fits(mid, wrap)) lo = mid; else hi = mid; }
+    return lo;
+  };
+  let wrapPositions = false, scale = bestScale(false);
+  if(scale == null){ wrapPositions = true; scale = bestScale(true); }
+  if(scale == null) scale = MIN_SCALE;
+  runReportPrint(staffScheduleGridPrintHtml(scale, wrapPositions), { portrait: true });
+}
+// Like measureOffscreenHeight, but also reports how wide the content really is (wider than the
+// box means it would be cut off on paper) — measured at the print page's usable width.
+function measureOffscreenBox(html, widthPx){
+  const area = document.getElementById('printReportArea');
+  const prevHtml = area.innerHTML, prevCss = area.style.cssText;
+  area.innerHTML = html;
+  area.style.cssText = `display:block!important;visibility:hidden;position:fixed;left:0;top:0;width:${widthPx}px;max-width:none`;
+  const box = { w: area.scrollWidth, h: area.scrollHeight };
+  area.style.cssText = prevCss;
+  area.innerHTML = prevHtml;
+  return box;
+}
+// Print layout for Week/Range, modeled on the Excel sheet it replaces: one line per person —
+// Name, then Time | Position side by side under each day — so ~60 people fit one portrait page at a
+// readable size, where stacking time over position in each cell took three lines a person. Built
+// from STAFF_SCHEDULE_DATA (not the on-screen table), so none of the screen-only controls come
+// along. `scale` sizes the type/padding for real (see staffScheduleQuickViewHtml for why not a
+// CSS zoom); `wrapPositions` lets long Position text take a second line when the days won't fit
+// across the page otherwise.
+function staffScheduleGridPrintHtml(scale, wrapPositions){
+  const data = STAFF_SCHEDULE_DATA, dates = data.dates;
+  const fs = Math.round(10 * scale * 10) / 10;
+  const padV = Math.max(0.5, Math.round(1.5 * scale * 10) / 10), padH = Math.max(1.5, Math.round(3 * scale * 10) / 10);
+  const g = '#printReportArea .ssp';
+  const colSpan = 1 + dates.length * 2;
+  const head1 = `<tr><th rowspan="2"></th>${dates.map(d => {
+    const dt = new Date(d + 'T00:00:00');
+    return `<th colspan="2" style="text-align:center">${dt.toLocaleDateString([], {weekday:'long'})}<br>${dt.toLocaleDateString([], {month:'long', day:'numeric', year:'numeric'})}</th>`;
+  }).join('')}</tr>`;
+  const head2 = `<tr>${dates.map(() => '<th>Time</th><th>Position</th>').join('')}</tr>`;
+  const cellHtml = c => {
+    if(!c || c.empty) return '<td></td><td></td>';
+    if(c.onLeave) return '<td colspan="2" style="background:#000;color:#fff;text-align:center;font-weight:700">On Vacation</td>';
+    if(c.requestOff || c.sick){
+      const s = LEAVE_TYPE_STYLE[c.requestOff ? 'request_off' : 'sick'];
+      return `<td colspan="2" style="background:${s.bg};color:${s.fg};text-align:center;font-weight:700">${s.label}${c.note ? ` <span style="font-weight:400">· ${escapeHtml(c.note)}</span>` : ''}</td>`;
+    }
+    if(c.dayOff) return '<td colspan="2" style="background:#eef1f4;text-align:center">Day Off</td>';
+    return `<td style="background:${c.color}">${escapeHtml(c.time || '')}</td><td class="pos" style="background:${c.color}">${escapeHtml(c.position || '')}</td>`;
+  };
+  const body = data.sections.map(sec => {
+    const banner = (text, cls) => `<tr><td colspan="${colSpan}" class="${cls}">${escapeHtml(text)}</td></tr>`;
+    return banner(sec.name, 'sec') + sec.groups.map(grp =>
+      (grp.label ? banner(grp.label, 'grp') : '') +
+      grp.rows.map(r => `<tr><td class="nm">${escapeHtml(r.employee.name)}</td>${r.cells.map(cellHtml).join('')}</tr>`).join('')
+    ).join('');
+  }).join('');
+  return `<style>
+    ${g}{border-collapse:collapse;table-layout:auto!important;width:auto!important;font-size:${fs}px!important;margin:0!important}
+    ${g} th,${g} td{border:1px solid #777!important;padding:${padV}px ${padH}px!important;line-height:1.15!important;font-size:${fs}px!important;white-space:nowrap!important;text-align:left;color:#000;vertical-align:middle;overflow-wrap:normal!important}
+    ${g} th{font-weight:700;background:#fff}
+    ${g} td.pos{white-space:${wrapPositions ? 'normal' : 'nowrap'}!important}
+    ${g} td.nm{font-weight:700}
+    ${g} td.sec{background:#9fc0e4;font-weight:700;font-style:italic;color:#b00000}
+    ${g} td.grp{background:#dbe7f5;font-weight:700}
+    ${g} tr{break-inside:avoid;page-break-inside:avoid}
+    ${g} thead{display:table-header-group}
+  </style>
+  <div class="ssp-title" style="font-size:16px;margin:0 0 ${Math.round(4 * scale)}px"><b>Staff Schedule</b> &nbsp; ${dates.length === 1 ? dates[0] : `${dates[0]} to ${dates[dates.length-1]}`}</div>
+  <table class="ssp"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>`;
 }
 let KIOSK_INTERVAL = null;
 function enterKioskMode(){
@@ -7453,7 +7844,7 @@ async function renderConfirmScheduledDaysList(){
   const listEl = document.getElementById('scheduledDaysListConfirm');
   if(!listEl) return;
   try{
-    const runs = await sbGetAll(`erp_production_runs?select=id,run_date,packing_date,status&order=run_date.asc`);
+    const runs = await sbGetAll(`erp_production_runs?select=id,run_date,packing_date,status,line&order=run_date.asc`);
     if(!runs.length){ listEl.innerHTML = ''; document.getElementById('scheduledDaysEmptyConfirm').style.display = 'block'; return; }
     const runIds = runs.map(r=>r.id);
     const items = await sbGetAll(`erp_production_run_items?select=id,run_id,status&run_id=in.(${runIds.join(',')})`);
@@ -7461,8 +7852,9 @@ async function renderConfirmScheduledDaysList(){
     items.forEach(it => { (itemsByRun[it.run_id] = itemsByRun[it.run_id]||[]).push(it); });
     const pendingRuns = runs.filter(r => {
       if(r.status === 'Cancelled') return false; // nothing left to confirm — no flour deducted, items frozen
-      if(r.status !== 'Confirmed') return true;
-      return (itemsByRun[r.id]||[]).some(it => it.status !== 'Confirmed');
+      // Packaging-only runs have no batches to confirm — they're pending only while an item is.
+      if(r.status !== 'Confirmed' && !isPackagingOnlyRun(r)) return true;
+      return (itemsByRun[r.id]||[]).some(it => it.status !== 'Confirmed' && it.status !== 'Cancelled');
     });
     if(!pendingRuns.length){ listEl.innerHTML = ''; document.getElementById('scheduledDaysEmptyConfirm').style.display = 'block'; return; }
     // Batch confirmation (flour/dough) is a production-day concern, so it buckets under
@@ -7471,8 +7863,8 @@ async function renderConfirmScheduledDaysList(){
     // run can land in both buckets at once if neither has been done yet.
     const runCounts = {}, itemCounts = {};
     pendingRuns.forEach(r => {
-      if(r.status !== 'Confirmed') runCounts[r.run_date] = (runCounts[r.run_date]||0) + 1;
-      const pendingItems = (itemsByRun[r.id]||[]).filter(it => it.status !== 'Confirmed').length;
+      if(r.status !== 'Confirmed' && !isPackagingOnlyRun(r)) runCounts[r.run_date] = (runCounts[r.run_date]||0) + 1;
+      const pendingItems = (itemsByRun[r.id]||[]).filter(it => it.status !== 'Confirmed' && it.status !== 'Cancelled').length;
       if(pendingItems > 0){
         const packDate = r.packing_date || r.run_date;
         itemCounts[packDate] = (itemCounts[packDate]||0) + pendingItems;
@@ -7487,14 +7879,28 @@ async function renderConfirmScheduledDaysList(){
       const nItems = itemCounts[d] || 0;
       const highlight = isToday ? ';border-color:var(--accent);color:var(--accent);font-weight:700'
         : isOverdue ? ';border-color:var(--danger);color:var(--danger);font-weight:700' : '';
-      return `<button class="btn secondary" style="padding:6px 12px;font-size:12px${highlight}" onclick="jumpToConfirmScheduledDay('${d}')">${d}${isToday?' (Today)':''}${isOverdue?' (Overdue)':''} · ${nRuns} run${nRuns===1?'':'s'}${nItems?` · ${nItems} item${nItems===1?'':'s'}`:''} pending</button>`;
+      return `<button class="btn secondary" data-date="${d}" data-hl="${highlight}" style="padding:6px 12px;font-size:12px${highlight}" onclick="jumpToConfirmScheduledDay('${d}')">${d}${isToday?' (Today)':''}${isOverdue?' (Overdue)':''} · ${nRuns||0} run${nRuns===1?'':'s'}${nItems?` · ${nItems} item${nItems===1?'':'s'}`:''} pending</button>`;
     }).join('');
     document.getElementById('scheduledDaysEmptyConfirm').style.display = 'none';
+    markConfirmDayChips('scheduledDaysListConfirm', document.getElementById('confirmViewDate').value);
   }catch(e){ /* non-fatal — the rest of the screen still works */ }
+}
+// Marks whichever "Days Awaiting Confirmation" chip matches the date currently being viewed with
+// the same filled active-option look the other date-chip lists use. The Today/Overdue chips carry
+// their own accent/red text color inline (data-hl), which would be unreadable on the filled
+// background, so that's only applied while a chip is NOT the selected one. Works off the chips
+// already on the page, so changing the date input just re-marks them instead of refetching.
+function markConfirmDayChips(listElId, date){
+  document.querySelectorAll(`#${listElId} button[data-date]`).forEach(b => {
+    const selected = b.dataset.date === date;
+    b.classList.toggle('active-option', selected);
+    b.style.cssText = 'padding:6px 12px;font-size:12px' + (selected ? '' : (b.dataset.hl || ''));
+  });
 }
 function jumpToConfirmScheduledDay(date){
   document.getElementById('confirmViewDate').value = date;
   renderConfirmRunCards();
+  markConfirmDayChips('scheduledDaysListConfirm', date);
 }
 /* ============================================================
    LINES — master list driving the Line dropdown on Product Doughs
@@ -7943,18 +8349,47 @@ function recalcRunPackingDate(){
   const offset = line ? (parseInt(line.packing_offset_days, 10) || 0) : 0;
   document.getElementById('runPackingDate').value = runDate ? addDaysToDateStr(runDate, offset) : '';
 }
+// A "Packaging only" run is a product that's packed in Packaging but never made on a Line — no
+// dough, mixes, steps or Line staffing. It's stored as an ordinary erp_production_runs row (so its
+// items, confirmation, reports and stock-in all work unchanged) whose line is this fixed label and
+// whose packaging_headcount (fix59) is how many Packaging people it needs that day.
+const PACKAGING_ONLY_LINE = 'Packaging only';
+function isPackagingOnlyRun(run){ return !!run && run.line === PACKAGING_ONLY_LINE; }
+function onRunPackagingOnlyChange(){
+  const on = document.getElementById('runPackagingOnly').checked;
+  document.getElementById('runProductWrap').style.display = on ? 'none' : '';
+  document.getElementById('runPkgProductWrap').style.display = on ? '' : 'none';
+  document.getElementById('runPkgHeadcountWrap').style.display = on ? '' : 'none';
+  document.getElementById('runLineRow').style.display = on ? 'none' : '';
+  if(on){
+    const names = dedupeCaseInsensitive(ITEMS.map(i => i.item_name).filter(Boolean)).sort((a,b) => a.localeCompare(b));
+    document.getElementById('runPkgProductList').innerHTML = names.map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
+    document.getElementById('runPackingDate').value = document.getElementById('runDate').value; // packed the day it's scheduled
+  } else {
+    recalcRunPackingDate();
+  }
+}
 async function submitProductionRun(){
   if(!canWrite()){ toast('You have read-only access'); return; }
-  const productName = document.getElementById('runProduct').value;
-  if(!productName){ toast('Please select a product'); return; }
+  const packagingOnly = document.getElementById('runPackagingOnly').checked;
+  const productName = packagingOnly ? document.getElementById('runPkgProduct').value.trim() : document.getElementById('runProduct').value;
+  if(!productName){ toast(packagingOnly ? 'Please enter the product' : 'Please select a product'); return; }
   const runDate = document.getElementById('runDate').value || todayStr();
-  const mixes = parseFloat(document.getElementById('runMixes').value) || 0;
-  const line = document.getElementById('runLine').value || null;
-  const packingDate = document.getElementById('runPackingDate').value || runDate;
+  const mixes = packagingOnly ? 0 : (parseFloat(document.getElementById('runMixes').value) || 0);
+  const line = packagingOnly ? PACKAGING_ONLY_LINE : (document.getElementById('runLine').value || null);
+  const packingDate = packagingOnly ? runDate : (document.getElementById('runPackingDate').value || runDate);
   const remark = document.getElementById('runRemark').value.trim();
+  const row = { run_date: runDate, packing_date: packingDate, line, product_name: productName, planned_mixes: mixes, remark: remark||null };
+  if(packagingOnly){
+    const headcount = parseInt(document.getElementById('runPkgHeadcount').value, 10);
+    if(!(headcount >= 0)){ toast('Please enter how many people are needed'); return; }
+    row.packaging_headcount = headcount;
+  }
   try{
-    await sbInsert('erp_production_runs', [{ run_date: runDate, packing_date: packingDate, line, product_name: productName, planned_mixes: mixes, remark: remark||null }]);
-    toast('Production run started');
+    await sbInsert('erp_production_runs', [row]);
+    toast(packagingOnly ? 'Packaging-only run added' : 'Production run started');
+    document.getElementById('runPkgProduct').value = '';
+    document.getElementById('runPkgHeadcount').value = '';
     document.getElementById('runProduct').value = '';
     document.getElementById('runLine').value = '';
     document.getElementById('runMixes').value = '';
@@ -8005,7 +8440,28 @@ async function cancelProductionRun(runId){
   if(!confirm(`Cancel this run (${run.product_name})? No flour will be deducted and packed items under it can no longer be confirmed. This cannot be undone.`)) return;
   try{
     await sbUpdate('erp_production_runs', runId, { status: 'Cancelled', confirmed_at: new Date().toISOString() });
+    // Cancelling a run is the same as cancelling every item under it — mark them Cancelled too so
+    // they read the same everywhere an item is shown on its own. Anything already Confirmed stays
+    // as is: its Finished Goods stock was really added and isn't undone by this.
+    await sb(`erp_production_run_items?run_id=eq.${runId}&status=neq.Confirmed`, { method: 'PATCH', headers: { Prefer: 'return=representation' }, body: JSON.stringify({ status: 'Cancelled', confirmed_at: new Date().toISOString() }) });
     toast('Run cancelled');
+    await refreshScheduleScreen();
+  }catch(e){ toast('Cancel failed: ' + e.message); }
+}
+// Cancels ONE packed item that isn't going to be produced after all (the rest of the run carries
+// on). Nothing is added to Finished Goods, and — like a Cancelled run — the row stays visible,
+// just stamped Cancelled and frozen. Flour is deducted per run at confirm time, not per item, so
+// there's nothing to hand back here. Not reversible, same as cancelProductionRun.
+async function cancelRunItem(id){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  try{
+    const rows = await sbGet(`erp_production_run_items?select=id,item_no,item_name,planned_cases,status&id=eq.${id}`);
+    const it = rows[0];
+    if(!it){ toast('Item not found'); return; }
+    if(it.status === 'Confirmed'){ toast('Already confirmed — use Correct instead'); return; }
+    if(!confirm(`Cancel ${it.item_name||it.item_no} (#${it.item_no}, ${fmtNum(it.planned_cases)} cases)?\n\nNothing will be added to Finished Goods, and this item can no longer be confirmed. This cannot be undone.`)) return;
+    await sbUpdate('erp_production_run_items', id, { status: 'Cancelled', confirmed_at: new Date().toISOString() });
+    toast('Item cancelled');
     await refreshScheduleScreen();
   }catch(e){ toast('Cancel failed: ' + e.message); }
 }
@@ -8071,12 +8527,14 @@ async function promptCorrectConfirmedBatches(runId){
 async function confirmRunItem(id){
   if(!canWrite()){ toast('You have read-only access'); return; }
   try{
-    const rows = await sbGet(`erp_production_run_items?select=id,item_no,item_name,planned_cases,expired_date,production_date,erp_production_runs(run_date)&id=eq.${id}`);
+    const rows = await sbGet(`erp_production_run_items?select=id,item_no,item_name,planned_cases,expired_date,production_date,erp_production_runs(run_date,packing_date)&id=eq.${id}`);
     const it = rows[0];
     if(!it){ toast('Item not found'); return; }
     const cases = Math.round(parseFloat(it.planned_cases) || 0);
     if(!confirm(`Confirm ${fmtNum(cases)} cases of ${it.item_name||it.item_no} (#${it.item_no})?\n\nThis is the ACTUAL quantity produced — double-check it's not just the auto-suggested plan before continuing. This adds Finished Goods stock and cannot be undone.`)) return;
-    const runDate = it.erp_production_runs?.run_date || todayStr();
+    // Stock goes in on the day the item is PACKED (packing_date — same as run_date for ordinary
+    // same-day lines), consistent with the Production/Julian date it's dated from.
+    const runDate = it.erp_production_runs?.packing_date || it.erp_production_runs?.run_date || todayStr();
     const julian = it.production_date ? toJulianDate(it.production_date) : (it.expired_date ? toJulianDate(it.expired_date) : '');
     const lot = it.expired_date ? `Exp: ${it.expired_date}${julian?` (Julian: ${julian})`:''}`
       : (it.production_date ? `Prod: ${it.production_date}${julian?` (Julian: ${julian})`:''}` : null);
@@ -8099,7 +8557,7 @@ async function confirmRunItem(id){
 async function promptCorrectConfirmedItem(itemId){
   if(!isAdmin()){ toast('Admin only'); return; }
   try{
-    const rows = await sbGet(`erp_production_run_items?select=id,item_no,item_name,confirmed_cases,status,erp_production_runs(run_date)&id=eq.${itemId}`);
+    const rows = await sbGet(`erp_production_run_items?select=id,item_no,item_name,confirmed_cases,status,erp_production_runs(run_date,packing_date)&id=eq.${itemId}`);
     const it = rows[0];
     if(!it || it.status !== 'Confirmed'){ toast('Item not found or not confirmed'); return; }
     const oldCases = Math.round(parseFloat(it.confirmed_cases) || 0);
@@ -8110,7 +8568,7 @@ async function promptCorrectConfirmedItem(itemId){
     const delta = newCases - oldCases;
     if(delta === 0){ toast('No change'); return; }
     if(!confirm(`Change ${it.item_name||it.item_no} from ${oldCases} to ${newCases} cases (${delta>0?'+':''}${delta})?\n\nThis adjusts Finished Goods stock by ${delta>0?'+':''}${delta} case(s)${itemHasRecipe(it.item_no)?' and corrects Components stock accordingly':''}. Cannot be undone.`)) return;
-    const runDate = it.erp_production_runs?.run_date || todayStr();
+    const runDate = it.erp_production_runs?.packing_date || it.erp_production_runs?.run_date || todayStr(); // packing day, like confirmRunItem
     const lot = `Correction: confirmed cases ${oldCases} → ${newCases}`;
     if(delta > 0){
       await sbInsert('erp_inout', [{ entry_date: runDate, item_no: it.item_no, item_name: it.item_name, in_qty: delta, out_qty: 0, lot }]);
@@ -8173,7 +8631,8 @@ function runTotalOutputKg(run){
   return mixes * p.weight_per_mix_kg * (p.yield_factor==null?1:p.yield_factor);
 }
 function runUsedKg(items){
-  return items.reduce((sum,it) => sum + (parseFloat(it.planned_cases)||0) * caseWeightKg(ITEMS_BY_NO[it.item_no]), 0);
+  // A Cancelled item won't be packed, so the dough it was set aside for is free again.
+  return items.filter(it => it.status !== 'Cancelled').reduce((sum,it) => sum + (parseFloat(it.planned_cases)||0) * caseWeightKg(ITEMS_BY_NO[it.item_no]), 0);
 }
 // Once every item under a confirmed run has also been individually confirmed, compare what
 // actually came out (confirmed_cases, converted to dough-weight-equivalent kg) against the
@@ -8183,6 +8642,8 @@ function runUsedKg(items){
 function runActualYield(run, items, p){
   p = p || getProductInfo(run.product_name);
   if(run.status !== 'Confirmed' || !p || !p.weight_per_mix_kg || !run.confirmed_mixes) return null;
+  // Cancelled items never came out, so they neither block the yield nor contribute to it.
+  items = items.filter(it => it.status !== 'Cancelled');
   if(!items.length || items.some(it => it.status !== 'Confirmed')) return null;
   const inputKg = run.confirmed_mixes * p.weight_per_mix_kg;
   if(inputKg <= 0) return null;
@@ -8204,9 +8665,15 @@ function itemPackDetail(item, cases){
 }
 function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const showItemConfirmButtons = showConfirmButton; // items get their own Confirm action wherever runs can be confirmed
-  const p = getProductInfo(run.product_name);
+  // Packaging only: no dough/batches to confirm — the run is done once its items are (see
+  // PACKAGING_ONLY_LINE), so its chip follows the items instead of a run-level Confirm.
+  const pkgOnly = isPackagingOnlyRun(run);
+  const p = pkgOnly ? null : getProductInfo(run.product_name);
   const actualYield = runActualYield(run, items, p);
-  const statusChip = run.status === 'Confirmed'
+  const pkgAllDone = pkgOnly && items.length > 0 && items.every(it => it.status === 'Confirmed' || it.status === 'Cancelled') && items.some(it => it.status === 'Confirmed');
+  const statusChip = pkgOnly
+    ? (run.status === 'Cancelled' ? `<span class="chip cancel">Cancelled</span>` : pkgAllDone ? `<span class="chip ok">Packed</span>` : `<span class="chip">Planned</span>`)
+    : run.status === 'Confirmed'
     ? `<span class="chip ok">Confirmed (${fmtNum(run.confirmed_mixes)}/${fmtNum(run.planned_mixes)} batch${(parseFloat(run.planned_mixes)||0)===1?'':'es'}${actualYield!=null?`, Yield: ${fmtNum(actualYield)}`:''})</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedBatches(${run.id})">✎ Correct</button>`
     : run.status === 'Cancelled' ? `<span class="chip cancel">Cancelled</span>`
     : `<span class="chip">Planned</span>`;
@@ -8217,12 +8684,13 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const productInfo = p
     ? `<div style="font-size:12px;color:var(--muted);margin-bottom:4px">📋 Weight/mix: <strong>${fmtNum(p.weight_per_mix_kg)} kg</strong> · Yield: <strong>${fmtNum(p.yield_factor)}</strong>${mixTimeMin!=null?` · Mixing time: <strong>${fmtNum(mixTimeMin)} min</strong> (${fmtNum(p.mixing_min_per_mix)} min/mix)`:''}</div>`
     : '';
-  const weightInfo = totalKg > 0
+  const weightInfo = pkgOnly ? '' : totalKg > 0
     ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">⚖ Total output: <strong>${fmtNum(totalKg)} kg</strong> · Used: ${fmtNum(usedKg)} kg · Remaining: <strong style="color:${remainingKg<0?'var(--danger)':'var(--text)'}">${fmtNum(remainingKg)} kg</strong></div>`
     : `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">⚖ No Yield/Weight-per-mix on file for "${run.product_name}" — enter Cases manually below.</div>`;
-  const totalPackingHrs = items.reduce((s,it)=>s+(parseFloat(it.packing_hrs)||0), 0);
-  const packingHrsInfo = items.length ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">🕐 Total packing hours for this run: <strong>${fmtHrs(totalPackingHrs)} hrs</strong> across ${items.length} item(s)</div>` : '';
-  const confirmBtn = (showConfirmButton && run.status==='Planned')
+  const liveItems = items.filter(it => it.status !== 'Cancelled');
+  const totalPackingHrs = liveItems.reduce((s,it)=>s+(parseFloat(it.packing_hrs)||0), 0);
+  const packingHrsInfo = liveItems.length ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">🕐 Total packing hours for this run: <strong>${fmtHrs(totalPackingHrs)} hrs</strong> across ${liveItems.length} item(s)</div>` : '';
+  const confirmBtn = (showConfirmButton && run.status==='Planned' && !pkgOnly)
     ? `<button class="btn secondary can-write" style="padding:6px 10px;font-size:12px" onclick="confirmProductionRun(${run.id})">✔ Confirm Batches</button>`
     : '';
   // Cancel is only offered alongside Confirm — once a run is Confirmed the flour's already
@@ -8234,10 +8702,17 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   // Deliberately a SEPARATE field from the "batches of" plan input below — editing it here
   // must never overwrite planned_mixes, or the original plan is destroyed and the eventual
   // Confirmed (actual/planned) chip degenerates into e.g. "9/9" instead of "9/16".
-  const actualMixesBlock = (showConfirmButton && run.status==='Planned' && canWrite())
+  const actualMixesBlock = (showConfirmButton && run.status==='Planned' && canWrite() && !pkgOnly)
     ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;font-size:12px;color:var(--muted)">Actual: <input type="number" step="any" value="${run.planned_mixes||0}" id="runActualMixes_${run.id}" style="width:70px" title="The ACTUAL number of batches mixed, if different from the plan"></span>`
     : '';
-  const mixesCanEdit = itemsEditable && run.status==='Planned' && canWrite();
+  const mixesCanEdit = itemsEditable && run.status==='Planned' && canWrite() && !pkgOnly;
+  // Packaging only: how many Packaging people this run needs that day (Staffing's Packaging pool
+  // and the Dashboard add it to what's needed) — typed in by hand, see fix59.
+  const pkgHeadcountBlock = pkgOnly
+    ? ((itemsEditable && run.status==='Planned' && canWrite())
+        ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span class="chip">Packaging only</span> People needed: <input type="number" min="0" step="1" value="${run.packaging_headcount ?? 0}" style="width:60px" onchange="updateRunPackagingHeadcount(${run.id}, this.value)"></span>`
+        : `<span class="chip">Packaging only</span> <span style="font-size:12px;color:var(--muted)">${run.packaging_headcount ?? 0} people needed</span>`)
+    : '';
   const reorderBtns = (itemsEditable && canWrite())
     ? `<button class="btn secondary" style="padding:4px 8px;font-size:12px" title="Move up within this Line" onclick="moveRunOrder(${run.id}, 'up')">▲</button>
        <button class="btn secondary" style="padding:4px 8px;font-size:12px" title="Move down within this Line" onclick="moveRunOrder(${run.id}, 'down')">▼</button>`
@@ -8272,12 +8747,13 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
     <div class="row" style="align-items:center;margin-bottom:6px">
       <div style="flex:2">
         ${reorderBtns}
-        <span style="display:${mixesCanEdit?'inline-flex':'none'};align-items:center;gap:4px">
+        ${pkgOnly ? '' : `<span style="display:${mixesCanEdit?'inline-flex':'none'};align-items:center;gap:4px">
           <input type="number" step="any" value="${run.planned_mixes||0}" style="width:70px" onchange="updateRunMixes(${run.id}, this.value)"> batches of
         </span>
-        <strong style="display:${mixesCanEdit?'none':'inline'}">${fmtNum(run.planned_mixes)} batches of</strong>
+        <strong style="display:${mixesCanEdit?'none':'inline'}">${fmtNum(run.planned_mixes)} batches of</strong>`}
         <strong>${run.product_name}</strong>
-        ${run.line ? `<span class="chip" style="margin-left:6px">${run.line}</span>` : ''}
+        ${run.line && !pkgOnly ? `<span class="chip" style="margin-left:6px">${run.line}</span>` : ''}
+        ${pkgHeadcountBlock ? `<span style="margin-left:6px">${pkgHeadcountBlock}</span>` : ''}
         <span style="margin-left:6px">${statusChip}</span>
         ${actualMixesBlock}
         ${runDateBlock}
@@ -8296,8 +8772,12 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
     <tbody>${items.map(it => {
       const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
       const dateLabel = formatProdExpDate(it);
+      // Cancelled on its own (cancelRunItem), or still sitting under a run that was cancelled
+      // before items got their own Cancelled status — either way it was never going to be packed.
+      const itCancelled = it.status==='Cancelled' || (run.status==='Cancelled' && it.status!=='Confirmed');
       const itStatus = it.status==='Confirmed'
         ? `<span class="chip ok">Confirmed</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedItem(${it.id})">✎ Correct</button>`
+        : itCancelled ? `<span class="chip cancel">Cancelled</span>`
         : `<span class="chip">Planned</span>`;
       // Once Confirmed, the actual cases packed can differ from the plan — show that, not a
       // stale planned number, mirroring runActualYield's own confirmed_cases-first convention.
@@ -8305,7 +8785,7 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
       // A Cancelled run's items can't be confirmed or edited either — nothing was actually
       // made, so there's nothing left to pack. They still display (see cancelProductionRun),
       // just frozen like a Confirmed run's items already are.
-      const rowEditable = (itemsEditable || showItemConfirmButtons) && it.status!=='Confirmed' && run.status !== 'Cancelled';
+      const rowEditable = (itemsEditable || showItemConfirmButtons) && it.status!=='Confirmed' && !itCancelled;
       // Only items actually tracking an expiry date (Cooler/Freezer) get an editable date —
       // a plain "Prod: ..." item's date is just the run's own date, not meant to be
       // overridden per item. Everything has to live inside one white-space:normal wrapper,
@@ -8320,7 +8800,7 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
              </select>
            </div>`
         : `<div style="white-space:normal">${dateLabel}</div>`;
-      const itemReorderBtns = (itemsEditable && canWrite() && it.status!=='Confirmed' && run.status !== 'Cancelled')
+      const itemReorderBtns = (itemsEditable && canWrite() && it.status!=='Confirmed' && !itCancelled)
         ? `<button class="btn secondary" style="padding:2px 6px;font-size:11px" title="Move up" onclick="moveRunItemOrder('${gid}', ${it.id}, 'up')">▲</button>
            <button class="btn secondary" style="padding:2px 6px;font-size:11px" title="Move down" onclick="moveRunItemOrder('${gid}', ${it.id}, 'down')">▼</button>`
         : '';
@@ -8330,9 +8810,9 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
       // leaves it null for 'Freezer' (compound) or any other storage — so it's already the exact
       // signal needed, with no new column required.
       const storageBadge = item ? storageKeepBadgeHtml(item.storage, storageIsCompound(item.storage) ? (it.expired_date ? 'cooler' : 'freezer') : null) : '';
-      return `<tr>
+      return `<tr${itCancelled?' style="opacity:.6"':''}>
         <td style="white-space:nowrap">${itemReorderBtns} ${it.item_no}</td>
-        <td>${it.item_name||''}
+        <td${itCancelled?' style="text-decoration:line-through"':''}>${it.item_name||''}
           ${storageBadge ? `<div style="margin-top:4px">${storageBadge}</div>` : ''}
           ${(rowEditable && canWrite())
             ? `<input placeholder="Remark..." value="${(it.remark||'').replace(/"/g,'&quot;')}" style="display:block;margin-top:4px;font-size:11px;padding:3px 6px;width:100%;color:var(--danger);font-weight:700;font-style:italic" onchange="updateRunItemRemark(${it.id}, this.value)">`
@@ -8343,8 +8823,9 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
         <td>${it.packing_hrs?fmtHrs(it.packing_hrs)+'h':'–'}</td><td>${dateCell}</td><td>${itStatus}</td>
         ${(itemsEditable || showItemConfirmButtons) ? `<td class="no-print can-write" style="white-space:nowrap">
           <div style="display:flex;gap:6px;flex-wrap:nowrap">
-            ${(showItemConfirmButtons && it.status!=='Confirmed' && run.status !== 'Cancelled') ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="confirmRunItem(${it.id})">✔ Confirm</button>` : ''}
-            ${(itemsEditable && it.status!=='Confirmed' && run.status !== 'Cancelled') ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="editRunItemInline(${it.id}, '${gid}')">✎ Edit</button>` : ''}
+            ${(showItemConfirmButtons && it.status!=='Confirmed' && !itCancelled) ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="confirmRunItem(${it.id})">✔ Confirm</button>
+            <button class="btn secondary" style="padding:6px 10px;font-size:12px;color:var(--danger)" title="This item won't be produced" onclick="cancelRunItem(${it.id})">✕ Cancel</button>` : ''}
+            ${(itemsEditable && it.status!=='Confirmed' && !itCancelled) ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="editRunItemInline(${it.id}, '${gid}')">✎ Edit</button>` : ''}
             ${itemsEditable ? `<button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="deleteRow('erp_production_run_items',${it.id},refreshScheduleScreen)">✕ Delete</button>` : ''}
           </div>
         </td>` : ''}
@@ -8377,7 +8858,7 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
       </div>
       <div style="flex:1;min-width:150px"><label>Remark</label><input id="${gid}_remark" placeholder="Notes for this item..."></div>
       <input type="hidden" id="${gid}_editItemId">
-      <button class="btn secondary" id="${gid}_addBtn" onclick="addRunItem(${run.id}, '${gid}', '${run.run_date}')">＋ Add</button>
+      <button class="btn secondary" id="${gid}_addBtn" onclick="addRunItem(${run.id}, '${gid}', '${run.packing_date || run.run_date}')">＋ Add</button>
       <button class="btn secondary" id="${gid}_cancelBtn" style="display:none" onclick="cancelEditRunItemInline('${gid}')">✕ Cancel Edit</button>
     </div>
     <div id="${gid}_capNote" style="font-size:12px;color:var(--danger);font-weight:600;margin-top:6px"></div>
@@ -8460,7 +8941,12 @@ async function fetchRunsAndItems(date){
   // (Line 6, see recalcRunPackingDate) shows up under BOTH: its production day (to confirm
   // batches / see what to make) and its packing day (to confirm items). Ordinary same-day
   // lines have run_date===packing_date, so this is a no-op for them — one match, one row.
-  const runs = await sbGet(`erp_production_runs?select=id,run_date,packing_date,line,product_name,planned_mixes,confirmed_mixes,status,remark,packaging_note,sort_order&or=(run_date.eq.${date},packing_date.eq.${date})&order=sort_order.asc.nullslast,id.asc&limit=200`);
+  const runCols = 'id,run_date,packing_date,line,product_name,planned_mixes,confirmed_mixes,status,remark,packaging_note,sort_order';
+  const runFilter = `&or=(run_date.eq.${date},packing_date.eq.${date})&order=sort_order.asc.nullslast,id.asc&limit=200`;
+  // packaging_headcount (fix59) is only for Packaging-only runs; if that SQL hasn't been run yet the
+  // select would fail outright, so fall back to the old columns rather than break every screen.
+  const runs = await sbGet(`erp_production_runs?select=${runCols},packaging_headcount${runFilter}`)
+    .catch(() => sbGet(`erp_production_runs?select=${runCols}${runFilter}`));
   const items = runs.length
     ? await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,machines,cycles,bags_per_cycle,packing_hrs,production_date,expired_date,status,confirmed_cases,remark,date_display_mode,sort_order&run_id=in.(${runs.map(r=>r.id).join(',')})&order=sort_order.asc.nullslast,id.asc&limit=1000`)
     : [];
@@ -8583,7 +9069,8 @@ function dashboardPackagingCenterPoolNeeded(allRuns){
     const h = PRODUCT_PACKAGING_HEADCOUNT[r.product_name] || 0;
     if(h > (maxByLine[r.line] || 0)) maxByLine[r.line] = h;
   });
-  return Object.values(maxByLine).reduce((sum, h) => sum + h, 0);
+  // Plus any Packaging-only runs' own hand-typed headcount — same as packagingCenterPoolNeeded().
+  return Object.values(maxByLine).reduce((sum, h) => sum + h, 0) + packagingOnlyHeadcount(allRuns);
 }
 // MAXIMUM CONCURRENT STAFFING REQUIREMENT: a physical Line can run several Runs (Doughs) the same
 // day, one after another (e.g. Dough A then Dough B then Dough C) — this app has no reliable
@@ -8619,10 +9106,10 @@ function dashboardLineStaffing(data, lineRuns){
 function buildDashboardSummary(data){
   const runs = data.runs.filter(r => r.status !== 'Cancelled'); // nothing was actually made for a Cancelled run
   const runIds = new Set(runs.map(r => r.id));
-  const relevantItems = data.items.filter(it => runIds.has(it.run_id));
+  const relevantItems = data.items.filter(it => runIds.has(it.run_id) && it.status !== 'Cancelled');
   const plannedCases = relevantItems.reduce((s,it) => s + (parseFloat(it.planned_cases)||0), 0);
   const actualCases = relevantItems.reduce((s,it) => s + (parseFloat(it.confirmed_cases)||0), 0);
-  const totalLines = new Set(runs.map(r => r.line || '(No Line)'));
+  const totalLines = new Set(runs.filter(r => !isPackagingOnlyRun(r)).map(r => r.line || '(No Line)')); // not a production Line
   // "Running" = actual step status says someone's actively on it right now — never guessed.
   const runningLines = new Set();
   data.steps.forEach(s => {
@@ -8675,7 +9162,7 @@ function buildDashboardLines(data){
   return lineNames.map(line => {
     const lineRuns = byLine[line];
     const runIds = new Set(lineRuns.map(r => r.id));
-    const lineItems = data.items.filter(it => runIds.has(it.run_id));
+    const lineItems = data.items.filter(it => runIds.has(it.run_id) && it.status !== 'Cancelled');
     const lineSteps = data.steps.filter(s => runIds.has(s.run_id));
     const plannedCases = lineItems.reduce((s,it) => s + (parseFloat(it.planned_cases)||0), 0);
     const actualCases = lineItems.reduce((s,it) => s + (parseFloat(it.confirmed_cases)||0), 0);
@@ -8718,7 +9205,17 @@ function buildDashboardLines(data){
       }
     }
     const staffing = dashboardLineStaffing(data, lineRuns);
+    // A Packaging-only "Line" has no steps/mixes/staff slots: its status follows its items, and its
+    // card shows People needed instead (see renderDashboardLines).
+    const packagingOnly = line === PACKAGING_ONLY_LINE;
+    if(packagingOnly){
+      const done = lineItems.filter(it => it.status === 'Confirmed').length;
+      if(lineItems.length && done === lineItems.length){ statusLabel = 'Completed'; statusTone = 'green'; }
+      else if(done > 0){ statusLabel = 'In Progress'; statusTone = 'amber'; }
+      else { statusLabel = 'Not Started'; statusTone = 'muted'; }
+    }
     return {
+      packagingOnly, peopleNeeded: packagingOnlyHeadcount(lineRuns),
       line, runs: lineRuns, runCount: lineRuns.length,
       primaryProduct: products.length === 1 ? products[0] : `${products.length} Products`,
       statusLabel, statusTone,
@@ -8733,7 +9230,7 @@ function buildDashboardLines(data){
 // (Maximum Concurrent Staffing Requirement — see dashboardLineStaffing) — filled slots show the
 // assigned employee's name, empty ones show "Open".
 function buildDashboardPersonnel(data){
-  const runs = data.runs.filter(r => r.status !== 'Cancelled');
+  const runs = data.runs.filter(r => r.status !== 'Cancelled' && !isPackagingOnlyRun(r)); // Packaging-only runs have no Line staffing — their people are in the Packaging pool
   const byLine = {};
   runs.forEach(r => { const l = r.line || '(No Line)'; (byLine[l] = byLine[l] || []).push(r); });
   const lineNames = Object.keys(byLine).sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
@@ -8894,9 +9391,11 @@ function renderDashboardLines(lines){
       <div class="pd-bar"><div class="pd-bar-fill" style="width:${Math.min(100,l.progressPct)}%;background:${color}"></div></div>
       <div class="pd-line-stats">
         <div><span class="l">Cases</span><span class="v">${fmtNum(l.actualCases)} / ${fmtNum(l.plannedCases)}</span></div>
-        <div><span class="l">Mixes</span><span class="v">${fmtNum(l.confirmedMixes)} / ${fmtNum(l.plannedMixes)}</span></div>
+        ${l.packagingOnly
+          ? `<div><span class="l">People needed</span><span class="v">${l.peopleNeeded}</span></div>`
+          : `<div><span class="l">Mixes</span><span class="v">${fmtNum(l.confirmedMixes)} / ${fmtNum(l.plannedMixes)}</span></div>
         <div><span class="l">Steps</span><span class="v">${l.stepsCompleted} / ${l.stepsTotal}</span></div>
-        <div><span class="l">Staff</span><span class="v">${l.staffAssigned} / ${l.staffRequired}</span></div>
+        <div><span class="l">Staff</span><span class="v">${l.staffAssigned} / ${l.staffRequired}</span></div>`}
         ${l.nextRunInfo ? `<div><span class="l">Next Run</span><span class="v">${escapeHtml(l.nextRunInfo.product)}${l.nextRunInfo.time?` · ${staffScheduleFormatShift(l.nextRunInfo.time).split(' - ')[0]}`:''}</span></div>` : ''}
       </div>
     </div>`;
@@ -9027,6 +9526,9 @@ function setHistoryMode(mode){
     : SAUCES.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
   picker.innerHTML = `<option value="">All ${mode==='dough'?'doughs':'sauce types'}</option>` + options;
   document.getElementById('historySummaryCard').style.display = 'none';
+  document.getElementById('historyTotalsCard').style.display = 'none';
+  document.getElementById('historyTotalsKind').textContent = mode==='dough' ? 'dough' : 'sauce type';
+  document.getElementById('historyTotalsKindHead').textContent = mode==='dough' ? 'Dough' : 'Sauce Type';
   document.getElementById('historyResultsList').innerHTML = '';
   document.getElementById('historyResultsEmpty').style.display = 'none';
 }
@@ -9061,21 +9563,23 @@ async function searchProductionHistory(){
   renderProdHistoryResults(groups);
 }
 async function searchDoughHistory(from, to, productName){
-  let query = `erp_production_runs?select=id,run_date,line,product_name,status&run_date=gte.${from}&run_date=lte.${to}`;
+  let query = `erp_production_runs?select=id,run_date,line,product_name,status,planned_mixes,confirmed_mixes&run_date=gte.${from}&run_date=lte.${to}`;
   if(productName) query += `&product_name=eq.${encodeURIComponent(productName)}`;
   const runs = await sbGet(query + '&order=run_date.asc,line.asc&limit=1000');
   if(!runs.length) return [];
-  const items = await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,confirmed_cases&run_id=in.(${runs.map(r=>r.id).join(',')})&limit=2000`);
+  const items = await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,confirmed_cases,status&run_id=in.(${runs.map(r=>r.id).join(',')})&limit=2000`);
   return runs.map(r => ({
     date: r.run_date, label: r.line, subLabel: r.product_name, status: r.status,
-    items: items.filter(it => it.run_id === r.id)
+    product: r.product_name, plannedMixes: parseFloat(r.planned_mixes)||0, confirmedMixes: parseFloat(r.confirmed_mixes)||0,
+    // An item cancelled on its own never got made — leave it out of the history's items and totals
+    items: items.filter(it => it.run_id === r.id && it.status !== 'Cancelled')
   }));
 }
 async function searchSauceHistory(from, to, sauceName){
   const days = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date&schedule_date=gte.${from}&schedule_date=lte.${to}&order=schedule_date.asc&limit=1000`);
   if(!days.length) return [];
   const dayById = {}; days.forEach(d => dayById[d.id] = d);
-  let taskQuery = `erp_sauce_schedule_tasks?select=id,day_id,sauce_id,location,status&day_id=in.(${days.map(d=>d.id).join(',')})`;
+  let taskQuery = `erp_sauce_schedule_tasks?select=id,day_id,sauce_id,location,status,mixes,confirmed_mixes,confirmed_output_qty&day_id=in.(${days.map(d=>d.id).join(',')})`;
   if(sauceName){
     const sauce = SAUCES.find(s => s.name === sauceName);
     if(!sauce) return [];
@@ -9087,21 +9591,42 @@ async function searchSauceHistory(from, to, sauceName){
   return tasks.map(t => ({
     date: dayById[t.day_id] ? dayById[t.day_id].schedule_date : '',
     label: t.location || '(no location)', subLabel: sauceRecipeSauceName(t.sauce_id), status: t.status,
-    items: items.filter(it => it.task_id === t.id)
+    product: sauceRecipeSauceName(t.sauce_id), plannedMixes: parseFloat(t.mixes)||0, confirmedMixes: parseFloat(t.confirmed_mixes)||0,
+    items: sauceHistoryItemsForTask(t, items.filter(it => it.task_id === t.id))
   }));
+}
+// A single/no-match sauce task never gets erp_sauce_task_items rows (only multi-Item # tasks do —
+// see confirmSauceTask's legacy path), so its item and cases are recorded elsewhere: the item is
+// the sauce's own linked Item # (same lookup confirm uses to write Finished Goods), and the cases
+// are the task's confirmed_output_qty. There's no stored planned-cases figure for these, so
+// planned shows as "–" rather than a made-up number.
+function sauceHistoryItemsForTask(task, taskItems){
+  if(taskItems.length) return taskItems;
+  if(task.confirmed_output_qty == null) return [];
+  const sauce = SAUCES.find(s => s.id === task.sauce_id);
+  const item = sauce ? lookupSauceMatchedItems(sauce.item_code)[0] : null;
+  return [{
+    item_no: item ? item.item_no : '–',
+    item_name: item ? item.item_name : (sauce ? (sauce.component_sachet_name || sauce.name) : ''),
+    planned_cases: null,
+    confirmed_cases: task.confirmed_output_qty
+  }];
 }
 function renderProdHistoryResults(groups){
   const summaryCard = document.getElementById('historySummaryCard');
   const list = document.getElementById('historyResultsList');
   const empty = document.getElementById('historyResultsEmpty');
+  const totalsCard = document.getElementById('historyTotalsCard');
   if(!groups.length){
     summaryCard.style.display = 'none';
+    totalsCard.style.display = 'none';
     list.innerHTML = '';
     empty.style.display = 'block';
     return;
   }
   empty.style.display = 'none';
   summaryCard.style.display = '';
+  totalsCard.style.display = '';
   const days = new Set(groups.map(g => g.date));
   // Cancelled runs/tasks are excluded from the case totals — nothing was actually mixed/packed —
   // matching the same convention as printProductionReport's totalBatches. They're still shown in
@@ -9109,16 +9634,50 @@ function renderProdHistoryResults(groups){
   const countableGroups = groups.filter(g => g.status !== 'Cancelled');
   const totalPlanned = countableGroups.reduce((s,g) => s + g.items.reduce((s2,it) => s2 + (parseFloat(it.planned_cases)||0), 0), 0);
   const totalConfirmed = countableGroups.reduce((s,g) => s + g.items.reduce((s2,it) => s2 + (parseFloat(it.confirmed_cases)||0), 0), 0);
+  const totalPlannedMixes = countableGroups.reduce((s,g) => s + g.plannedMixes, 0);
+  const totalConfirmedMixes = countableGroups.reduce((s,g) => s + g.confirmedMixes, 0);
   document.getElementById('historyKpiRuns').textContent = groups.length;
   document.getElementById('historyKpiDays').textContent = days.size;
+  document.getElementById('historyKpiMixes').innerHTML = `${fmtNum(totalConfirmedMixes)} <span style="font-size:13px;color:var(--muted);font-weight:500">/ ${fmtNum(totalPlannedMixes)}</span>`;
   document.getElementById('historyKpiPlanned').textContent = fmtNum(totalPlanned);
   document.getElementById('historyKpiConfirmed').textContent = fmtNum(totalConfirmed);
+
+  // Totals by product (dough / sauce type): runs, mixes, and cases summed across the range.
+  const byProduct = {};
+  countableGroups.forEach(g => {
+    const key = g.product || '(unknown)';
+    const p = byProduct[key] = byProduct[key] || { runs:0, plannedMixes:0, confirmedMixes:0, plannedCases:0, confirmedCases:0 };
+    p.runs++;
+    p.plannedMixes += g.plannedMixes;
+    p.confirmedMixes += g.confirmedMixes;
+    g.items.forEach(it => {
+      if(it.planned_cases != null){ p.plannedCases += parseFloat(it.planned_cases)||0; p.hasPlanned = true; }
+      p.confirmedCases += parseFloat(it.confirmed_cases)||0;
+    });
+  });
+  document.getElementById('historyTotalsByProduct').innerHTML = Object.entries(byProduct)
+    .sort((a,b) => b[1].confirmedCases - a[1].confirmedCases)
+    .map(([name, p]) => `<tr><td style="font-weight:600">${name}</td><td>${p.runs}</td><td>${fmtNum(p.confirmedMixes)} / ${fmtNum(p.plannedMixes)}</td><td>${fmtNum(p.confirmedCases)} / ${p.hasPlanned ? fmtNum(p.plannedCases) : '–'}</td></tr>`).join('');
+  // Totals by packed item
+  const byItem = {};
+  countableGroups.forEach(g => g.items.forEach(it => {
+    const key = it.item_no || '(none)';
+    const row = byItem[key] = byItem[key] || { name: it.item_name||'', planned:0, confirmed:0 };
+    if(!row.name && it.item_name) row.name = it.item_name;
+    if(it.planned_cases != null){ row.planned += parseFloat(it.planned_cases)||0; row.hasPlanned = true; }
+    row.confirmed += parseFloat(it.confirmed_cases)||0;
+  }));
+  document.getElementById('historyTotalsByItem').innerHTML = Object.entries(byItem)
+    .sort((a,b) => b[1].confirmed - a[1].confirmed)
+    .map(([itemNo, r]) => `<tr><td>${itemNo}</td><td>${r.name}</td><td>${r.hasPlanned ? fmtNum(r.planned) : '–'}</td><td style="font-weight:600">${fmtNum(r.confirmed)}</td></tr>`).join('');
+
   const sorted = [...groups].sort((a,b) => (a.date||'').localeCompare(b.date||''));
   list.innerHTML = sorted.map(g => `<div class="card">
     <div class="row" style="align-items:center">
       <h3 style="flex:1;margin:0">${g.date} — ${g.label}${g.subLabel ? ' · ' + g.subLabel : ''}</h3>
       <span class="chip">${g.status||''}</span>
     </div>
+    <div style="font-size:12.5px;margin:6px 0 10px"><strong>Mixes:</strong> ${fmtNum(g.confirmedMixes)} confirmed / ${fmtNum(g.plannedMixes)} planned</div>
     ${g.items.length ? `<div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Planned Cases</th><th>Confirmed Cases</th></tr></thead>
     <tbody>${g.items.map(it => `<tr><td>${it.item_no}</td><td>${it.item_name||''}</td><td>${fmtNum(it.planned_cases)}</td><td>${it.confirmed_cases!=null?fmtNum(it.confirmed_cases):'–'}</td></tr>`).join('')}</tbody></table></div>`
       : '<div class="empty">No items recorded</div>'}
@@ -9152,7 +9711,7 @@ async function renderConfirmRunCards(){
   const { runs, items } = await fetchRunsAndItems(date);
   const pending = runs.filter(r => {
     if(r.status !== 'Confirmed') return true; // mixes not confirmed yet
-    return items.some(it => it.run_id === r.id && it.status !== 'Confirmed'); // mixes done, but items still pending
+    return items.some(it => it.run_id === r.id && it.status !== 'Confirmed' && it.status !== 'Cancelled'); // mixes done, but items still pending
   });
   if(!pending.length){
     document.getElementById('confirmRunsList').innerHTML = '';
@@ -9179,7 +9738,7 @@ async function updateRunMixes(runId, value){
 // left exactly as they are.
 async function recalcLastItemCasesForRun(runId, mixes){
   const rows = await sbGet(`erp_production_run_items?select=id,item_no,planned_cases,machines,cycles,bags_per_cycle,status&run_id=eq.${runId}&order=sort_order.asc.nullslast,id.asc&limit=1000`);
-  const pending = rows.filter(r => r.status !== 'Confirmed');
+  const pending = rows.filter(r => r.status !== 'Confirmed' && r.status !== 'Cancelled');
   if(!pending.length) return;
   const lastItem = pending[pending.length - 1];
   const runRows = await sbGet(`erp_production_runs?select=id,product_name&id=eq.${runId}`);
@@ -9219,6 +9778,16 @@ async function updateRunRemark(runId, value){
     await renderRunsList();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
+async function updateRunPackagingHeadcount(runId, value){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const n = parseInt(value, 10);
+  if(!(n >= 0)){ toast('Enter how many people are needed'); return; }
+  try{
+    await sbUpdate('erp_production_runs', runId, { packaging_headcount: n });
+    toast('People needed updated');
+    await refreshScheduleScreen();
+  }catch(e){ toast('Update failed: ' + e.message); }
+}
 async function updateRunPackagingNote(runId, value){
   if(!canWrite()){ toast('You have read-only access'); return; }
   try{
@@ -9227,39 +9796,50 @@ async function updateRunPackagingNote(runId, value){
     await renderRunsList();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
-// Moves an unconfirmed run to a different production date — every packed item under it moves
-// with it: production_date becomes the new date, and any item tracking an expiry date gets it
-// recalculated from the new date + that item's own R.SL Day, the same formula used when items
-// are first added to a run.
+// Re-dates every packed item under a run from `baseDate` — the run's PACKING date, since that's
+// the date the product is dated from (Production Date, Julian, Exp): production_date becomes
+// baseDate, and any item tracking an expiry date gets it recalculated from baseDate + that item's
+// own R.SL Day, the same formula used when items are first added to a run. Returns the count.
+async function rebaseRunItemDates(runId, baseDate){
+  const items = await sbGet(`erp_production_run_items?select=id,item_no,item_name,expired_date&run_id=eq.${runId}`);
+  const base = new Date(baseDate + 'T00:00:00');
+  for(const it of items){
+    const patch = { production_date: baseDate };
+    if(it.expired_date){
+      const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
+      const rsl = parseFloat(item?.r_sl_day) || 0;
+      patch.expired_date = new Date(base.getTime() + rsl*86400000).toISOString().slice(0,10);
+    }
+    await sbUpdate('erp_production_run_items', it.id, patch);
+  }
+  return items.length;
+}
+// Moves an unconfirmed run to a different production date. A same-day run (packed the day it's
+// made) takes its packing date along; a next-day-style run keeps its own separate packing date.
+// Either way the items are re-dated from the (resulting) packing date, see rebaseRunItemDates.
 async function updateRunDate(runId, newDate){
   if(!canWrite()){ toast('You have read-only access'); return; }
   if(!newDate) return;
   try{
-    const items = await sbGet(`erp_production_run_items?select=id,item_no,item_name,expired_date&run_id=eq.${runId}`);
-    const base = new Date(newDate + 'T00:00:00');
-    for(const it of items){
-      const patch = { production_date: newDate };
-      if(it.expired_date){
-        const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
-        const rsl = parseFloat(item?.r_sl_day) || 0;
-        patch.expired_date = new Date(base.getTime() + rsl*86400000).toISOString().slice(0,10);
-      }
-      await sbUpdate('erp_production_run_items', it.id, patch);
-    }
-    await sbUpdate('erp_production_runs', runId, { run_date: newDate });
-    toast(`Run moved to ${newDate}${items.length?` — ${items.length} item date(s) recalculated`:''}`);
+    const run = (await sbGet(`erp_production_runs?select=run_date,packing_date&id=eq.${runId}`))[0];
+    const wasSameDay = !run || !run.packing_date || run.packing_date === run.run_date;
+    const packingDate = wasSameDay ? newDate : run.packing_date;
+    const count = await rebaseRunItemDates(runId, packingDate);
+    await sbUpdate('erp_production_runs', runId, wasSameDay ? { run_date: newDate, packing_date: newDate } : { run_date: newDate });
+    toast(`Run moved to ${newDate}${count?` — ${count} item date(s) recalculated`:''}`);
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
-// Packing Date is independent of Production Date (see recalcRunPackingDate) — moving one
-// never moves the other. Doesn't touch packed items' own production_date/expired_date, unlike
-// updateRunDate, since those describe when the dough was made, not when it gets packed.
+// Packing Date is independent of Production Date (see recalcRunPackingDate) — moving one never
+// moves the other. But the packed items are dated from the packing date, so moving it re-dates
+// them (Production Date / Julian / Exp) to the new packing day.
 async function updateRunPackingDate(runId, newDate){
   if(!canWrite()){ toast('You have read-only access'); return; }
   if(!newDate) return;
   try{
+    const count = await rebaseRunItemDates(runId, newDate);
     await sbUpdate('erp_production_runs', runId, { packing_date: newDate });
-    toast(`Packing date moved to ${newDate}`);
+    toast(`Packing date moved to ${newDate}${count?` — ${count} item date(s) recalculated`:''}`);
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
@@ -9324,7 +9904,7 @@ async function updateRunItemCases(id, value){
     // would immediately overwrite the value the user just typed with a re-derived suggestion.
     if(it && it.run_id){
       const pendingRows = await sbGet(`erp_production_run_items?select=id,status&run_id=eq.${it.run_id}&order=sort_order.asc.nullslast,id.asc&limit=1000`);
-      const pending = pendingRows.filter(r => r.status !== 'Confirmed');
+      const pending = pendingRows.filter(r => r.status !== 'Confirmed' && r.status !== 'Cancelled');
       const lastItemId = pending.length ? pending[pending.length-1].id : null;
       if(lastItemId != null && lastItemId !== id){
         const runRows = await sbGet(`erp_production_runs?select=id,planned_mixes&id=eq.${it.run_id}`);
@@ -9400,7 +9980,7 @@ function renderLineSummary(runs, items){
     }, 0);
     const lineTotalHrs = lineTotalMin / 60;
     const lineRunIds = runsForLine.filter(r => r.status !== 'Cancelled').map(r => r.id);
-    const linePackingHrs = items.filter(it => lineRunIds.includes(it.run_id))
+    const linePackingHrs = items.filter(it => lineRunIds.includes(it.run_id) && it.status !== 'Cancelled')
       .reduce((s,it) => s + (parseFloat(it.packing_hrs)||0), 0);
     const runsHtml = runsForLine.map(run => {
       const runItems = items.filter(it => it.run_id === run.id);
@@ -9436,8 +10016,10 @@ function renderLineSummary(runs, items){
       const itemRows = runItems.map(it => {
         const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
         const dateLabel = formatProdExpDate(it);
+        const itCancelled = it.status==='Cancelled' || (run.status==='Cancelled' && it.status!=='Confirmed');
         const itStatus = it.status==='Confirmed'
           ? `<span class="chip ok">Confirmed</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedItem(${it.id})">✎ Correct</button>`
+          : itCancelled ? `<span class="chip cancel">Cancelled</span>`
           : `<span class="chip">Planned</span>`;
         // Once an item is Confirmed, the actual cases packed (confirmed_cases) can differ from
         // what was originally planned — show that actual figure, not the stale plan, so the
@@ -9447,9 +10029,9 @@ function renderLineSummary(runs, items){
           ? `<div>${fmtHrs(it.packing_hrs)}h</div><div style="font-size:11px;color:var(--muted);white-space:normal">for ${fmtNum(displayCases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)</div>`
           : '–';
         const storageBadge = item ? storageKeepBadgeHtml(item.storage, storageIsCompound(item.storage) ? (it.expired_date ? 'cooler' : 'freezer') : null) : '';
-        return `<tr>
+        return `<tr${itCancelled?' style="opacity:.6"':''}>
           <td>${it.item_no}</td>
-          <td>${it.item_name||''}${storageBadge?`<div style="margin-top:4px">${storageBadge}</div>`:''}${it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${escapeHtml(it.remark)}</div>`:''}</td>
+          <td${itCancelled?' style="text-decoration:line-through"':''}>${it.item_name||''}${storageBadge?`<div style="margin-top:4px">${storageBadge}</div>`:''}${it.remark?`<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${escapeHtml(it.remark)}</div>`:''}</td>
           <td style="white-space:normal;min-width:180px;font-size:12px">${itemPackDetail(item, displayCases)}</td>
           <td>${fmtNum(displayCases)}</td>
           <td style="min-width:160px">${packingCalc}</td>
@@ -9532,6 +10114,9 @@ function cancelEditRunItemInline(gid){
   const detailEl = document.getElementById(gid+'_itemDetail');
   if(detailEl) detailEl.innerHTML = '';
 }
+// `runDate` here is the date the items get PACKED (the Run's packing_date, which is its run_date
+// for ordinary same-day lines) — that's the date the product is dated from, not the day the dough
+// was made (e.g. Line 6: made today, packed tomorrow → tomorrow's Production/Julian/Exp date).
 async function addRunItem(runId, gid, runDate){
   if(!canWrite()){ toast('You have read-only access'); return; }
   const itemNo = document.getElementById(gid+'_no').value;
@@ -9548,7 +10133,7 @@ async function addRunItem(runId, gid, runDate){
   const storage = (item?.storage || '').toLowerCase();
   const isCompoundStorage = storage.includes('freezer') && storage.includes('cooler');
   const base = new Date(runDate + 'T00:00:00');
-  // production_date is always the Run's actual date (used for Julian date), regardless
+  // production_date is always the packing date (used for Julian date), regardless
   // of storage type; Cooler items (and Freezer/Cooler items where "Expired Date" was
   // chosen) additionally get a computed expiry date.
   let productionDate = runDate, expiredDate = null;
@@ -10525,7 +11110,8 @@ async function refreshAdjustScreen(){
 async function refreshUsersScreen(){
   if(!connected || !isAdmin()) return;
   try{
-    USERS_DATA = await sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens&order=created_at.asc&limit=500');
+    USERS_DATA = await sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens,blocked_screens&order=created_at.asc&limit=500')
+      .catch(() => sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens&order=created_at.asc&limit=500')); // fix60 not run yet
     renderUsersTable();
   }catch(e){ /* table may not exist yet if fix7-schema.sql hasn't been run */ }
   try{
@@ -10538,7 +11124,7 @@ function renderRoleRequestsTable(){
   if(!tbody) return;
   tbody.innerHTML = ROLE_REQUESTS.map(r => `<tr>
     <td>${r.email||''}</td>
-    <td><span class="chip">${r.requested_role}</span></td>
+    <td><span class="chip">${roleLabel(r.requested_role)}</span></td>
     <td>${r.created_at ? new Date(r.created_at).toLocaleDateString() : ''}</td>
     <td style="white-space:nowrap">
       <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="resolveRoleRequest(${r.id}, '${r.user_id}', '${r.requested_role}', true)">✔ Approve</button>
@@ -10563,80 +11149,145 @@ function getAllScreensList(){
     label: b.textContent.trim()
   }));
 }
-// "Extra Access" per-user chips — additive on top of that user's role (see isScreenAllowed/fix47).
-// Reuses erp_profiles.allowed_screens, a column left dormant since fix39 moved menu access to a
-// shared per-role setting; redefined here as this user's extra screens instead of a full list.
-function userExtraScreenLabel(screen){
-  return getAllScreensList().find(s => s.screen === screen)?.label || screen;
+// Per-user menu access (Manage Users → Customize menu). Layered on top of the user's ROLE
+// (Settings → Role Permissions): for each screen a person either follows the role (Default), gets it
+// even though the role can't see it (Grant — erp_profiles.allowed_screens, fix47), or loses it even
+// though the role can see it (Block — erp_profiles.blocked_screens, fix60). See isScreenAllowed.
+function roleAllowsScreen(role, screen){
+  const perm = ROLE_PERMISSIONS[role] || {};
+  const allowed = Array.isArray(perm.allowed_screens) ? perm.allowed_screens : null;
+  return !allowed || !allowed.length || allowed.includes(screen);
+}
+// My Account is every user's own page, so it isn't something to grant or block.
+function customizableScreens(){ return getAllScreensList().filter(s => s.screen !== 'account'); }
+function userMenuAccessSummaryHtml(u){
+  if(u.role === 'admin') return '<span class="chip">Admin: every screen</span>';
+  const grants = Array.isArray(u.allowed_screens) ? u.allowed_screens.length : 0;
+  const blocks = Array.isArray(u.blocked_screens) ? u.blocked_screens.length : 0;
+  if(!grants && !blocks) return '<span class="chip">Role default</span>';
+  const pill = (text, bg, fg) => `<span class="chip" style="background:${bg};color:${fg};border:1px solid rgba(0,0,0,.12)">${text}</span>`;
+  return (grants ? pill(`+${grants} granted`, '#eaf3de', '#27500a') : '') + ' ' + (blocks ? pill(`${blocks} blocked`, '#fcebeb', '#791f1f') : '');
 }
 function renderUsersTable(){
   const tbody = document.getElementById('usersTable');
   if(!tbody) return;
-  tbody.innerHTML = USERS_DATA.map(u => {
-    const extra = Array.isArray(u.allowed_screens) ? u.allowed_screens : [];
-    const chips = extra.map(screen => `<span class="chip" style="display:inline-flex;align-items:center;gap:5px;background:var(--panel);border:1px solid var(--line)">
-        ${escapeHtml(userExtraScreenLabel(screen))}
-        <button onclick="revokeUserExtraScreen('${u.id}','${screen}')" title="Revoke" style="border:none;background:none;color:var(--muted);cursor:pointer;padding:0;font-size:12px;line-height:1;font-family:inherit">✕</button>
-      </span>`).join('');
-    return `<tr>
-    <td>${u.display_name ? `${u.display_name} <span style="color:var(--muted);font-size:11px">(${u.email})</span>` : (u.email||'')}</td>
+  tbody.innerHTML = USERS_DATA.map(u => `<tr>
+    <td>${u.display_name ? `${escapeHtml(u.display_name)} <span style="color:var(--muted);font-size:11px">(${escapeHtml(u.email)})</span>` : escapeHtml(u.email||'')}</td>
     <td>${u.created_at ? new Date(u.created_at).toLocaleDateString() : ''}</td>
     <td>
       <select onchange="updateUserRole('${u.id}', this.value)">
-        <option value="viewer" ${u.role==='viewer'?'selected':''}>Viewer</option>
-        <option value="editor" ${u.role==='editor'?'selected':''}>Editor</option>
-        <option value="admin" ${u.role==='admin'?'selected':''}>Admin</option>
+        <option value="viewer" ${u.role==='viewer'?'selected':''}>${ROLE_LABELS.viewer}</option>
+        <option value="editor" ${u.role==='editor'?'selected':''}>${ROLE_LABELS.editor}</option>
+        <option value="admin" ${u.role==='admin'?'selected':''}>${ROLE_LABELS.admin}</option>
       </select>
-      <div style="font-size:10px;color:var(--muted);margin-top:3px">Viewer: read only · Editor: can edit data · Admin: can also manage users</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Viewer: read only · Operator: can edit data · Admin: can also manage users</div>
     </td>
     <td>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center" data-user-extra="${u.id}">
-        ${chips}
-        <span class="chip" id="userExtraAddChip_${u.id}" style="border:1px dashed var(--danger);color:var(--danger);background:transparent;cursor:pointer" onclick="showUserExtraScreenPicker('${u.id}')">+ Grant screen</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+        ${userMenuAccessSummaryHtml(u)}
+        ${u.role === 'admin' ? '' : `<button class="btn secondary" style="padding:4px 10px;font-size:12px" onclick="openUserMenuPanel('${u.id}')">Customize menu</button>`}
       </div>
     </td>
     <td>${u.id === CURRENT_USER?.id ? '<span class="chip">You</span>' : `<button class="btn secondary" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteUser('${u.id}','${(u.display_name||u.email||'').replace(/'/g,"\\'")}')">✕ Delete</button>`}</td>
-  </tr>`;
-  }).join('');
+  </tr>`).join('');
   document.getElementById('usersEmpty').style.display = USERS_DATA.length ? 'none' : 'block';
+  // The role may have just changed, which changes what "Default" means in an open panel.
+  if(USER_MENU_EDIT_ID != null) openUserMenuPanel(USER_MENU_EDIT_ID, true);
 }
-function showUserExtraScreenPicker(userId){
+let USER_MENU_EDIT_ID = null;
+function openUserMenuPanel(userId, keepChoices){
   const u = USERS_DATA.find(x => String(x.id) === String(userId));
-  if(!u) return;
-  const extra = Array.isArray(u.allowed_screens) ? u.allowed_screens : [];
-  const available = getAllScreensList().filter(s => !extra.includes(s.screen));
-  if(!available.length){ toast('This user already has every screen'); return; }
-  const options = '<option value="">Select screen...</option>' + available.map(s => `<option value="${s.screen}">${escapeHtml(s.label)}</option>`).join('');
-  const chip = document.getElementById('userExtraAddChip_' + userId);
-  if(!chip) return;
-  chip.outerHTML = `<select id="userExtraAddSelect_${userId}" style="width:auto;font-size:12px;padding:4px 8px" onchange="grantUserExtraScreen('${userId}', this.value)">${options}</select>`;
-  document.getElementById('userExtraAddSelect_' + userId)?.focus();
+  const panel = document.getElementById('userMenuPanel');
+  if(!u || !panel) return;
+  if(u.role === 'admin'){ closeUserMenuPanel(); return; }
+  // Re-rendering after a role change keeps what's been ticked so far; opening fresh starts from
+  // what's saved.
+  const prev = {};
+  if(keepChoices) document.querySelectorAll('#userMenuPanel input[type=radio]:checked').forEach(r => { prev[r.name.replace('umScreen_', '')] = r.value; });
+  const grants = Array.isArray(u.allowed_screens) ? u.allowed_screens : [];
+  const blocks = Array.isArray(u.blocked_screens) ? u.blocked_screens : [];
+  USER_MENU_EDIT_ID = u.id;
+  const screens = customizableScreens();
+  const byModule = {};
+  screens.forEach(s => { (byModule[s.module] = byModule[s.module] || []).push(s); });
+  const seg = (s, roleOk) => {
+    const saved = blocks.includes(s.screen) ? 'block' : grants.includes(s.screen) ? 'grant' : 'default';
+    let cur = (keepChoices && prev[s.screen]) || saved;
+    // Grant only means something where the role can't see the screen, Block only where it can.
+    if(cur === 'grant' && roleOk) cur = 'default';
+    if(cur === 'block' && !roleOk) cur = 'default';
+    const opt = (val, label, disabled, color) => `<label style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--line);border-radius:6px;font-size:11px;${disabled ? 'opacity:.35;' : 'cursor:pointer;'}${cur===val && val!=='default' ? `background:${color};font-weight:700;` : (cur===val ? 'background:var(--chip);font-weight:700;' : '')}">
+      <input type="radio" name="umScreen_${s.screen}" value="${val}" ${cur===val?'checked':''} ${disabled?'disabled':''} style="width:auto;flex:0 0 auto" onchange="updateUserMenuSummary()">${label}</label>`;
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)">
+      <span style="flex:1;font-size:13px">${escapeHtml(s.label)}</span>
+      <span style="width:104px;font-size:11px;color:var(--muted)">Role: ${roleOk ? 'allowed' : 'no access'}</span>
+      <span style="display:inline-flex;gap:4px">${opt('default', 'Default', false, '')}${opt('grant', 'Grant', roleOk, '#c0dd97')}${opt('block', 'Block', !roleOk, '#f7c1c1')}</span>
+    </div>`;
+  };
+  const who = u.display_name || u.email || '';
+  panel.innerHTML = `<h3 style="margin-top:0">Customize menu: ${escapeHtml(who)} (${roleLabel(u.role)})</h3>
+    <div id="userMenuSummary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:12px"></div>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 8px">Default follows the ${roleLabel(u.role)} role. Grant adds a screen for this person only; Block hides one the role would show. Admins are never restricted.</p>
+    ${Object.keys(byModule).map(m => `<div style="font-weight:700;font-size:12px;margin:10px 0 2px;text-transform:capitalize">${escapeHtml(m)}</div>${byModule[m].map(s => seg(s, roleAllowsScreen(u.role, s.screen))).join('')}`).join('')}
+    <div class="btnrow" style="margin-top:12px">
+      <button class="btn" onclick="saveUserMenuPanel()">💾 Save</button>
+      <button class="btn secondary" onclick="resetUserMenuPanel()">Reset to role default</button>
+      <button class="btn secondary" onclick="closeUserMenuPanel()">Close</button>
+    </div>`;
+  panel.style.display = '';
+  updateUserMenuSummary();
+  if(!keepChoices) panel.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
-async function grantUserExtraScreen(userId, screen){
-  if(!screen){ renderUsersTable(); return; }
+function userMenuChoices(){
+  const grants = [], blocks = [];
+  document.querySelectorAll('#userMenuPanel input[type=radio]:checked').forEach(r => {
+    const screen = r.name.replace('umScreen_', '');
+    if(r.value === 'grant') grants.push(screen);
+    else if(r.value === 'block') blocks.push(screen);
+  });
+  return { grants, blocks };
+}
+function updateUserMenuSummary(){
+  const u = USERS_DATA.find(x => String(x.id) === String(USER_MENU_EDIT_ID));
+  const el = document.getElementById('userMenuSummary');
+  if(!u || !el) return;
+  const { grants, blocks } = userMenuChoices();
+  const screens = customizableScreens();
+  const roleSees = screens.filter(s => roleAllowsScreen(u.role, s.screen)).length;
+  const pill = (text, bg, fg) => `<span class="chip" style="background:${bg};color:${fg};border:1px solid rgba(0,0,0,.12)">${text}</span>`;
+  el.innerHTML = `<span class="chip">${roleLabel(u.role)} role sees ${roleSees} of ${screens.length} screens</span>`
+    + (grants.length ? pill(`+${grants.length} granted`, '#eaf3de', '#27500a') : '')
+    + (blocks.length ? pill(`${blocks.length} blocked`, '#fcebeb', '#791f1f') : '');
+  // Re-highlight the chosen option in each row (label background follows the checked radio).
+  document.querySelectorAll('#userMenuPanel label:has(input[type=radio])').forEach(l => {
+    const r = l.querySelector('input'); const val = r.value;
+    l.style.background = !r.checked ? '' : val === 'grant' ? '#c0dd97' : val === 'block' ? '#f7c1c1' : 'var(--chip)';
+    l.style.fontWeight = r.checked ? '700' : '';
+  });
+}
+function closeUserMenuPanel(){
+  USER_MENU_EDIT_ID = null;
+  const panel = document.getElementById('userMenuPanel');
+  if(panel){ panel.style.display = 'none'; panel.innerHTML = ''; }
+}
+function resetUserMenuPanel(){
+  document.querySelectorAll('#userMenuPanel input[type=radio][value=default]').forEach(r => { r.checked = true; });
+  updateUserMenuSummary();
+}
+async function saveUserMenuPanel(){
   if(!isAdmin()){ toast('Admins only'); return; }
-  const u = USERS_DATA.find(x => String(x.id) === String(userId));
+  const u = USERS_DATA.find(x => String(x.id) === String(USER_MENU_EDIT_ID));
   if(!u) return;
-  const extra = Array.isArray(u.allowed_screens) ? u.allowed_screens.slice() : [];
-  if(!extra.includes(screen)) extra.push(screen);
+  const { grants, blocks } = userMenuChoices();
+  const patch = { allowed_screens: grants.length ? grants : null, blocked_screens: blocks.length ? blocks : null };
   try{
-    await sbUpdate('erp_profiles', userId, { allowed_screens: extra });
-    u.allowed_screens = extra;
+    await sbUpdate('erp_profiles', u.id, patch);
+    u.allowed_screens = patch.allowed_screens;
+    u.blocked_screens = patch.blocked_screens;
+    toast('Menu access saved');
+    closeUserMenuPanel();
     renderUsersTable();
-    toast('Screen granted');
-  }catch(e){ toast('Failed to grant: ' + e.message); }
-}
-async function revokeUserExtraScreen(userId, screen){
-  if(!isAdmin()){ toast('Admins only'); return; }
-  const u = USERS_DATA.find(x => String(x.id) === String(userId));
-  if(!u) return;
-  const extra = (Array.isArray(u.allowed_screens) ? u.allowed_screens : []).filter(s => s !== screen);
-  try{
-    await sbUpdate('erp_profiles', userId, { allowed_screens: extra.length ? extra : null });
-    u.allowed_screens = extra.length ? extra : null;
-    renderUsersTable();
-    toast('Screen revoked');
-  }catch(e){ toast('Failed to revoke: ' + e.message); }
+  }catch(e){ toast('Save failed: ' + e.message + ' (has fix60-user-blocked-screens.sql been run?)'); }
 }
 // Role Permissions (Settings screen, admin-only): one shared allowed_screens/assigned_lines
 // setting per role instead of per user — see ROLE_PERMISSIONS/loadRolePermissions. Reuses the
@@ -10671,14 +11322,15 @@ function renderRolePermissions(){
     return `<div style="margin-bottom:20px;padding-bottom:20px;border-bottom:1px solid var(--line)">
       <h4 style="margin:0 0 8px">${label}</h4>
       <label style="display:flex;align-items:center;gap:6px;font-weight:600">
-        <input type="checkbox" id="${rid}_full" ${isFull?'checked':''} style="width:auto;flex:0 0 auto" onchange="document.getElementById('${rid}_grid').style.display=this.checked?'none':'grid'">
+        <input type="checkbox" id="${rid}_full" ${isFull?'checked':''} style="width:auto;flex:0 0 auto" onchange="toggleRolePermFull('${rid}')">
         Full access (every screen)
       </label>
-      <div id="${rid}_grid" style="display:${isFull?'none':'grid'};grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 16px;margin-top:10px">
+      <p style="color:var(--muted);font-size:12px;margin:4px 0 0">${isFull ? 'Every screen is open to this role (shown below, view only). Untick Full access to choose which screens it can see.' : 'Only the ticked screens are open to this role.'}</p>
+      <div id="${rid}_grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 16px;margin-top:10px">
         ${Object.keys(byModule).map(m => `<div>
           <div style="font-weight:700;font-size:12px;margin-bottom:4px;text-transform:capitalize">${m}</div>
           ${byModule[m].map(s => `<label style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:3px">
-            <input type="checkbox" value="${s.screen}" ${(!isFull && allowed.includes(s.screen))?'checked':''} class="${rid}_cb" style="width:auto;flex:0 0 auto">
+            <input type="checkbox" value="${s.screen}" ${(isFull || allowed.includes(s.screen))?'checked':''} ${isFull?'disabled':''} class="${rid}_cb" style="width:auto;flex:0 0 auto">
             <span style="flex:0 0 auto">${s.label}</span>
           </label>`).join('')}
         </div>`).join('')}
@@ -10689,7 +11341,14 @@ function renderRolePermissions(){
       </div>
     </div>`;
   };
-  body.innerHTML = section('viewer','Viewer') + section('editor','Editor');
+  body.innerHTML = section('viewer','Viewer') + section('editor','Operator');
+}
+// The screen list under each role is always shown so you can see what the role can open: with Full
+// access on, every box is ticked and locked (view only); unticking Full access unlocks them,
+// starting from "everything ticked" so you remove what the role shouldn't see.
+function toggleRolePermFull(rid){
+  const full = document.getElementById(rid+'_full').checked;
+  document.querySelectorAll(`.${rid}_cb`).forEach(cb => { cb.disabled = full; if(full) cb.checked = true; });
 }
 async function saveRolePermission(role, rid){
   if(!isAdmin()){ toast('Admins only'); return; }
@@ -10713,7 +11372,7 @@ async function saveRolePermission(role, rid){
   }
   try{
     await sb(`erp_role_permissions?role=eq.${role}`, {method:'PATCH', body: JSON.stringify(patch)});
-    toast(role[0].toUpperCase()+role.slice(1) + ' permissions updated for everyone with that role');
+    toast(roleLabel(role) + ' permissions updated for everyone with that role');
     await loadRolePermissions();
     renderRolePermissions();
     applySubNavVisibility(CURRENT_MODULE);
@@ -11140,7 +11799,7 @@ const BACKUP_TABLES = [
 // is added to BACKUP_TABLES above.
 { const el = document.getElementById('backupTableCount'); if(el) el.textContent = BACKUP_TABLES.length; }
 async function performBackup(){
-  if(!canWrite()){ toast('Backup requires Editor or Admin access'); return; }
+  if(!canWrite()){ toast('Backup requires Operator or Admin access'); return; }
   const btn = document.getElementById('backupBtn');
   const statusEl = document.getElementById('backupStatus');
   btn.disabled = true;
@@ -11255,9 +11914,10 @@ function runReportPrint(html, opts){
   area.innerHTML = html;
   document.body.classList.add('printing-report');
   if(opts.landscape) document.body.classList.add('print-landscape');
+  if(opts.portrait) document.body.classList.add('print-portrait');
   window.print();
   // restore the normal app view once the print dialog closes (or after a fallback delay)
-  const cleanup = () => document.body.classList.remove('printing-report', 'print-landscape');
+  const cleanup = () => document.body.classList.remove('printing-report', 'print-landscape', 'print-portrait');
   window.addEventListener('afterprint', cleanup, {once:true});
   setTimeout(cleanup, 3000);
 }
@@ -11282,7 +11942,8 @@ async function printProductionReport(){
   // production here.
   const hiddenLines = await staffingHiddenLineNames();
   const { runs: allRuns } = await fetchRunsAndItems(date);
-  const runs = allRuns.filter(r => r.run_date === date && (!r.line || !hiddenLines.has(r.line)));
+  // Packaging-only runs aren't made on a Line — they only belong on the Packaging Team Report.
+  const runs = allRuns.filter(r => r.run_date === date && !isPackagingOnlyRun(r) && (!r.line || !hiddenLines.has(r.line)));
   if(!runs.length){ toast('No runs to print for this date'); return; }
   // Line 2-T's batches are excluded from the grand total (still shown in its own line section
   // below); Cancelled runs are excluded too — nothing was actually mixed, so they shouldn't
@@ -11358,12 +12019,12 @@ async function printPackagingReport(){
           const packagingNoteBlock = r.packaging_note
             ? `<div style="border-left:3px solid #c0392b;background:#fdf1ef;padding:6px 8px;margin-bottom:4px;font-size:12px;color:#c0392b;white-space:pre-line">📦 ${escapeHtml(r.packaging_note)}</div>` : '';
           return `<div style="margin-bottom:10px${r.status==='Cancelled'?';opacity:.6':''}">
-            <div style="font-weight:700;font-style:italic;margin-bottom:4px">${r.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}</div>
+            <div style="font-weight:700;font-style:italic;margin-bottom:4px">${r.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}${isPackagingOnlyRun(r)?` — People needed: ${parseInt(r.packaging_headcount,10)||0}`:''}</div>
             ${cancelledNote}
             ${dateNote}
             ${packagingNoteBlock}
             <table><colgroup><col style="width:10%"><col style="width:26%"><col style="width:30%"><col style="width:10%"><col style="width:24%"></colgroup><thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Prod./Exp. Date</th></tr></thead>
-            <tbody>${runItems.map(it => {
+            <tbody>${runItems.filter(it => it.status !== 'Cancelled' || r.status === 'Cancelled').map(it => {
               const item = resolveItemByNoAndName(it.item_no, it.item_name) || ITEMS_BY_NO[it.item_no];
               const packingCalc = it.packing_hrs
                 ? `Packing: ${fmtHrs(it.packing_hrs)}h for ${fmtNum(it.planned_cases)} cases, ${fmtNum(it.machines)} machines, ${fmtNum(it.cycles)} cycle${it.cycles==1?'':'s'} (${fmtNum(it.bags_per_cycle)} bags/cycle)`
@@ -11519,9 +12180,10 @@ async function renderSauceConfirmScheduledDaysList(){
       const n = pendingCounts[d.id] || 0;
       const highlight = isToday ? ';border-color:var(--accent);color:var(--accent);font-weight:700'
         : isOverdue ? ';border-color:var(--danger);color:var(--danger);font-weight:700' : '';
-      return `<button class="btn secondary" style="padding:6px 12px;font-size:12px${highlight}" onclick="jumpToSauceConfirmScheduledDay('${d.schedule_date}')">${d.schedule_date}${isToday?' (Today)':''}${isOverdue?' (Overdue)':''} · ${n} task${n===1?'':'s'} pending</button>`;
+      return `<button class="btn secondary" data-date="${d.schedule_date}" data-hl="${highlight}" style="padding:6px 12px;font-size:12px${highlight}" onclick="jumpToSauceConfirmScheduledDay('${d.schedule_date}')">${d.schedule_date}${isToday?' (Today)':''}${isOverdue?' (Overdue)':''} · ${n} task${n===1?'':'s'} pending</button>`;
     }).join('');
     document.getElementById('scheduledDaysEmptySauceConfirm').style.display = 'none';
+    markConfirmDayChips('scheduledDaysListSauceConfirm', document.getElementById('sauceConfirmDate').value);
   }catch(e){ /* non-fatal — the rest of the screen still works */ }
 }
 function jumpToSauceConfirmScheduledDay(date){
@@ -11569,7 +12231,7 @@ function sauceCoolerBestBeforeForItem(item, sauce, productionDate, storageChoice
   if(!item) return sauceBestBefore(sauce, productionDate);
   const isCoolerItem = storageIsCompound(item.storage)
     ? (storageChoice || 'cooler') === 'cooler'
-    : (item.storage || '').toLowerCase().includes('cooler');
+    : storageIsCooler(item.storage);
   if(!isCoolerItem) return null;
   if(item.r_sl_day != null && item.r_sl_day !== ''){
     return addDaysToDateStr(productionDate, parseFloat(item.r_sl_day) || 0);
@@ -11610,6 +12272,28 @@ function allergenChipHtml(allergen){
 // freezer into cooler before packing) — so that case needs an explicit per-batch choice rather
 // than a blended label; storageIsCompound flags when a choice control should be shown, and
 // storageKeepBadgeHtml renders '<choice unresolved>' text prompting for it until one is made.
+// Same words storageKeepBadgeHtml uses to say "Keep Refrigerated" — so an item can never show that
+// badge and yet be treated as not-a-Cooler item (and so get no Best Before) because its Storage
+// text says "Refrigerated"/"Fridge" instead of "Cooler".
+function storageIsCooler(storageText){
+  const s = (storageText || '').toLowerCase();
+  return s.includes('cooler') || s.includes('fridge') || s.includes('refriger');
+}
+// The Items record for one of a sauce task's item rows. Uses the same item_no + name resolution as
+// the Production Schedule (an item_no can be shared by genuinely different items, whose Storage and
+// R.SL Day differ), falling back to the sauce's own code-format-tolerant lookup (e.g. '1292' vs
+// '01292') before giving up — a plain ITEMS_BY_NO[item_no] could land on the wrong record or none.
+// A Cooler item (or a Freezer+Cooler one set to Cooler) should always have a Best Before — if it
+// doesn't, its R.SL Day (and the sauce's Shelf-life) is missing, which the row says instead of
+// silently showing nothing.
+function itemNeedsBestBefore(item, storageChoice){
+  if(!item) return false;
+  return storageIsCompound(item.storage) ? (storageChoice || 'cooler') === 'cooler' : storageIsCooler(item.storage);
+}
+function sauceTaskItemRecord(ti){
+  if(!ti) return null;
+  return resolveItemByNoAndName(ti.item_no, ti.item_name) || ITEMS_BY_NO[ti.item_no] || lookupSauceMatchedItems(String(ti.item_no || ''))[0] || null;
+}
 function storageIsCompound(storageText){
   const s = (storageText || '').toLowerCase();
   return (s.includes('freezer') || s.includes('frozen')) && (s.includes('cooler') || s.includes('fridge') || s.includes('refriger'));
@@ -13587,7 +14271,9 @@ async function renderSaucePreview(){
     document.getElementById('saucePreviewEmpty').style.display = 'block';
     return;
   }
-  SAUCE_PREVIEW_TASKS = await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${SAUCE_PREVIEW_DAY.id}&order=location.asc,id.asc&limit=200`);
+  // Grouped by location below, so within each location the tasks must follow the order set with
+  // Create's ▲▼ (sort_order) — ordering by id here used to show creation order instead.
+  SAUCE_PREVIEW_TASKS = await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${SAUCE_PREVIEW_DAY.id}&order=location.asc,sort_order.asc.nullslast,id.asc&limit=200`);
   document.getElementById('saucePreviewEmpty').style.display = SAUCE_PREVIEW_TASKS.length ? 'none' : 'block';
   const sauceTaskItemsMap = await fetchSauceTaskItemsForTasks(SAUCE_PREVIEW_TASKS);
   const sauceItemDailyOutMap = await fetchItemDailyOutMap(Object.values(sauceTaskItemsMap).flat().map(ti => ti.item_no));
@@ -13694,7 +14380,7 @@ function sauceTaskItemsTotalPackingHrs(taskItems){
   // >0, not >1 — see the same fix's comment on sauceTaskItemsBreakdownHtml below.
   if(!taskItems || taskItems.length < 1) return 0;
   return taskItems.reduce((sum, ti) => {
-    const item = ITEMS_BY_NO[ti.item_no];
+    const item = sauceTaskItemRecord(ti);
     const qty = ti.confirmed_cases ?? ti.planned_cases ?? 0;
     if(!item || !qty) return sum;
     const totalPacks = qty * (parseFloat(item.pieces) || 1);
@@ -13714,7 +14400,7 @@ function sauceTaskItemsBreakdownHtml(taskItems, sauce, dateStr, dailyOutMap){
   // anyway would just be noise on Create/Preview/print (its 0 case count already excludes it
   // from the packing-hrs total above, so hiding the row changes nothing but the display).
   const rowsHtml = taskItems.filter(ti => (parseFloat(ti.confirmed_cases ?? ti.planned_cases) || 0) > 0).map(ti => {
-    const item = ITEMS_BY_NO[ti.item_no];
+    const item = sauceTaskItemRecord(ti);
     const qty = ti.confirmed_cases ?? ti.planned_cases ?? 0;
     const packDetail = itemPackDetail(item, qty) || '–';
     const bb = sauceCoolerBestBeforeForItem(item, sauce, dateStr, ti.storage_choice);
@@ -13737,7 +14423,7 @@ function sauceTaskItemsBreakdownHtml(taskItems, sauce, dateStr, dailyOutMap){
         <strong>📋 ${ti.item_no} — ${ti.item_name||''}</strong>
         <span>${fmtNum(qty)} case${(parseFloat(qty)||0)===1?'':'s'}</span>
         <span>${packDetail}</span>
-        <span>Prod: ${dateStr} (Julian: ${julian})${bb?`, Best Before: ${bb}`:''}</span>
+        <span>Prod: ${dateStr} (Julian: ${julian})${bb ? `, Best Before: ${bb}` : (itemNeedsBestBefore(item, ti.storage_choice) ? ', <span style="color:var(--danger)">Best Before: set R.SL Day for this item</span>' : '')}</span>
         ${usage?`<span>${usage}</span>`:''}
         ${packingText?`<span>${packingText}</span>`:''}
         ${item ? storageKeepBadgeHtml(item.storage, ti.storage_choice) : ''}
@@ -13815,7 +14501,7 @@ async function printSauceProductionReportWeek(){
   const days = await sbGetAll(`erp_sauce_schedule_days?select=id,schedule_date&schedule_date=gte.${weekStart}&schedule_date=lte.${weekEnd}&order=schedule_date.asc`);
   const dayIds = days.map(d=>d.id);
   const tasks = dayIds.length
-    ? await sbGetAll(`erp_sauce_schedule_tasks?select=*&day_id=in.(${dayIds.join(',')})&order=location.asc,id.asc`)
+    ? await sbGetAll(`erp_sauce_schedule_tasks?select=*&day_id=in.(${dayIds.join(',')})&order=location.asc,sort_order.asc.nullslast,id.asc`)
     : [];
   const tasksByDayId = {};
   tasks.forEach(t => { (tasksByDayId[t.day_id]=tasksByDayId[t.day_id]||[]).push(t); });
@@ -13861,7 +14547,7 @@ async function renderSauceConfirmTab(){
     document.getElementById('sauceConfirmEmpty').style.display = 'block';
     return;
   }
-  const allDayTasks = await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${SAUCE_CONFIRM_DAY.id}&order=location.asc,id.asc&limit=200`);
+  const allDayTasks = await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${SAUCE_CONFIRM_DAY.id}&order=location.asc,sort_order.asc.nullslast,id.asc&limit=200`);
   // SAUCE_CONFIRM_DAY.status can be stale — submitSauceTask resets it going forward when a new
   // task is added to an already-Confirmed day, but this also has to hold for existing days that
   // went stale before that fix existed, so what's actually pending is judged from the tasks
@@ -13921,7 +14607,7 @@ async function renderSauceConfirmTab(){
         dateCellHtml = `<div style="display:flex;flex-direction:column;gap:4px">
           <div style="font-size:11px;color:var(--muted)">Prod: ${confirmProdDate} (Julian: ${confirmJulian})</div>
           ${taskItems.map(ti => {
-            const bbi = sauceCoolerBestBeforeForItem(ITEMS_BY_NO[ti.item_no], s, confirmProdDate, ti.storage_choice);
+            const bbi = sauceCoolerBestBeforeForItem(sauceTaskItemRecord(ti), s, confirmProdDate, ti.storage_choice);
             return `<div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:var(--muted)">${ti.item_no}</span><span>${bbi ? 'Best Before: '+bbi : '–'}</span></div>`;
           }).join('')}
         </div>`;
@@ -13941,7 +14627,7 @@ async function renderSauceConfirmTab(){
         ? taskItems.filter(ti => ti.remark).map(ti => `<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${ti.item_no}: ${escapeHtml(ti.remark)}</div>`).join('')
         : (t.remark ? `<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${escapeHtml(t.remark)}</div>` : '');
       const storageHtml = isMultiItemRow
-        ? taskItems.map(ti => { const it = ITEMS_BY_NO[ti.item_no]; return it ? storageKeepBadgeHtml(it.storage, ti.storage_choice) : ''; }).filter(Boolean).join(' ')
+        ? taskItems.map(ti => { const it = sauceTaskItemRecord(ti); return it ? storageKeepBadgeHtml(it.storage, ti.storage_choice) : ''; }).filter(Boolean).join(' ')
         : (() => { const it = s ? lookupSauceMatchedItems(s.item_code)[0] : null; return it ? storageKeepBadgeHtml(it.storage, t.storage_choice) : ''; })();
       return `<tr${t.status==='Cancelled'?' style="opacity:.6"':''}>
         <td>${t.location||''}</td><td>${s?s.name:'(sauce deleted)'}</td>
@@ -14025,7 +14711,7 @@ async function confirmSauceTask(id){
       const inserts = itemQtys.filter(iq => iq.qty > 0).map(iq => {
         // Each item can have its own Storage/R.SL Day, so its Best Before must be computed
         // from ITS OWN record — the single blended `bb` above only ever matches one of them.
-        const bbi = sauceCoolerBestBeforeForItem(ITEMS_BY_NO[iq.item_no], sauce, prodDate, iq.storage_choice);
+        const bbi = sauceCoolerBestBeforeForItem(sauceTaskItemRecord(iq), sauce, prodDate, iq.storage_choice);
         return {
           entry_date: prodDate, item_no: iq.item_no, item_name: iq.item_name, in_qty: iq.qty, out_qty: 0,
           lot: `Sauce production confirm: ${sauce?sauce.name:''} — Prod: ${prodDate} (Julian: ${julian})${bbi?` / Best Before: ${bbi}`:''}`
