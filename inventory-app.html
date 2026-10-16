@@ -1166,23 +1166,59 @@
     <div class="card can-write">
       <h3>New Production Run</h3>
       <label style="display:flex;align-items:center;gap:8px;width:auto;margin:0 0 10px;padding:6px 10px;background:var(--chip);border-radius:8px;font-size:12px;cursor:pointer">
-        <input type="checkbox" id="runPackagingOnly" style="width:auto;flex:0 0 auto" onchange="onRunPackagingOnlyChange()"> <b>Packaging only</b> <span style="color:var(--muted)">— not made on a Line, just packed in Packaging</span>
+        <input type="checkbox" id="runPackagingOnly" style="width:auto;flex:0 0 auto" onchange="onRunPackagingOnlyChange()"> <b>Packaging Line only</b> <span style="color:var(--muted)">— not made on a Line, just packed in Packaging</span>
       </label>
       <div class="row">
         <div><label>Run Date</label><input type="date" id="runDate" onchange="renderRunsList(); recalcRunPackingDate()"></div>
         <div id="runProductWrap"><label>Product Dough</label>
           <select id="runProduct" onchange="onRunProductChange()"><option value="">Select product...</option></select>
         </div>
-        <div id="runPkgProductWrap" style="display:none;flex:2"><label>Product</label>
-          <input id="runPkgProduct" list="runPkgProductList" placeholder="Type to search items..." autocomplete="off">
-          <datalist id="runPkgProductList"></datalist>
-        </div>
         <div id="runPkgHeadcountWrap" style="display:none;max-width:140px"><label>People needed</label><input type="number" id="runPkgHeadcount" min="0" step="1" placeholder="e.g. 3"></div>
+      </div>
+      <div id="runPkgItemsWrap" style="display:none;margin:4px 0 8px">
+        <div class="row" style="align-items:flex-end;padding:8px;border:1px dashed var(--line);border-radius:8px">
+          <div class="search" style="flex:2;min-width:220px">
+            <label>Product (search any item)</label>
+            <input id="runPkgSearch" placeholder="Search item # or name..." autocomplete="off" oninput="searchItems('runPkgSearch','runPkgSuggest','runPkgItemNo','runPkgItemName','onRunPkgItemPicked'); onRunPkgItemPicked()">
+            <div class="suggest" id="runPkgSuggest" style="display:none"></div>
+          </div>
+          <input type="hidden" id="runPkgItemNo"><input type="hidden" id="runPkgItemName">
+          <div style="max-width:110px"><label>Cases</label><input type="number" step="1" min="0" id="runPkgCases" placeholder="e.g. 70"></div>
+          <div style="max-width:200px;display:none" id="runPkgDateChoiceWrap"><label>This batch goes in</label>
+            <select id="runPkgDateChoice" onchange="updateRunPkgPicked()">
+              <option value="expired">🧊 Cooler (gets Expiry Date)</option>
+              <option value="production">❄️ Freezer (no Expiry Date)</option>
+            </select>
+          </div>
+          <div style="max-width:140px"><label>Date shows</label>
+            <select id="runPkgDateMode">
+              <option value="full">Date + Julian</option>
+              <option value="julian">Julian only</option>
+            </select>
+          </div>
+          <div style="flex:1;min-width:150px"><label>Remark</label><input id="runPkgRemark" placeholder="Notes for this item..."></div>
+          <button type="button" class="btn secondary" id="runPkgAddBtn" onclick="addRunPkgDraftItem()">＋ Add</button>
+          <button type="button" class="btn secondary" id="runPkgCancelBtn" style="display:none" onclick="resetRunPkgAddBox()">✕ Cancel edit</button>
+        </div>
+        <div id="runPkgPicked" style="font-size:12px;margin:6px 0 0"></div>
+        <div class="tablewrap" id="runPkgDraftWrap" style="display:none;margin-top:6px"><table>
+          <thead><tr><th>Item #</th><th>Item Name</th><th>Pack Detail</th><th>Cases</th><th>Prod./Exp. Date</th><th>Remark</th><th></th></tr></thead>
+          <tbody id="runPkgDraftBody"></tbody>
+        </table></div>
+        <p style="color:var(--muted);font-size:12px;margin:6px 0 0">Add every product to pack, then Create saves the run with all of them. Production Date, Julian and Exp date come from the Packing Date, and show as they will once the run is created. "This batch goes in" only appears for an item stored in both Freezer and Cooler.</p>
       </div>
       <div class="row" id="runLineRow">
         <div><label>Line (auto-filled)</label><input id="runLine" disabled></div>
         <div><label>Planned Batches</label><input type="number" id="runMixes" step="any"></div>
-        <div><label>Packing Date <span style="color:var(--muted);font-weight:400">(auto, editable)</span></label><input type="date" id="runPackingDate"></div>
+      </div>
+      <div class="row" id="runPackRow" style="align-items:flex-end">
+        <div><label>Packed</label>
+          <div class="btnrow" style="margin:0;gap:0" id="runPackChoice">
+            <button type="button" class="btn secondary" id="runPackChoice_same" style="border-radius:8px 0 0 8px" onclick="setRunPackingChoice('same')">Same day</button>
+            <button type="button" class="btn secondary" id="runPackChoice_next" style="border-radius:0 8px 8px 0;margin-left:-1px" onclick="setRunPackingChoice('next')">Next day</button>
+          </div>
+        </div>
+        <div><label>Packing Date <span style="color:var(--muted);font-weight:400">(auto from the line, editable)</span></label><input type="date" id="runPackingDate" onchange="updateRunPackChoiceHighlight()"></div>
       </div>
       <label>Remark</label>
       <textarea id="runRemark" rows="2" placeholder="Notes for this run..."></textarea>
@@ -1517,6 +1553,8 @@
       <p style="color:var(--muted);font-size:12px;margin-top:0">0 = packed same day it's produced. 1 = packed the next day (e.g. Line 6).</p>
       <label style="display:flex;align-items:center;gap:6px;width:auto"><input type="checkbox" id="lineShowInStaffing" checked style="width:auto;flex:0 0 auto">Show in Production Staffing</label>
       <p style="color:var(--muted);font-size:12px;margin-top:0">If off, this Line's Runs are skipped on the Staffing board, Staff Schedule, and the Production/Packaging Team Reports — Create, Preview, and Confirm Completion are unaffected.</p>
+      <label style="display:flex;align-items:center;gap:6px;width:auto"><input type="checkbox" id="lineShowItemsEarly" style="width:auto;flex:0 0 auto">Viewers see items on the production day</label>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">For a Run that's packed the day after it's made: with this off (the default), Viewers only see its items in Preview on the packing day — Operators and Admins always see them. Turn it on for a Line whose items Viewers should see in advance (e.g. Line 6).</p>
       <label>Staff Schedule Color</label>
       <input type="hidden" id="lineColor">
       <div id="lineColorSwatches" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px"></div>
@@ -1530,7 +1568,7 @@
       <div class="filterbar">
         <input id="lineSearch" placeholder="Search line name..." oninput="renderLinesTable()">
       </div>
-      <div class="tablewrap"><table><thead><tr><th>Line</th><th>Color</th><th>Packing Offset (days)</th><th>Show in Staffing</th><th>Product Doughs using it</th><th></th></tr></thead>
+      <div class="tablewrap"><table><thead><tr><th>Line</th><th>Color</th><th>Packing Offset (days)</th><th>Show in Staffing</th><th>Viewers see items early</th><th>Product Doughs using it</th><th></th></tr></thead>
       <tbody id="linesTable"></tbody></table></div>
       <div class="empty" id="linesEmpty" style="display:none">No lines yet</div>
     </div>
@@ -1667,6 +1705,32 @@
         <label>Items to Produce</label>
         <p style="color:var(--muted);font-size:12px;margin:0 0 6px">This sauce is linked to more than one Item # — pick which one(s) this task packs. The last checked item auto-fills with whatever weight is left over; every quantity here is still editable.</p>
         <div id="sauceTaskItemsList"></div>
+      </div>
+      <div id="sauceTaskComponentsSection" style="display:none;margin:10px 0">
+        <label>Components (also made from this task)</label>
+        <p style="color:var(--muted);font-size:12px;margin:0 0 6px">Optional. Each row is a Component this task is made into, counted in pcs — it goes to Components stock when the task is confirmed. Leave it empty for a finished-product-only task. Ingredients are still deducted once, by the task's mixes.</p>
+        <div id="sauceTaskComponentsList"></div>
+        <button type="button" class="btn secondary" style="padding:4px 10px;font-size:12px" onclick="addSauceTaskComponentRow()">＋ Add component</button>
+        <div id="sauceTaskSplitArea" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">
+          <div id="sauceTaskSingleFinishedRow" style="display:none;padding:6px 0">
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <span class="chip" style="background:#e6f1fb;color:#0c447c">Finished</span>
+              <span id="sauceTaskSingleFinishedName" style="flex:1;min-width:180px;font-size:13px"></span>
+              <input type="number" step="1" min="0" id="sauceTaskFinishedCases" placeholder="cases" style="width:100px;flex:0 0 auto" oninput="onSauceTaskFinishedInput()">
+              <span style="font-size:12px">cases</span>
+            </div>
+            <div id="sauceTaskSingleFinishedHint" style="font-size:11px;color:var(--muted);margin-top:2px"></div>
+          </div>
+          <div id="sauceTaskSplitBar" style="display:flex;height:22px;border-radius:6px;overflow:hidden;font-size:11px;margin:6px 0;background:var(--chip)"></div>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:12px">Split by weight:</span>
+            <span style="font-size:11px;color:var(--muted)">All component</span>
+            <input type="range" id="sauceTaskSplitSlider" min="0" max="100" step="1" value="100" style="flex:1;min-width:200px" oninput="onSauceTaskSplitSlider(this.value)">
+            <span style="font-size:11px;color:var(--muted)">All finished</span>
+            <span id="sauceTaskSplitPct" style="font-size:12px;font-weight:700;min-width:40px"></span>
+          </div>
+          <p style="color:var(--muted);font-size:11px;margin:4px 0 0">Dragging the slider fills in both quantities from the task's total weight; either box can still be typed over and the other follows.</p>
+        </div>
       </div>
       <div id="sauceTaskIngredientNote"></div>
       <div id="sauceTaskComponentEstimate"></div>
@@ -2934,10 +2998,15 @@ function toggleTheme(){
   applyTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
 }
 document.getElementById('themeBtn').addEventListener('click', toggleTheme);
-function applyColorTheme(c){
+// The color theme everyone starts with until they pick another one (Night Market). A choice made in
+// the swatch picker is saved under 'color-theme-v2'. The older 'color-theme' key can't tell "picked
+// Bamboo & Jade" from "never picked anything" (every page load used to write '' into it), so it's
+// only trusted when it holds a real color; an empty one means the default.
+const DEFAULT_COLOR_THEME = 'nightmarket';
+function applyColorTheme(c, persist){
   if(c){ document.documentElement.dataset.color = c; } else { delete document.documentElement.dataset.color; }
   document.querySelectorAll('.color-swatch').forEach(b => b.classList.toggle('active', b.dataset.color === c));
-  Store.set('color-theme', c || '');
+  if(persist !== false) Store.set('color-theme-v2', c || 'default'); // 'default' = Bamboo & Jade, chosen on purpose
 }
 function applyFontTheme(f){
   if(f){ document.documentElement.dataset.font = f; } else { delete document.documentElement.dataset.font; }
@@ -3282,6 +3351,7 @@ async function loadCaches(){
   RECIPE = recipe;
   SACHET_STOCK = {};
   sachetInv.forEach(s => { SACHET_STOCK[s.sachet_name] = Number(s.inventory_qty)||0; });
+  SACHET_STOCK_FETCHED_AT = Date.now();
   SACHETS = sachets;
   const optionsHtml = '<option value="">Select sachet...</option>' + SACHETS.map(s=>`<option>${s.sachet_name}</option>`).join('');
   document.getElementById('compSachet').innerHTML = optionsHtml;
@@ -3708,6 +3778,7 @@ function isPriorityCustomerName(name){
 }
 async function refreshPO(){
   if(!connected) return;
+  await refreshSachetStock(); // the order lines' "Components short" notes read the live stock
   try{
     const upcoming = await sbGet('erp_pending_order?select=id,ship_date,item_no,item_name,qty,customer,customer_no,po_no,status&ship_date=gte.' + todayStr() + '&order=ship_date.asc&limit=2000');
     // Overdue lines for Costco/Loblaw/Walmart that aren't Shipped yet stay visible with a
@@ -5213,7 +5284,9 @@ async function refreshStaffingScreenOnce(){
     // Packaging-only runs (see PACKAGING_ONLY_LINE) have no Line, steps or positions — they only
     // add to the Packaging pool's headcount (packagingCenterPoolNeeded) — so they're kept out of
     // the Line-based Staffing board but still handed to the pool calculation.
-    STAFFING_PACKAGING_ONLY_RUNS = allRunsToday.filter(isPackagingOnlyRun);
+    // The people are needed on the day such a run is PACKED, so they're looked up by packing_date
+    // (the run's own day only matters for line runs above).
+    STAFFING_PACKAGING_ONLY_RUNS = (await sbGet(`erp_production_runs?select=id,line,run_date,packing_date,status,packaging_headcount&packing_date=eq.${date}&limit=200`).catch(() => [])).filter(isPackagingOnlyRun);
     // A Line with "Show in Production Staffing" off is skipped entirely here — Create/Preview/
     // Confirm Completion are untouched (they query erp_production_runs directly, not this
     // screen), only the Staffing board/Staff Schedule/printed reports honor this flag.
@@ -6301,8 +6374,10 @@ function packagingCenterPositionSelectHtml(p, date){
 let STAFFING_PACKAGING_ONLY_RUNS = [];
 // Their hand-typed "people needed", summed — each is its own job, so unlike the per-Line MAX below
 // (sequential runs on one Line share their people) these add up.
-function packagingOnlyHeadcount(runs){
-  return runs.filter(r => isPackagingOnlyRun(r) && r.status !== 'Cancelled').reduce((sum, r) => sum + (parseInt(r.packaging_headcount, 10) || 0), 0);
+function packagingOnlyHeadcount(runs, date){
+  // The people are needed on the day the run is PACKED (packing_date — same as run_date unless it's
+  // set to Next day), so a run that's only passing through on its production day doesn't count.
+  return runs.filter(r => isPackagingOnlyRun(r) && r.status !== 'Cancelled' && (!date || (r.packing_date || r.run_date) === date)).reduce((sum, r) => sum + (parseInt(r.packaging_headcount, 10) || 0), 0);
 }
 function packagingCenterPoolNeeded(){
   const relevantRuns = STAFFING_RUNS.filter(r => FLOUR_MIXING_ROOM_LINES.includes(r.line));
@@ -6311,7 +6386,7 @@ function packagingCenterPoolNeeded(){
     const h = PRODUCT_PACKAGING_HEADCOUNT[r.product_name] || 0;
     if(h > (maxByLine[r.line] || 0)) maxByLine[r.line] = h;
   });
-  const extra = packagingOnlyHeadcount(STAFFING_PACKAGING_ONLY_RUNS);
+  const extra = packagingOnlyHeadcount(STAFFING_PACKAGING_ONLY_RUNS, document.getElementById('staffingViewDate').value || todayStr());
   return { needed: Object.values(maxByLine).reduce((sum, h) => sum + h, 0) + extra, relevantRunCount: relevantRuns.length };
 }
 function renderPackagingCenterBanner(){
@@ -7733,7 +7808,8 @@ async function refreshScheduleScreen(){
   document.getElementById('previewViewDate').value = document.getElementById('previewViewDate').value || todayStr();
   document.getElementById('confirmViewDate').value = document.getElementById('confirmViewDate').value || todayStr();
   try{
-    LINES = await sbGet('erp_lines?select=id,name,packing_offset_days,show_in_staffing,color&order=name.asc&limit=500');
+    LINES = await sbGet('erp_lines?select=id,name,packing_offset_days,show_in_staffing,color,show_items_early&order=name.asc&limit=500')
+      .catch(() => sbGet('erp_lines?select=id,name,packing_offset_days,show_in_staffing,color&order=name.asc&limit=500')); // fix64 not run yet
     // Refreshed here (not just once at login) so a Position added on Manage Positions in this
     // same session — whether Production Step or Packaging Center — shows up immediately on this
     // screen too, instead of only after visiting Staffing or Manage Positions itself first.
@@ -7930,6 +8006,7 @@ function resetLineForm(){
   document.getElementById('lineName').value = '';
   document.getElementById('linePackingOffset').value = '0';
   document.getElementById('lineShowInStaffing').checked = true;
+  document.getElementById('lineShowItemsEarly').checked = false;
   document.getElementById('lineColor').value = '';
   renderLineColorSwatches();
 }
@@ -7942,6 +8019,7 @@ function editLine(id){
   document.getElementById('lineName').value = l.name;
   document.getElementById('linePackingOffset').value = l.packing_offset_days ?? 0;
   document.getElementById('lineShowInStaffing').checked = l.show_in_staffing !== false;
+  document.getElementById('lineShowItemsEarly').checked = l.show_items_early === true;
   document.getElementById('lineColor').value = l.color || '';
   renderLineColorSwatches();
   showScreen('schedule-lines'); window.scrollTo(0,0);
@@ -7954,10 +8032,15 @@ async function submitLine(){
   const showInStaffing = document.getElementById('lineShowInStaffing').checked;
   const color = document.getElementById('lineColor').value || null;
   const editId = document.getElementById('lineEditId').value;
+  // show_items_early (fix64) is only sent when the column exists (LINES was loaded with it) or it's
+  // being turned on, so a database that hasn't run fix64 yet saves every other Line setting as before.
+  const showItemsEarly = document.getElementById('lineShowItemsEarly').checked;
+  const earlyColExists = LINES.some(x => 'show_items_early' in x);
+  const earlyPatch = (earlyColExists || showItemsEarly) ? { show_items_early: showItemsEarly } : {};
   try{
     if(editId){
       const old = LINES.find(x => x.id === Number(editId));
-      await sbUpdate('erp_lines', editId, { name, packing_offset_days: packingOffsetDays, show_in_staffing: showInStaffing, color });
+      await sbUpdate('erp_lines', editId, { name, packing_offset_days: packingOffsetDays, show_in_staffing: showInStaffing, color, ...earlyPatch });
       // keep every Product Dough already using the old name in sync
       if(old && old.name !== name){
         const affected = PRODUCTS.filter(p => p.line === old.name);
@@ -7965,7 +8048,7 @@ async function submitLine(){
       }
       toast('Line updated');
     } else {
-      await sbInsert('erp_lines', [{ name, packing_offset_days: packingOffsetDays, show_in_staffing: showInStaffing, color }]);
+      await sbInsert('erp_lines', [{ name, packing_offset_days: packingOffsetDays, show_in_staffing: showInStaffing, color, ...earlyPatch }]);
       toast('Line added');
     }
     resetLineForm();
@@ -7987,7 +8070,7 @@ function renderLinesTable(){
       ? `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${l.color};border:1px solid var(--line);vertical-align:-2px"></span>`
       : `<span style="color:var(--muted);font-size:11px">Auto</span>`;
     return `<tr>
-      <td>${l.name}</td><td>${colorDot}</td><td>${fmtNum(l.packing_offset_days || 0)}</td><td>${l.show_in_staffing !== false ? 'Yes' : 'No'}</td><td>${count}</td>
+      <td>${l.name}</td><td>${colorDot}</td><td>${fmtNum(l.packing_offset_days || 0)}</td><td>${l.show_in_staffing !== false ? 'Yes' : 'No'}</td><td>${l.show_items_early === true ? 'Yes' : 'No'}</td><td>${count}</td>
       <td class="no-print can-write" style="white-space:nowrap">
         <div style="display:flex;gap:6px;flex-wrap:nowrap">
           <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="editLine(${l.id})">✎ Edit</button>
@@ -8348,36 +8431,173 @@ function recalcRunPackingDate(){
   const line = LINES.find(l => l.name === lineName);
   const offset = line ? (parseInt(line.packing_offset_days, 10) || 0) : 0;
   document.getElementById('runPackingDate').value = runDate ? addDaysToDateStr(runDate, offset) : '';
+  updateRunPackChoiceHighlight();
 }
-// A "Packaging only" run is a product that's packed in Packaging but never made on a Line — no
+// Same day / Next day for THIS run (the line's packing offset only sets the default): sets the
+// Packing Date from the Run Date; typing any other date in the field is still fine, and then
+// neither button is lit.
+function setRunPackingChoice(choice){
+  const runDate = document.getElementById('runDate').value || todayStr();
+  document.getElementById('runPackingDate').value = addDaysToDateStr(runDate, choice === 'next' ? 1 : 0);
+  updateRunPackChoiceHighlight();
+}
+function updateRunPackChoiceHighlight(){
+  const runDate = document.getElementById('runDate').value || todayStr();
+  const packDate = document.getElementById('runPackingDate').value;
+  document.getElementById('runPackChoice_same').classList.toggle('active-option', !!packDate && packDate === runDate);
+  document.getElementById('runPackChoice_next').classList.toggle('active-option', !!packDate && packDate === addDaysToDateStr(runDate, 1));
+  // Packaging-line-only products show their Prod/Exp dates from this Packing Date — keep them current.
+  if(document.getElementById('runPackagingOnly').checked) renderRunPkgDraft();
+}
+// A "Packaging Line only" run is product that's packed in Packaging but never made on a Line — no
 // dough, mixes, steps or Line staffing. It's stored as an ordinary erp_production_runs row (so its
 // items, confirmation, reports and stock-in all work unchanged) whose line is this fixed label and
-// whose packaging_headcount (fix59) is how many Packaging people it needs that day.
-const PACKAGING_ONLY_LINE = 'Packaging only';
-function isPackagingOnlyRun(run){ return !!run && run.line === PACKAGING_ONLY_LINE; }
+// whose packaging_headcount (fix59) is how many Packaging people it needs that day. The run itself
+// has no product — the products are its items, added right in the Create form. 'Packaging only' is
+// the label runs were saved with before it was renamed (fix63 renames them in the database).
+const PACKAGING_ONLY_LINE = 'Packaging Line only';
+function isPackagingOnlyRun(run){ return !!run && (run.line === PACKAGING_ONLY_LINE || run.line === 'Packaging only'); }
+let RUN_PKG_DRAFT = []; // [{item_no, item_name, cases, dateChoice, dateMode, remark}] — products added in the Create form so far
 function onRunPackagingOnlyChange(){
   const on = document.getElementById('runPackagingOnly').checked;
   document.getElementById('runProductWrap').style.display = on ? 'none' : '';
-  document.getElementById('runPkgProductWrap').style.display = on ? '' : 'none';
+  document.getElementById('runPkgItemsWrap').style.display = on ? '' : 'none';
   document.getElementById('runPkgHeadcountWrap').style.display = on ? '' : 'none';
   document.getElementById('runLineRow').style.display = on ? 'none' : '';
+  // No Line here, so the default is same day; Same day / Next day (and the date) still work.
   if(on){
-    const names = dedupeCaseInsensitive(ITEMS.map(i => i.item_name).filter(Boolean)).sort((a,b) => a.localeCompare(b));
-    document.getElementById('runPkgProductList').innerHTML = names.map(n => `<option value="${escapeHtml(n)}"></option>`).join('');
-    document.getElementById('runPackingDate').value = document.getElementById('runDate').value; // packed the day it's scheduled
-  } else {
+    document.getElementById('runLine').value = '';
     recalcRunPackingDate();
+    renderRunPkgDraft();
+  } else {
+    onRunProductChange(); // refills the Line from the selected product and the matching default date
   }
+}
+// What one product of a Packaging-line-only run gets for its dates, by the same rules as addRunItem:
+// Production Date is the Packing Date; a Cooler item — or a Freezer+Cooler one set to Cooler — also
+// gets an Exp date from its R.SL Day, a Freezer one (or a compound one set to Freezer) doesn't.
+function packagingOnlyItemDates(item, dateChoice, packDate){
+  const storage = (item?.storage || '').toLowerCase();
+  const isCompound = storage.includes('freezer') && storage.includes('cooler');
+  const wantsExpiry = isCompound ? dateChoice !== 'production' : storage.includes('cooler');
+  return {
+    production_date: packDate,
+    expired_date: wantsExpiry ? addDaysToDateStr(packDate, parseFloat(item?.r_sl_day) || 0) : null
+  };
+}
+function runPkgPackDate(){
+  return document.getElementById('runPackingDate').value || document.getElementById('runDate').value || todayStr();
+}
+// The product just picked in the add box: show/hide the Freezer-or-Cooler choice (only for a
+// Freezer+Cooler item), pre-fill its remark from Manage Items, and show its Keep badge and dates.
+function onRunPkgItemPicked(){
+  const itemNo = document.getElementById('runPkgItemNo').value;
+  const itemName = document.getElementById('runPkgItemName').value;
+  const item = itemNo ? (resolveItemByNoAndName(itemNo, itemName) || ITEMS_BY_NO[itemNo]) : null;
+  document.getElementById('runPkgDateChoiceWrap').style.display = (item && storageIsCompound(item.storage)) ? '' : 'none';
+  if(item) document.getElementById('runPkgRemark').value = item.remark || '';
+  updateRunPkgPicked();
+}
+function updateRunPkgPicked(){
+  const el = document.getElementById('runPkgPicked');
+  const itemNo = document.getElementById('runPkgItemNo').value;
+  const item = itemNo ? (resolveItemByNoAndName(itemNo, document.getElementById('runPkgItemName').value) || ITEMS_BY_NO[itemNo]) : null;
+  if(!item){ el.innerHTML = ''; return; }
+  const compound = storageIsCompound(item.storage);
+  const choice = document.getElementById('runPkgDateChoice').value;
+  const dates = packagingOnlyItemDates(item, choice, runPkgPackDate());
+  el.innerHTML = `${storageKeepBadgeHtml(item.storage, compound ? (choice === 'production' ? 'freezer' : 'cooler') : null)} · ${formatProdExpDate({ ...dates, item_no: item.item_no, item_name: item.item_name, date_display_mode: 'full' })}`;
+}
+function addRunPkgDraftItem(){
+  const itemNo = document.getElementById('runPkgItemNo').value;
+  const itemName = document.getElementById('runPkgItemName').value;
+  if(!itemNo){ toast('Please pick a product from the search results'); return; }
+  const cases = Math.round(parseFloat(document.getElementById('runPkgCases').value) || 0);
+  if(!cases){ toast('Please enter how many cases'); return; }
+  const item = resolveItemByNoAndName(itemNo, itemName) || ITEMS_BY_NO[itemNo];
+  const entry = {
+    item_no: itemNo, item_name: itemName, cases,
+    dateChoice: (item && storageIsCompound(item.storage)) ? document.getElementById('runPkgDateChoice').value : null,
+    dateMode: document.getElementById('runPkgDateMode').value || 'full',
+    remark: document.getElementById('runPkgRemark').value.trim()
+  };
+  const editIdx = document.getElementById('runPkgAddBtn').dataset.editIdx;
+  if(editIdx !== undefined && editIdx !== '') RUN_PKG_DRAFT[Number(editIdx)] = entry; else RUN_PKG_DRAFT.push(entry);
+  resetRunPkgAddBox();
+  renderRunPkgDraft();
+}
+function resetRunPkgAddBox(){
+  ['runPkgSearch','runPkgItemNo','runPkgItemName','runPkgCases','runPkgRemark'].forEach(id => { document.getElementById(id).value = ''; });
+  document.getElementById('runPkgDateChoice').value = 'expired';
+  document.getElementById('runPkgDateMode').value = 'full';
+  document.getElementById('runPkgDateChoiceWrap').style.display = 'none';
+  document.getElementById('runPkgAddBtn').textContent = '＋ Add';
+  delete document.getElementById('runPkgAddBtn').dataset.editIdx;
+  document.getElementById('runPkgCancelBtn').style.display = 'none';
+  updateRunPkgPicked();
+}
+function removeRunPkgDraftItem(i){
+  RUN_PKG_DRAFT.splice(i, 1);
+  resetRunPkgAddBox(); // an edit in progress would now point at the wrong row
+  renderRunPkgDraft();
+}
+// Edit: loads the row into the add box; Save replaces that row in place, Cancel leaves it as it was.
+function editRunPkgDraftItem(i){
+  const d = RUN_PKG_DRAFT[i];
+  if(!d) return;
+  document.getElementById('runPkgSearch').value = `${d.item_no} — ${d.item_name || ''}`;
+  document.getElementById('runPkgItemNo').value = d.item_no;
+  document.getElementById('runPkgItemName').value = d.item_name || '';
+  document.getElementById('runPkgCases').value = d.cases;
+  document.getElementById('runPkgRemark').value = d.remark || '';
+  document.getElementById('runPkgDateMode').value = d.dateMode || 'full';
+  const item = resolveItemByNoAndName(d.item_no, d.item_name) || ITEMS_BY_NO[d.item_no];
+  document.getElementById('runPkgDateChoiceWrap').style.display = (item && storageIsCompound(item.storage)) ? '' : 'none';
+  document.getElementById('runPkgDateChoice').value = d.dateChoice || 'expired';
+  const btn = document.getElementById('runPkgAddBtn');
+  btn.textContent = '💾 Save';
+  btn.dataset.editIdx = String(i);
+  document.getElementById('runPkgCancelBtn').style.display = '';
+  updateRunPkgPicked();
+}
+function renderRunPkgDraft(){
+  document.getElementById('runPkgDraftWrap').style.display = RUN_PKG_DRAFT.length ? '' : 'none';
+  const packDate = runPkgPackDate();
+  document.getElementById('runPkgDraftBody').innerHTML = RUN_PKG_DRAFT.map((d, i) => {
+    const item = resolveItemByNoAndName(d.item_no, d.item_name) || ITEMS_BY_NO[d.item_no];
+    const dates = packagingOnlyItemDates(item, d.dateChoice, packDate);
+    const storageBadge = item ? storageKeepBadgeHtml(item.storage, storageIsCompound(item.storage) ? (d.dateChoice === 'production' ? 'freezer' : 'cooler') : null) : '';
+    return `<tr><td>${escapeHtml(d.item_no)}</td>
+      <td>${escapeHtml(d.item_name || '')}${storageBadge ? `<div style="margin-top:4px">${storageBadge}</div>` : ''}</td>
+      <td style="font-size:12px">${itemPackDetail(item, d.cases)}</td><td>${fmtNum(d.cases)}</td>
+      <td style="white-space:normal">${formatProdExpDate({ ...dates, item_no: d.item_no, item_name: d.item_name, date_display_mode: d.dateMode })}</td>
+      <td>${d.remark ? `<span style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${escapeHtml(d.remark)}</span>` : ''}</td>
+      <td style="white-space:nowrap"><button type="button" class="btn secondary" style="padding:2px 8px;font-size:12px" onclick="editRunPkgDraftItem(${i})">✎ Edit</button>
+        <button type="button" class="btn secondary" style="padding:2px 8px;font-size:12px" onclick="removeRunPkgDraftItem(${i})">✕</button></td></tr>`;
+  }).join('');
+  updateRunPkgPicked();
+}
+// The erp_production_run_items row for one product of a Packaging-line-only run, from what was
+// chosen in the Create form (see packagingOnlyItemDates for the dates).
+function packagingOnlyItemRow(runId, d, packDate){
+  const item = resolveItemByNoAndName(d.item_no, d.item_name) || ITEMS_BY_NO[d.item_no];
+  const dates = packagingOnlyItemDates(item, d.dateChoice, packDate);
+  return {
+    run_id: runId, item_no: d.item_no, item_name: d.item_name, planned_cases: d.cases,
+    production_date: dates.production_date, expired_date: dates.expired_date,
+    remark: d.remark || null, date_display_mode: d.dateMode || 'full'
+  };
 }
 async function submitProductionRun(){
   if(!canWrite()){ toast('You have read-only access'); return; }
   const packagingOnly = document.getElementById('runPackagingOnly').checked;
-  const productName = packagingOnly ? document.getElementById('runPkgProduct').value.trim() : document.getElementById('runProduct').value;
-  if(!productName){ toast(packagingOnly ? 'Please enter the product' : 'Please select a product'); return; }
+  if(packagingOnly && !RUN_PKG_DRAFT.length){ toast('Add at least one product and its cases first'); return; }
+  const productName = packagingOnly ? PACKAGING_ONLY_LINE : document.getElementById('runProduct').value;
+  if(!productName){ toast('Please select a product'); return; }
   const runDate = document.getElementById('runDate').value || todayStr();
   const mixes = packagingOnly ? 0 : (parseFloat(document.getElementById('runMixes').value) || 0);
   const line = packagingOnly ? PACKAGING_ONLY_LINE : (document.getElementById('runLine').value || null);
-  const packingDate = packagingOnly ? runDate : (document.getElementById('runPackingDate').value || runDate);
+  const packingDate = document.getElementById('runPackingDate').value || runDate;
   const remark = document.getElementById('runRemark').value.trim();
   const row = { run_date: runDate, packing_date: packingDate, line, product_name: productName, planned_mixes: mixes, remark: remark||null };
   if(packagingOnly){
@@ -8386,9 +8606,14 @@ async function submitProductionRun(){
     row.packaging_headcount = headcount;
   }
   try{
-    await sbInsert('erp_production_runs', [row]);
-    toast(packagingOnly ? 'Packaging-only run added' : 'Production run started');
-    document.getElementById('runPkgProduct').value = '';
+    const insertedRuns = await sbInsert('erp_production_runs', [row]);
+    if(packagingOnly){
+      await sbInsert('erp_production_run_items', RUN_PKG_DRAFT.map(d => packagingOnlyItemRow(insertedRuns[0].id, d, packingDate)));
+      RUN_PKG_DRAFT = [];
+      resetRunPkgAddBox();
+      renderRunPkgDraft();
+    }
+    toast(packagingOnly ? 'Packaging Line only run added' : 'Production run started');
     document.getElementById('runPkgHeadcount').value = '';
     document.getElementById('runProduct').value = '';
     document.getElementById('runLine').value = '';
@@ -8710,8 +8935,8 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   // and the Dashboard add it to what's needed) — typed in by hand, see fix59.
   const pkgHeadcountBlock = pkgOnly
     ? ((itemsEditable && run.status==='Planned' && canWrite())
-        ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span class="chip">Packaging only</span> People needed: <input type="number" min="0" step="1" value="${run.packaging_headcount ?? 0}" style="width:60px" onchange="updateRunPackagingHeadcount(${run.id}, this.value)"></span>`
-        : `<span class="chip">Packaging only</span> <span style="font-size:12px;color:var(--muted)">${run.packaging_headcount ?? 0} people needed</span>`)
+        ? `<span style="display:inline-flex;align-items:center;gap:4px;font-size:12px"><span class="chip">Packaging Line only</span> People needed: <input type="number" min="0" step="1" value="${run.packaging_headcount ?? 0}" style="width:60px" onchange="updateRunPackagingHeadcount(${run.id}, this.value)"></span>`
+        : `<span class="chip">Packaging Line only</span> <span style="font-size:12px;color:var(--muted)">${run.packaging_headcount ?? 0} people needed</span>`)
     : '';
   const reorderBtns = (itemsEditable && canWrite())
     ? `<button class="btn secondary" style="padding:4px 8px;font-size:12px" title="Move up within this Line" onclick="moveRunOrder(${run.id}, 'up')">▲</button>
@@ -8734,15 +8959,17 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
   const runDateBlock = dateCanEdit
     ? `<input type="date" value="${run.run_date}" title="Move this run to a different production date" style="width:150px;display:inline-block;margin-left:8px" onchange="updateRunDate(${run.id}, this.value)">`
     : '';
-  // Only shown when packing genuinely happens on a different day than production (e.g. Line 6,
-  // next-day packing) — for every ordinary same-day line packing_date === run_date and this
-  // stays blank, so the card looks exactly like it did before this feature existed.
+  // While the run can still be edited, the Packs date is always there (with Same day / Next day) so
+  // any run can be switched to next-day packing — or back — at any time. Read-only views only show
+  // it when packing really is a different day than production (e.g. Line 6), so they look as before.
   const packingDiffers = run.packing_date && run.packing_date !== run.run_date;
-  const packsBlock = packingDiffers
-    ? (dateCanEdit
-        ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-size:12px;color:var(--text-accent, var(--muted))">📦 Packs: <input type="date" value="${run.packing_date}" title="The date this run's items actually get packed" style="width:150px" onchange="updateRunPackingDate(${run.id}, this.value)"></span>`
-        : `<span class="chip" style="margin-left:8px" title="The date this run's items actually get packed">📦 Packs: ${run.packing_date}</span>`)
-    : '';
+  const packDateVal = run.packing_date || run.run_date;
+  const packsBlock = dateCanEdit
+    ? `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:8px;font-size:12px;color:var(--text-accent, var(--muted))">📦 Packs: <input type="date" value="${packDateVal}" title="The date this run's items actually get packed" style="width:150px" onchange="updateRunPackingDate(${run.id}, this.value)">
+        <button type="button" class="btn secondary${packDateVal === run.run_date ? ' active-option' : ''}" style="padding:2px 8px;font-size:11px;border-radius:6px 0 0 6px" onclick="setRunPackingChoiceForRun(${run.id}, '${run.run_date}', 'same')">Same day</button><button type="button" class="btn secondary${packDateVal === addDaysToDateStr(run.run_date, 1) ? ' active-option' : ''}" style="padding:2px 8px;font-size:11px;border-radius:0 6px 6px 0;margin-left:-1px" onclick="setRunPackingChoiceForRun(${run.id}, '${run.run_date}', 'next')">Next day</button></span>`
+    : (packingDiffers
+        ? `<span class="chip" style="margin-left:8px" title="The date this run's items actually get packed">📦 Packs: ${run.packing_date}</span>`
+        : '');
   return `<div class="card" style="margin-bottom:12px" data-run-total-kg="${totalKg}" data-run-used-kg="${usedKg}">
     <div class="row" style="align-items:center;margin-bottom:6px">
       <div style="flex:2">
@@ -8751,7 +8978,7 @@ function buildRunCardHtml(run, gid, items, showConfirmButton, itemsEditable){
           <input type="number" step="any" value="${run.planned_mixes||0}" style="width:70px" onchange="updateRunMixes(${run.id}, this.value)"> batches of
         </span>
         <strong style="display:${mixesCanEdit?'none':'inline'}">${fmtNum(run.planned_mixes)} batches of</strong>`}
-        <strong>${run.product_name}</strong>
+        ${pkgOnly ? '' : `<strong>${run.product_name}</strong>`}
         ${run.line && !pkgOnly ? `<span class="chip" style="margin-left:6px">${run.line}</span>` : ''}
         ${pkgHeadcountBlock ? `<span style="margin-left:6px">${pkgHeadcountBlock}</span>` : ''}
         <span style="margin-left:6px">${statusChip}</span>
@@ -8937,6 +9164,7 @@ function renderRunCardsGroupedByLine(runs, allItems, containerId, prefix, showCo
   if(itemsEditable){ cardEntries.forEach(e => registerRunItemPickCallback(e.gid, e.run, allItems)); }
 }
 async function fetchRunsAndItems(date){
+  await refreshSachetStock(); // the "Components short" notes on these runs read the live stock
   // OR'd on both dates so a run whose packing happens on a different day than its production
   // (Line 6, see recalcRunPackingDate) shows up under BOTH: its production day (to confirm
   // batches / see what to make) and its packing day (to confirm items). Ordinary same-day
@@ -9062,7 +9290,7 @@ function dashboardFlourMixingRoomNeeded(allRuns){
 // Mirrors packagingCenterPoolNeeded()'s exact formula (max headcount per Line, summed across
 // Lines, from PRODUCT_PACKAGING_HEADCOUNT) — same reasoning, using this screen's own
 // locally-loaded runs instead of the Staffing screen's STAFFING_RUNS global.
-function dashboardPackagingCenterPoolNeeded(allRuns){
+function dashboardPackagingCenterPoolNeeded(allRuns, date){
   const relevantRuns = allRuns.filter(r => FLOUR_MIXING_ROOM_LINES.includes(r.line));
   const maxByLine = {};
   relevantRuns.forEach(r => {
@@ -9070,7 +9298,7 @@ function dashboardPackagingCenterPoolNeeded(allRuns){
     if(h > (maxByLine[r.line] || 0)) maxByLine[r.line] = h;
   });
   // Plus any Packaging-only runs' own hand-typed headcount — same as packagingCenterPoolNeeded().
-  return Object.values(maxByLine).reduce((sum, h) => sum + h, 0) + packagingOnlyHeadcount(allRuns);
+  return Object.values(maxByLine).reduce((sum, h) => sum + h, 0) + packagingOnlyHeadcount(allRuns, date);
 }
 // MAXIMUM CONCURRENT STAFFING REQUIREMENT: a physical Line can run several Runs (Doughs) the same
 // day, one after another (e.g. Dough A then Dough B then Dough C) — this app has no reliable
@@ -9133,7 +9361,7 @@ function buildDashboardSummary(data){
     lineStaffAssigned += s.assignedCount;
   });
   const flourNeeded = dashboardFlourMixingRoomNeeded(data.runs);
-  const packagingPoolNeeded = dashboardPackagingCenterPoolNeeded(data.runs);
+  const packagingPoolNeeded = dashboardPackagingCenterPoolNeeded(data.runs, data.date);
   const staffAssigned = lineStaffAssigned
     + data.packagingPositions.filter(p => p.employee_id != null).length
     + data.packagingStaff.length
@@ -9207,7 +9435,7 @@ function buildDashboardLines(data){
     const staffing = dashboardLineStaffing(data, lineRuns);
     // A Packaging-only "Line" has no steps/mixes/staff slots: its status follows its items, and its
     // card shows People needed instead (see renderDashboardLines).
-    const packagingOnly = line === PACKAGING_ONLY_LINE;
+    const packagingOnly = lineRuns.length > 0 && lineRuns.every(isPackagingOnlyRun);
     if(packagingOnly){
       const done = lineItems.filter(it => it.status === 'Confirmed').length;
       if(lineItems.length && done === lineItems.length){ statusLabel = 'Completed'; statusTone = 'green'; }
@@ -9215,7 +9443,7 @@ function buildDashboardLines(data){
       else { statusLabel = 'Not Started'; statusTone = 'muted'; }
     }
     return {
-      packagingOnly, peopleNeeded: packagingOnlyHeadcount(lineRuns),
+      packagingOnly, peopleNeeded: packagingOnlyHeadcount(lineRuns, data.date),
       line, runs: lineRuns, runCount: lineRuns.length,
       primaryProduct: products.length === 1 ? products[0] : `${products.length} Products`,
       statusLabel, statusTone,
@@ -9292,7 +9520,7 @@ function buildDashboardPersonnel(data){
     if(insertAt === -1) lineRows.push(sauceRow); else lineRows.splice(insertAt, 0, sauceRow);
   }
   rows.push(...lineRows);
-  const packagingPoolNeeded = dashboardPackagingCenterPoolNeeded(data.runs);
+  const packagingPoolNeeded = dashboardPackagingCenterPoolNeeded(data.runs, data.date);
   const fixedSlots = data.packagingPositions.map(p => ({
     name: p.employee_id != null ? (empById[p.employee_id]||{}).name || null : null,
     positionLabel: p.position_label
@@ -9701,10 +9929,36 @@ function clearItemsToPackView(){
   document.getElementById('runsEmpty').style.display = 'none';
   toast('View cleared — nothing was deleted');
 }
+// A Viewer doesn't see a next-day-packing Run's items on its production day — only on the packing
+// day (Operators and Admins always do). A Line can opt out (Manage Lines → "Viewers see items on the
+// production day", on for Line 6 — fix64) so its items still show as an advance preview.
+let LINE_EARLY_ITEMS = {}; // line name -> true when Viewers see that Line's next-day items on the production day
+async function loadLineEarlyItems(){
+  try{
+    const rows = await sbGet('erp_lines?select=name,show_items_early&limit=500');
+    LINE_EARLY_ITEMS = {};
+    rows.forEach(l => { LINE_EARLY_ITEMS[l.name] = l.show_items_early === true; });
+  }catch(e){
+    // fix64 not run yet: only Line 6 shows early, which is how it has always worked
+    try{ (await sbGet('erp_lines?select=name&limit=500')).forEach(l => { LINE_EARLY_ITEMS[l.name] = /^\s*line 6\s*$/i.test(l.name); }); }catch(e2){ /* leave as is */ }
+  }
+}
+function itemsHiddenForViewer(run, viewDate){
+  if(!CURRENT_USER || CURRENT_USER.role !== 'viewer') return false;
+  if(!run || !run.packing_date || run.packing_date === run.run_date) return false; // packed the same day
+  if(viewDate >= run.packing_date) return false;                                   // it's the packing day (or later)
+  return !LINE_EARLY_ITEMS[run.line];
+}
 async function renderPreviewSummary(){
   const date = document.getElementById('previewViewDate').value || todayStr();
-  const { runs, items } = await fetchRunsAndItems(date);
-  renderLineSummary(runs, items);
+  let { runs, items } = await fetchRunsAndItems(date);
+  let hidden = null;
+  if(CURRENT_USER && CURRENT_USER.role === 'viewer'){
+    await loadLineEarlyItems();
+    hidden = new Set(runs.filter(r => itemsHiddenForViewer(r, date)).map(r => r.id));
+    if(hidden.size) items = items.filter(it => !hidden.has(it.run_id));
+  }
+  renderLineSummary(runs, items, hidden);
 }
 async function renderConfirmRunCards(){
   const date = document.getElementById('confirmViewDate').value || todayStr();
@@ -9830,6 +10084,10 @@ async function updateRunDate(runId, newDate){
     await refreshScheduleScreen();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
+// The Same day / Next day buttons on a run card: Packing Date = the run's own date, or the day after.
+function setRunPackingChoiceForRun(runId, runDate, choice){
+  return updateRunPackingDate(runId, addDaysToDateStr(runDate, choice === 'next' ? 1 : 0));
+}
 // Packing Date is independent of Production Date (see recalcRunPackingDate) — moving one never
 // moves the other. But the packed items are dated from the packing date, so moving it re-dates
 // them (Production Date / Julian / Exp) to the new packing day.
@@ -9949,7 +10207,7 @@ function itemNarrative(it){
     ${packLine ? `<div style="padding-left:24px;color:var(--danger)">${packLine}</div>` : ''}
   </div>`;
 }
-function renderLineSummary(runs, items){
+function renderLineSummary(runs, items, hiddenRunIds){
   const el = document.getElementById('lineSummaryTable');
   if(!el) return;
   const byLine = {};
@@ -10010,6 +10268,9 @@ function renderLineSummary(runs, items){
         ${datesBlock}
         ${run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:700;font-style:italic;margin-top:4px">📝 ${escapeHtml(run.remark)}</div>` : ''}
       </div>`;
+      if(hiddenRunIds && hiddenRunIds.has(run.id)){
+        return `<div style="margin-bottom:16px">${runInfoBlock}<div style="color:var(--muted);font-size:12px;padding:6px 12px;background:var(--chip);border-radius:8px">Items are packed on ${run.packing_date} and will show on that day.</div></div>`;
+      }
       if(!runItems.length){
         return `<div style="margin-bottom:16px">${runInfoBlock}<div style="color:var(--muted);font-size:12px;padding-left:12px">(no items packed yet)</div></div>`;
       }
@@ -10329,6 +10590,9 @@ async function refreshComponents(){
     document.getElementById('compAdjSachet').innerHTML = optionsHtml;
 
     const rows = await sbGet('erp_sachet_inventory?select=sachet_name,inventory_qty&order=sachet_name.asc&limit=500');
+    // Same numbers the "Components short" warnings use — keep that cache in step with this page.
+    rows.forEach(r => { SACHET_STOCK[r.sachet_name] = Number(r.inventory_qty) || 0; });
+    SACHET_STOCK_FETCHED_AT = Date.now();
     document.getElementById('sachetTable').innerHTML = rows.map(r => `<tr>
       <td>${r.sachet_name}</td><td>${fmtNum(r.inventory_qty)}</td>
     </tr>`).join('');
@@ -10434,6 +10698,23 @@ function itemHasRecipe(itemNo){
 // If this item needs sachets/components to pack, work out the most cases the
 // CURRENT component stock can support — a run might have plenty of dough but
 // still be capped by how many sachets/wrappers are actually on hand.
+// SACHET_STOCK used to be read ONCE at login (loadCaches) and never again, so the "Components short"
+// warnings on the schedule/orders kept quoting whatever the stock was at login — long after
+// Components in/out entries or Confirms had changed it (a warning said 108 on hand while the
+// Components page showed 2,087). This re-reads it; the screens that show those warnings call it
+// first. Throttled (a few seconds) so several renders in a row don't each hit the database.
+let SACHET_STOCK_FETCHED_AT = 0;
+async function refreshSachetStock(force){
+  if(!connected) return;
+  if(!force && Date.now() - SACHET_STOCK_FETCHED_AT < 3000) return;
+  try{
+    const rows = await sbGet('erp_sachet_inventory?select=sachet_name,inventory_qty&limit=1000');
+    const next = {};
+    rows.forEach(s => { next[s.sachet_name] = Number(s.inventory_qty) || 0; });
+    SACHET_STOCK = next;
+    SACHET_STOCK_FETCHED_AT = Date.now();
+  }catch(e){ /* keep the last known stock — the warnings just may be a little behind */ }
+}
 function maxCasesFromComponents(itemNo){
   const recipeRows = RECIPE.filter(r => r.item_no === itemNo);
   if(!recipeRows.length) return null; // no component recipe — not a limiting factor
@@ -11984,10 +12265,12 @@ async function printPackagingReport(){
   const { runs: allRuns, items } = await fetchRunsAndItems(date);
   const runs = allRuns.filter(r => !r.line || !hiddenLines.has(r.line));
   if(!runs.length){ toast('No runs to print for this date'); return; }
+  if(CURRENT_USER && CURRENT_USER.role === 'viewer') await loadLineEarlyItems();
   const byLine = {};
   runs.forEach(r => {
     const runItems = items.filter(it => it.run_id === r.id);
     if(!runItems.length) return; // nothing packed yet — leave this run off the packaging report
+    if(itemsHiddenForViewer(r, date)) return; // a Viewer's printout doesn't include next-day items before their packing day
     const l = r.line || '(No Line)';
     (byLine[l]=byLine[l]||[]).push(r);
   });
@@ -12019,7 +12302,7 @@ async function printPackagingReport(){
           const packagingNoteBlock = r.packaging_note
             ? `<div style="border-left:3px solid #c0392b;background:#fdf1ef;padding:6px 8px;margin-bottom:4px;font-size:12px;color:#c0392b;white-space:pre-line">📦 ${escapeHtml(r.packaging_note)}</div>` : '';
           return `<div style="margin-bottom:10px${r.status==='Cancelled'?';opacity:.6':''}">
-            <div style="font-weight:700;font-style:italic;margin-bottom:4px">${r.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}${isPackagingOnlyRun(r)?` — People needed: ${parseInt(r.packaging_headcount,10)||0}`:''}</div>
+            ${isPackagingOnlyRun(r) ? '' : `<div style="font-weight:700;font-style:italic;margin-bottom:4px">${r.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}</div>`}
             ${cancelledNote}
             ${dateNote}
             ${packagingNoteBlock}
@@ -12069,6 +12352,7 @@ let SAUCE_PREVIEW_TASKS = [];
 let SAUCE_CONFIRM_DAY = null;
 let SAUCE_CONFIRM_TASKS = [];
 let SAUCE_CONFIRM_TASK_ITEMS = {}; // task_id -> erp_sauce_task_items rows, for multi-Item # sauces
+let SAUCE_CONFIRM_TASK_COMPONENTS = {}; // task_id -> erp_sauce_task_components rows (fix61)
 let SAUCE_STOCK_BY_ITEM_NO = {};
 
 async function refreshSauceScreen(){
@@ -13727,8 +14011,12 @@ function pickSauceTaskSauce(id){
   recalcSauceTaskPackingHrs();
   recalcSauceTaskUsageNote();
   checkSauceIngredientAvailability();
-  updateSauceComponentEstimate();
+  // A new task for a sauce that's linked to a Component starts with that Component as its first
+  // output row — remove it for a finished-product-only task (see fix61).
+  SAUCE_TASK_COMPONENT_ROWS = s.component_sachet_name ? [{ sachet_name: s.component_sachet_name, pcs: '' }] : [];
+  document.getElementById('sauceTaskFinishedCases').value = '';
   renderSauceTaskItemsPicker();
+  renderSauceTaskComponents();
 }
 // Multi-Item # sauces (Item Code holds >1 comma-separated code — see lookupSauceMatchedItems)
 // need to say which item(s) a given task actually packs, since Confirm Completion has to
@@ -13803,6 +14091,7 @@ function renderSauceTaskItemStorageBadge(itemNo){
 function onSauceTaskItemsChanged(editedItemNo){
   recalcSauceTaskItemQtys(editedItemNo);
   updateAllSauceTaskItemCalcs();
+  updateSauceComponentEstimate(); // the components' auto pcs depend on what the finished items took
 }
 async function updateAllSauceTaskItemCalcs(){
   if(SAUCE_TASK_ITEM_CANDIDATES.length <= 1) return;
@@ -13852,7 +14141,9 @@ function recalcSauceTaskItemQtys(editedItemNo){
   });
   const mixes = parseFloat(document.getElementById('sauceTaskMixes').value) || 0;
   const { totalKg: perMixKg, hasRows } = sauceRecipeWeightKg(sauce.id);
-  const totalKg = hasRows ? perMixKg * mixes : 0;
+  // Weight of any hand-typed component pcs comes off the top first — the last finished item only
+  // gets what's left after those (see sauceTaskComponentManualKg).
+  const totalKg = hasRows ? Math.max(0, perMixKg * mixes - sauceTaskComponentManualKg()) : 0;
   const checked = SAUCE_TASK_ITEM_CANDIDATES.filter(it => document.getElementById(`sauceTaskItemChk_${it.item_no}`)?.checked);
   if(!checked.length) return;
   const lastItem = checked[checked.length - 1];
@@ -13868,26 +14159,279 @@ function recalcSauceTaskItemQtys(editedItemNo){
 // If this sauce is linked to a Component/Sachet (fix33) with a Unit Weight set (fix34),
 // estimate how many packs this task's total recipe weight (mixes × weight/mix) will yield —
 // purely informational, separate from the pack_weight/machines packing-hours calc.
+// Auto-calculates how many pcs of each Component the task can make, from the task's weight
+// (mixes × recipe weight) ÷ that Component's Unit Weight (Components (Sachets)). Same convention as
+// the finished-item picker: rows you've typed in stay as typed, and the LAST component row soaks up
+// whatever weight is left — after the finished items (Items to Produce quantities) and after the
+// component rows above it. Typing in a row's pcs stops it being auto-filled (clear the box to put
+// it back on auto). There's no mix split: it's all one weight pool.
+function sauceCompUnitKg(name){
+  const sachet = SACHETS.find(x => x.sachet_name === name);
+  return (sachet && sachet.unit_weight) ? (toKg(sachet.unit_weight, sachet.unit_weight_unit) || 0) : 0;
+}
+// Weight already claimed by the finished items picked in Items to Produce (0 for a single-item
+// sauce, whose finished quantity isn't entered until Confirm).
+function sauceTaskFinishedUsedKg(){
+  if(SAUCE_TASK_ITEM_CANDIDATES.length === 1) return sauceTaskSingleFinishedKg();
+  if(SAUCE_TASK_ITEM_CANDIDATES.length <= 1) return 0;
+  return SAUCE_TASK_ITEM_CANDIDATES.reduce((sum, it) => {
+    if(!document.getElementById(`sauceTaskItemChk_${it.item_no}`)?.checked) return sum;
+    return sum + (parseFloat(document.getElementById(`sauceTaskItemQty_${it.item_no}`)?.value) || 0) * caseWeightKg(it);
+  }, 0);
+}
+// Weight of component rows whose pcs were typed by hand — what the finished items' own "last item
+// gets the remainder" must leave alone (see recalcSauceTaskItemQtys).
+function sauceTaskComponentManualKg(){
+  let kg = 0;
+  document.querySelectorAll('#sauceTaskComponentsList [data-comp-row]').forEach(div => {
+    const i = div.dataset.compRow;
+    const pcsEl = document.getElementById('sauceTaskCompPcs_' + i);
+    if(!pcsEl || pcsEl.dataset.manual !== '1') return;
+    kg += (parseFloat(pcsEl.value) || 0) * sauceCompUnitKg(document.getElementById('sauceTaskCompName_' + i)?.value);
+  });
+  return kg;
+}
 function updateSauceComponentEstimate(){
-  const noteEl = document.getElementById('sauceTaskComponentEstimate');
-  if(!noteEl) return;
-  const sauceId = document.getElementById('sauceTaskSauceId').value;
   const mixes = parseFloat(document.getElementById('sauceTaskMixes').value) || 0;
-  if(!sauceId || !mixes){ noteEl.innerHTML = ''; return; }
-  const sauce = SAUCES.find(s => s.id === Number(sauceId));
-  if(!sauce || !sauce.component_sachet_name){ noteEl.innerHTML = ''; return; }
-  const sachet = SACHETS.find(x => x.sachet_name === sauce.component_sachet_name);
-  if(!sachet || !sachet.unit_weight){
-    noteEl.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-top:4px">Set a Unit Weight for "${sauce.component_sachet_name}" in Components (Sachets) to estimate packs.</div>`;
+  const sauceId = document.getElementById('sauceTaskSauceId').value;
+  const sauce = sauceId ? SAUCES.find(s => s.id === Number(sauceId)) : null;
+  const estEls = [...document.querySelectorAll('#sauceTaskComponentsList [data-comp-est]')];
+  const weight = (sauce && mixes) ? sauceRecipeWeightKg(sauce.id) : null;
+  let remainingKg = (weight && weight.hasRows && weight.totalKg) ? weight.totalKg * mixes - sauceTaskFinishedUsedKg() : null;
+  estEls.forEach((el, idx) => {
+    const i = el.dataset.compEst;
+    const name = document.getElementById('sauceTaskCompName_' + i)?.value;
+    const pcsEl = document.getElementById('sauceTaskCompPcs_' + i);
+    const isLast = idx === estEls.length - 1;
+    if(!name || !pcsEl || !mixes){ el.innerHTML = ''; return; }
+    const sachet = SACHETS.find(x => x.sachet_name === name);
+    if(!sachet || !sachet.unit_weight){
+      el.innerHTML = `Set a Unit Weight for "${escapeHtml(name)}" in Components (Sachets) to calculate pcs automatically.`;
+      return;
+    }
+    const unitKg = sauceCompUnitKg(name);
+    if(remainingKg == null || !unitKg){
+      el.innerHTML = weight && !weight.hasRows ? 'No recipe on this sauce yet, so pcs can\'t be calculated — enter them by hand.' : '';
+      return;
+    }
+    if(!isLast){
+      // A row above the last one is whatever's typed; it just uses up some of the weight.
+      remainingKg -= (parseFloat(pcsEl.value) || 0) * unitKg;
+      el.innerHTML = '';
+      return;
+    }
+    const auto = Math.max(0, Math.floor(remainingKg / unitKg + 1e-9)); // +1e-9: 45.6 ÷ 0.05 must be 912, not 911.99…
+    const detail = `${fmtNum(Math.max(0, remainingKg))} kg left ÷ ${fmtNum(sachet.unit_weight)}${sachet.unit_weight_unit||'g'}/pc`;
+    if(pcsEl.dataset.manual === '1'){
+      el.innerHTML = `Typed by hand — auto would be ~${fmtNum(auto)} pcs (${detail}). Clear the box to use auto.`;
+    } else {
+      pcsEl.value = auto;
+      el.innerHTML = `📦 Auto: ~${fmtNum(auto)} pcs (${detail})${auto === 0 ? ' — nothing left after the finished items; type pcs here and the last finished item shrinks to fit' : ''}`;
+    }
+  });
+  updateSauceTaskSplitArea();
+}
+function onSauceTaskComponentPcsInput(inputEl){
+  inputEl.dataset.manual = inputEl.value === '' ? '' : '1';
+  // A single finished item has no "last item remainder" logic of its own, so when component pcs are
+  // typed its cases shrink to whatever weight is left (the multi-item picker does this itself in
+  // recalcSauceTaskItemQtys).
+  if(SAUCE_TASK_ITEM_CANDIDATES.length === 1 && inputEl.value !== ''){
+    const ctx = sauceTaskSplitContext();
+    const cw = caseWeightKg(ctx.single);
+    if(ctx.totalKg > 0 && cw > 0){
+      const casesEl = document.getElementById('sauceTaskFinishedCases');
+      if(casesEl) casesEl.value = Math.max(0, Math.floor((ctx.totalKg - sauceTaskComponentManualKg()) / cw + 1e-9));
+    }
+  }
+  updateSauceComponentEstimate();
+  onSauceTaskItemsChanged(); // a hand-typed component takes weight the finished items' remainder must leave
+}
+// ---- Finished/Component split (weight-linked cases ↔ pcs, with the slider) ----
+// The task's weight is one pool: finished cases use weight × case weight, component pcs use pcs ×
+// Unit Weight. Typing one side makes the other follow; the slider sets the split directly. A
+// single-item sauce keeps its planned cases on the task (fix62); a multi-item sauce uses its
+// Items to Produce rows, where the last checked item takes the remainder.
+function sauceTaskSplitContext(){
+  const sauceId = document.getElementById('sauceTaskSauceId').value;
+  const sauce = sauceId ? SAUCES.find(s => s.id === Number(sauceId)) : null;
+  const mixes = parseFloat(document.getElementById('sauceTaskMixes').value) || 0;
+  const weight = (sauce && mixes) ? sauceRecipeWeightKg(sauce.id) : null;
+  return {
+    sauce, mixes,
+    totalKg: (weight && weight.hasRows && weight.totalKg) ? weight.totalKg * mixes : 0,
+    single: SAUCE_TASK_ITEM_CANDIDATES.length === 1 ? SAUCE_TASK_ITEM_CANDIDATES[0] : null,
+    multi: SAUCE_TASK_ITEM_CANDIDATES.length > 1
+  };
+}
+function sauceTaskSingleFinishedKg(){
+  const single = SAUCE_TASK_ITEM_CANDIDATES.length === 1 ? SAUCE_TASK_ITEM_CANDIDATES[0] : null;
+  if(!single || !document.querySelector('#sauceTaskComponentsList [data-comp-row]')) return 0;
+  return (parseFloat(document.getElementById('sauceTaskFinishedCases')?.value) || 0) * caseWeightKg(single);
+}
+function sauceTaskComponentTotalKg(){
+  let kg = 0;
+  document.querySelectorAll('#sauceTaskComponentsList [data-comp-row]').forEach(div => {
+    const i = div.dataset.compRow;
+    kg += (parseFloat(document.getElementById('sauceTaskCompPcs_' + i)?.value) || 0) * sauceCompUnitKg(document.getElementById('sauceTaskCompName_' + i)?.value);
+  });
+  return kg;
+}
+// Redraws the split bar/slider (and the single finished-item row) from what's currently typed.
+function updateSauceTaskSplitArea(){
+  const area = document.getElementById('sauceTaskSplitArea');
+  if(!area) return;
+  const ctx = sauceTaskSplitContext();
+  const hasComps = !!document.querySelector('#sauceTaskComponentsList [data-comp-row]');
+  const show = hasComps && ctx.totalKg > 0 && (ctx.single || ctx.multi);
+  area.style.display = show ? 'block' : 'none';
+  if(!show) return;
+  const singleRow = document.getElementById('sauceTaskSingleFinishedRow');
+  singleRow.style.display = ctx.single ? '' : 'none';
+  const finishedKg = sauceTaskFinishedUsedKg();
+  if(ctx.single){
+    document.getElementById('sauceTaskSingleFinishedName').textContent = `${ctx.single.item_no} — ${ctx.single.item_name || ''}`;
+    const cases = parseFloat(document.getElementById('sauceTaskFinishedCases').value) || 0;
+    const cw = caseWeightKg(ctx.single);
+    document.getElementById('sauceTaskSingleFinishedHint').textContent = cw > 0
+      ? `${fmtNum(cases)} cases × ${fmtNum(cw)} kg = ${fmtNum(finishedKg)} kg. Type this and the component follows, or the other way round.`
+      : 'This item has no case weight in Manage Items, so cases can\'t be linked to weight.';
+  }
+  const compKg = sauceTaskComponentTotalKg();
+  const pctF = Math.min(100, finishedKg / ctx.totalKg * 100);
+  const pctC = Math.min(100 - pctF, compKg / ctx.totalKg * 100);
+  document.getElementById('sauceTaskSplitBar').innerHTML =
+    (pctF > 0 ? `<span style="width:${pctF}%;background:#b5d4f4;color:#042c53;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden">Finished ${fmtNum(finishedKg)} kg</span>` : '') +
+    (pctC > 0 ? `<span style="width:${pctC}%;background:#fac775;color:#412402;display:flex;align-items:center;justify-content:center;white-space:nowrap;overflow:hidden">Component ${fmtNum(compKg)} kg</span>` : '') +
+    `<span style="flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted)">${(finishedKg + compKg) < ctx.totalKg * 0.995 ? `${fmtNum(ctx.totalKg - finishedKg - compKg)} kg unallocated` : ''}</span>`;
+  const slider = document.getElementById('sauceTaskSplitSlider');
+  if(document.activeElement !== slider) slider.value = Math.round(pctF);
+  document.getElementById('sauceTaskSplitPct').textContent = Math.round(pctF) + '%';
+}
+function onSauceTaskFinishedInput(){
+  updateSauceComponentEstimate(); // the last component row (unless typed) takes what's left
+  onSauceTaskItemsChanged();
+}
+function onSauceTaskSplitSlider(value){
+  const pct = Math.max(0, Math.min(100, parseFloat(value) || 0));
+  const ctx = sauceTaskSplitContext();
+  if(!ctx.totalKg){ return; }
+  const rows = [...document.querySelectorAll('#sauceTaskComponentsList [data-comp-row]')].map(d => d.dataset.compRow);
+  if(!rows.length) return;
+  const lastI = rows[rows.length - 1];
+  const lastUnitKg = sauceCompUnitKg(document.getElementById('sauceTaskCompName_' + lastI)?.value);
+  if(!lastUnitKg){ toast('Set a Unit Weight for this component in Components (Sachets) first'); return; }
+  const finishedKg = ctx.totalKg * pct / 100;
+  let othersKg = 0;
+  rows.slice(0, -1).forEach(i => { othersKg += (parseFloat(document.getElementById('sauceTaskCompPcs_' + i)?.value) || 0) * sauceCompUnitKg(document.getElementById('sauceTaskCompName_' + i)?.value); });
+  const lastPcs = document.getElementById('sauceTaskCompPcs_' + lastI);
+  lastPcs.value = Math.max(0, Math.floor((ctx.totalKg - finishedKg - othersKg) / lastUnitKg + 1e-9));
+  lastPcs.dataset.manual = '1'; // set by the slider, so mixes/other edits don't silently move it
+  if(ctx.single){
+    const cw = caseWeightKg(ctx.single);
+    if(cw > 0) document.getElementById('sauceTaskFinishedCases').value = Math.max(0, Math.floor(finishedKg / cw + 1e-9));
+    updateSauceComponentEstimate();
+  } else {
+    onSauceTaskItemsChanged(); // the multi-item picker's last item takes total − the component weight just set
+  }
+}
+// Component outputs for a task being created/edited — [{sachet_name, pcs}], mirrored from the rows
+// on screen (captureSauceTaskComponentRows) so adding/removing a row never loses what's typed.
+let SAUCE_TASK_COMPONENT_ROWS = [];
+function captureSauceTaskComponentRows(){
+  // Only the visible section is the source of truth — hidden means no sauce is picked, and the
+  // state array is whatever was last set (or empty).
+  if(document.getElementById('sauceTaskComponentsSection').style.display === 'none') return;
+  const rows = [];
+  document.querySelectorAll('#sauceTaskComponentsList [data-comp-row]').forEach(div => {
+    const i = div.dataset.compRow;
+    rows.push({ sachet_name: document.getElementById('sauceTaskCompName_' + i)?.value || '', pcs: document.getElementById('sauceTaskCompPcs_' + i)?.value ?? '' });
+  });
+  SAUCE_TASK_COMPONENT_ROWS = rows;
+}
+function renderSauceTaskComponents(){
+  const section = document.getElementById('sauceTaskComponentsSection');
+  const list = document.getElementById('sauceTaskComponentsList');
+  if(!section || !list) return;
+  const hasSauce = !!document.getElementById('sauceTaskSauceId').value;
+  section.style.display = hasSauce ? 'block' : 'none';
+  const options = name => '<option value="">Select component...</option>' + SACHETS.map(s => `<option value="${escapeHtml(s.sachet_name)}" ${s.sachet_name===name?'selected':''}>${escapeHtml(s.sachet_name)}</option>`).join('')
+    + ((name && !SACHETS.some(s => s.sachet_name === name)) ? `<option value="${escapeHtml(name)}" selected>${escapeHtml(name)}</option>` : '');
+  list.innerHTML = SAUCE_TASK_COMPONENT_ROWS.map((r, i) => `<div data-comp-row="${i}" style="padding:6px 0;border-bottom:1px solid var(--line)">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="chip" style="background:#faeeda;color:#633806">Component</span>
+      <select id="sauceTaskCompName_${i}" style="flex:1;min-width:200px" onchange="updateSauceComponentEstimate(); onSauceTaskItemsChanged()">${options(r.sachet_name)}</select>
+      <input type="number" step="1" min="0" id="sauceTaskCompPcs_${i}" value="${r.pcs ?? ''}" ${(r.pcs !== '' && r.pcs != null) ? 'data-manual="1"' : ''} placeholder="pcs (auto)" oninput="onSauceTaskComponentPcsInput(this)" style="width:110px;flex:0 0 auto">
+      <button type="button" class="btn secondary" style="padding:4px 10px;font-size:12px" onclick="removeSauceTaskComponentRow(${i})">✕</button>
+    </div>
+    <div data-comp-est="${i}" style="font-size:11px;color:var(--muted);margin-top:2px"></div>
+  </div>`).join('');
+  updateSauceComponentEstimate();
+}
+function addSauceTaskComponentRow(){
+  captureSauceTaskComponentRows();
+  SAUCE_TASK_COMPONENT_ROWS.push({ sachet_name: '', pcs: '' });
+  renderSauceTaskComponents();
+}
+function removeSauceTaskComponentRow(i){
+  captureSauceTaskComponentRows();
+  SAUCE_TASK_COMPONENT_ROWS.splice(i, 1);
+  renderSauceTaskComponents();
+}
+// Replaces a Planned task's component rows with whatever's on screen — same delete+recreate and
+// same "never clobber a Confirmed one" rule as syncSauceTaskItems. If fix61 hasn't been run the
+// table doesn't exist: a task with no component rows saves fine regardless; one that has rows says
+// what's missing instead of silently dropping them.
+async function syncSauceTaskComponents(taskId){
+  captureSauceTaskComponentRows();
+  const rows = SAUCE_TASK_COMPONENT_ROWS.filter(r => r.sachet_name);
+  let existing = [];
+  try{ existing = await sbGet(`erp_sauce_task_components?select=id,status&task_id=eq.${taskId}`); }
+  catch(e){
+    if(rows.length) throw new Error('Components need fix61-sauce-task-components.sql to be run in Supabase first');
     return;
   }
-  const { totalKg, hasRows } = sauceRecipeWeightKg(sauce.id);
-  if(!hasRows || !totalKg){ noteEl.innerHTML = ''; return; }
-  const totalWeightKg = totalKg * mixes;
-  const unitWeightKg = toKg(sachet.unit_weight, sachet.unit_weight_unit);
-  if(!unitWeightKg){ noteEl.innerHTML = ''; return; }
-  const estPacks = Math.floor(totalWeightKg / unitWeightKg);
-  noteEl.innerHTML = `<div style="font-size:12px;color:var(--muted);margin-top:4px">📦 Estimated packs of "${sauce.component_sachet_name}": ~${fmtNum(estPacks)} (${fmtNum(totalWeightKg)} kg ÷ ${fmtNum(sachet.unit_weight)}${sachet.unit_weight_unit||'g'}/pack)</div>`;
+  if(existing.some(r => r.status === 'Confirmed')) return;
+  if(existing.length) await sb(`erp_sauce_task_components?task_id=eq.${taskId}`, { method: 'DELETE' });
+  if(rows.length) await sbInsert('erp_sauce_task_components', rows.map(r => ({ task_id: taskId, sachet_name: r.sachet_name, planned_pcs: parseFloat(r.pcs) || 0, status: 'Planned' })));
+}
+// Batch-fetches a set of tasks' component rows, grouped by task_id — empty (not an error) when the
+// table isn't there yet, so every screen that shows tasks keeps working before fix61 is run.
+async function fetchSauceTaskComponentsForTasks(tasks){
+  const ids = (tasks || []).map(t => t.id);
+  if(!ids.length) return {};
+  try{
+    const rows = await sbGetAll(`erp_sauce_task_components?select=*&task_id=in.(${ids.join(',')})&order=id.asc`);
+    const map = {};
+    rows.forEach(r => { (map[r.task_id] = map[r.task_id] || []).push(r); });
+    return map;
+  }catch(e){ return {}; }
+}
+// The planned finished quantity of a single-item sauce task that's also made into Components
+// (fix62) — a multi-item task already shows its per-item cases in the items breakdown instead.
+function sauceTaskPlannedFinishedHtml(t, sauce, isMultiItem){
+  if(isMultiItem || !t || !(parseFloat(t.planned_output_cases) > 0)) return '';
+  const item = sauce ? lookupSauceMatchedItems(sauce.item_code)[0] : null;
+  return `<div style="padding:3px 0 3px 16px;border-top:1px dashed var(--line)">
+    <div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px">
+      <strong>📋 Finished${item ? ` — ${escapeHtml(item.item_no)} ${escapeHtml(item.item_name || '')}` : ''}</strong>
+      <span>${fmtNum(t.planned_output_cases)} cases</span>
+    </div>
+  </div>`;
+}
+// One "🧩 Component" line per output — shown under the task in Create, Preview and the printouts,
+// next to the finished-item lines. Components only carry Prod/Julian: Best Before comes from a
+// finished item's own R.SL Day.
+function sauceTaskComponentsHtml(comps, dateStr){
+  if(!comps || !comps.length) return '';
+  const julian = toSauceJulian(dateStr);
+  return comps.map(c => `<div style="padding:3px 0 3px 16px;border-top:1px dashed var(--line)">
+    <div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px">
+      <strong>🧩 Component — ${escapeHtml(c.sachet_name)}</strong>
+      <span>${fmtNum(c.confirmed_pcs ?? c.planned_pcs ?? 0)} pcs</span>
+      <span>Prod: ${dateStr} (Julian: ${julian})</span>
+    </div>
+  </div>`).join('');
 }
 // If a recipe ingredient is short, and that ingredient is itself linked to a sauce that
 // produces it (Manage Ingredients > "Produced By"), point at that sauce instead of just
@@ -14049,6 +14593,9 @@ function resetSauceTaskForm(){
   document.getElementById('sauceTaskStorageBadge').innerHTML = '';
   document.getElementById('sauceTaskIngredientNote').innerHTML = '';
   document.getElementById('sauceTaskComponentEstimate').innerHTML = '';
+  SAUCE_TASK_COMPONENT_ROWS = [];
+  document.getElementById('sauceTaskFinishedCases').value = '';
+  renderSauceTaskComponents();
   SAUCE_TASK_ITEM_CANDIDATES = [];
   document.getElementById('sauceTaskItemsSection').style.display = 'none';
   document.getElementById('sauceTaskItemsList').innerHTML = '';
@@ -14080,6 +14627,12 @@ async function editSauceTask(id){
   recalcSauceTaskPackingHrs();
   const existingItems = await sbGet(`erp_sauce_task_items?select=item_no,item_name,planned_cases,remark,storage_choice&task_id=eq.${id}`);
   renderSauceTaskItemsPicker(existingItems);
+  // This task's own Component outputs (none if fix61 isn't run yet, or it's finished-only).
+  let existingComps = [];
+  try{ existingComps = await sbGet(`erp_sauce_task_components?select=sachet_name,planned_pcs&task_id=eq.${id}&order=id.asc`); }catch(e){ /* fix61 not run yet */ }
+  SAUCE_TASK_COMPONENT_ROWS = existingComps.map(c => ({ sachet_name: c.sachet_name, pcs: c.planned_pcs ?? '' }));
+  document.getElementById('sauceTaskFinishedCases').value = t.planned_output_cases ?? '';
+  renderSauceTaskComponents();
   document.getElementById('sauceTaskFormBody').style.display = 'block';
   document.getElementById('sauceTaskFormToggleIcon').textContent = '▾ Click to collapse';
   document.getElementById('sauceTaskFormTitle').scrollIntoView({behavior:'smooth', block:'start'});
@@ -14110,6 +14663,15 @@ async function submitSauceTask(){
     remark: document.getElementById('sauceTaskRemark').value.trim() || null,
     storage_choice: document.getElementById('sauceTaskStorageWrap').style.display !== 'none' ? document.getElementById('sauceTaskStorageChoice').value : null
   };
+  // Planned finished cases for a single-item sauce that's also made into a Component (fix62). The
+  // key is only sent when there's a value to store — or an existing task's column to clear — so a
+  // database that hasn't run fix62 yet keeps saving every ordinary task exactly as before.
+  captureSauceTaskComponentRows();
+  const plannedFinished = (SAUCE_TASK_ITEM_CANDIDATES.length === 1 && SAUCE_TASK_COMPONENT_ROWS.some(r => r.sachet_name))
+    ? (parseFloat(document.getElementById('sauceTaskFinishedCases').value) || 0) : 0;
+  const plannedColExists = SAUCE_TASKS_CREATE.some(x => 'planned_output_cases' in x);
+  if(plannedFinished > 0) patch.planned_output_cases = plannedFinished;
+  else if(plannedColExists) patch.planned_output_cases = null;
   const editId = document.getElementById('sauceTaskEditId').value;
   try{
     const day = await ensureSauceDay(dateStr);
@@ -14132,6 +14694,7 @@ async function submitSauceTask(){
       toast('Task added');
     }
     await syncSauceTaskItems(taskId);
+    await syncSauceTaskComponents(taskId);
     resetSauceTaskForm();
     await loadSauceDayForCreate(dateStr);
   }catch(e){ toast('Save failed: ' + e.message); }
@@ -14167,6 +14730,7 @@ async function deleteSauceTask(id){
     // be deleted first or Supabase 409s on the foreign key constraint — deleteRow() alone only
     // ever deletes the one table it's told to.
     await sb(`erp_sauce_task_items?task_id=eq.${id}`, {method:'DELETE'});
+    await sb(`erp_sauce_task_components?task_id=eq.${id}`, {method:'DELETE'}).catch(() => {}); // fix61 not run yet — nothing to delete
     await sbDelete('erp_sauce_schedule_tasks', id);
     toast('Deleted');
     await loadSauceDayForCreate(dateStr);
@@ -14176,6 +14740,7 @@ async function renderSauceTasksTable(){
   const day = CURRENT_SAUCE_DAY;
   SAUCE_TASKS_CREATE = day ? await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${day.id}&order=sort_order.asc.nullslast,id.asc&limit=200`) : [];
   const taskItemsMap = await fetchSauceTaskItemsForTasks(SAUCE_TASKS_CREATE);
+  const taskCompMap = await fetchSauceTaskComponentsForTasks(SAUCE_TASKS_CREATE);
   const dailyOutMap = await fetchItemDailyOutMap(Object.values(taskItemsMap).flat().map(ti => ti.item_no));
   document.getElementById('sauceTasksTable').innerHTML = SAUCE_TASKS_CREATE.map(t => {
     const s = SAUCES.find(x => x.id === t.sauce_id);
@@ -14191,7 +14756,7 @@ async function renderSauceTasksTable(){
     // items (different Storage/R.SL Day, different machine setup), those get shown per item
     // in itemsLine below instead of guessed from a single one here.
     const bb = (!isMultiItem && s) ? sauceCoolerBestBefore(s, prodDate) : null;
-    const itemsLine = sauceTaskItemsBreakdownHtml(taskItems, s, prodDate, dailyOutMap);
+    const itemsLine = sauceTaskItemsBreakdownHtml(taskItems, s, prodDate, dailyOutMap) + sauceTaskPlannedFinishedHtml(t, s, isMultiItem) + sauceTaskComponentsHtml(taskCompMap[t.id], prodDate);
     const notesLines = [
       t.operator_notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">🕐 ${t.operator_notes}</div>` : '',
       t.machine_notes ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">⚙ ${t.machine_notes}</div>` : '',
@@ -14276,6 +14841,7 @@ async function renderSaucePreview(){
   SAUCE_PREVIEW_TASKS = await sbGet(`erp_sauce_schedule_tasks?select=*&day_id=eq.${SAUCE_PREVIEW_DAY.id}&order=location.asc,sort_order.asc.nullslast,id.asc&limit=200`);
   document.getElementById('saucePreviewEmpty').style.display = SAUCE_PREVIEW_TASKS.length ? 'none' : 'block';
   const sauceTaskItemsMap = await fetchSauceTaskItemsForTasks(SAUCE_PREVIEW_TASKS);
+  const sauceTaskCompMap = await fetchSauceTaskComponentsForTasks(SAUCE_PREVIEW_TASKS);
   const sauceItemDailyOutMap = await fetchItemDailyOutMap(Object.values(sauceTaskItemsMap).flat().map(ti => ti.item_no));
   const statusChip = SAUCE_PREVIEW_DAY.status === 'Confirmed' ? `<span class="chip ok">Confirmed</span>` : `<span class="chip">Planned</span>`;
   document.getElementById('sauceDayInfo').innerHTML = `<div class="card">
@@ -14317,7 +14883,7 @@ async function renderSaucePreview(){
         const bb = (!isMultiItem && s) ? sauceCoolerBestBefore(s, prodDate, t.storage_choice) : null;
         const allergenTags = s ? sauceAllergenObjects(s).map(allergenChipHtml).join(' ') : '';
         const packingCalc = isMultiItem ? '' : sauceTaskPackingCalcText(t);
-        const itemsLine = sauceTaskItemsBreakdownHtml(taskItems, s, prodDate, sauceItemDailyOutMap);
+        const itemsLine = sauceTaskItemsBreakdownHtml(taskItems, s, prodDate, sauceItemDailyOutMap) + sauceTaskPlannedFinishedHtml(t, s, isMultiItem) + sauceTaskComponentsHtml(sauceTaskCompMap[t.id], prodDate);
         // Single/no-match tasks have no erp_sauce_task_items row to carry their own remark or
         // storage badge — both live on the task itself instead (see sauceTaskRemark /
         // sauceTaskStorageChoice in the Create form).
@@ -14438,9 +15004,10 @@ function sauceTaskItemsBreakdownHtml(taskItems, sauce, dateStr, dailyOutMap){
 }
 // Shared by the single-day Preview print and the whole-week print — one date's tasks,
 // grouped by Location, each as its own "<Location> Sauce Production Plan" table.
-function sauceProductionDayHtml(dateStr, tasks, taskItemsMap, dailyOutMap){
+function sauceProductionDayHtml(dateStr, tasks, taskItemsMap, dailyOutMap, taskCompMap){
   taskItemsMap = taskItemsMap || {};
   dailyOutMap = dailyOutMap || {};
+  taskCompMap = taskCompMap || {};
   const byLoc = {};
   tasks.forEach(t => { const l = t.location || '(No Location)'; (byLoc[l]=byLoc[l]||[]).push(t); });
   const locs = Object.keys(byLoc).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
@@ -14463,7 +15030,7 @@ function sauceProductionDayHtml(dateStr, tasks, taskItemsMap, dailyOutMap){
         const allergenLine = allergenChips ? `Allergens: ${allergenChips}` : '';
         const opMachineNotes = [t.operator_notes, t.machine_notes].filter(Boolean).join(' — ');
         const packingLine = isMultiItem ? '' : sauceTaskPackingCalcText(t);
-        const itemsLine = sauceTaskItemsBreakdownHtml(taskItems, s, dateStr, dailyOutMap);
+        const itemsLine = sauceTaskItemsBreakdownHtml(taskItems, s, dateStr, dailyOutMap) + sauceTaskPlannedFinishedHtml(t, s, isMultiItem) + sauceTaskComponentsHtml(taskCompMap[t.id], dateStr);
         const taskRemarkLine = (!isMultiItem && t.remark) ? `<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${escapeHtml(t.remark)}</div>` : '';
         const singleItemMatch = (!isMultiItem && s) ? lookupSauceMatchedItems(s.item_code)[0] : null;
         const taskStorageBadge = singleItemMatch ? storageKeepBadgeHtml(singleItemMatch.storage, t.storage_choice) : '';
@@ -14489,8 +15056,9 @@ async function printSauceProductionReport(){
   if(!SAUCE_PREVIEW_DAY || !SAUCE_PREVIEW_TASKS.length){ toast('No tasks to print for this date'); return; }
   const day = SAUCE_PREVIEW_DAY;
   const taskItemsMap = await fetchSauceTaskItemsForTasks(SAUCE_PREVIEW_TASKS);
+  const taskCompMap = await fetchSauceTaskComponentsForTasks(SAUCE_PREVIEW_TASKS);
   const dailyOutMap = await fetchItemDailyOutMap(Object.values(taskItemsMap).flat().map(ti => ti.item_no));
-  const html = `<p>Date: ${day.schedule_date}</p>${sauceProductionDayHtml(day.schedule_date, SAUCE_PREVIEW_TASKS, taskItemsMap, dailyOutMap)}`;
+  const html = `<p>Date: ${day.schedule_date}</p>${sauceProductionDayHtml(day.schedule_date, SAUCE_PREVIEW_TASKS, taskItemsMap, dailyOutMap, taskCompMap)}`;
   runReportPrint(html);
 }
 // Whole-week version: Monday-Sunday of whichever week the Preview date picker is
@@ -14508,12 +15076,13 @@ async function printSauceProductionReportWeek(){
   const scheduledDays = days.filter(d => (tasksByDayId[d.id]||[]).length);
   if(!scheduledDays.length){ toast('Nothing scheduled this week to print'); return; }
   const taskItemsMap = await fetchSauceTaskItemsForTasks(tasks);
+  const taskCompMap = await fetchSauceTaskComponentsForTasks(tasks);
   const dailyOutMap = await fetchItemDailyOutMap(Object.values(taskItemsMap).flat().map(ti => ti.item_no));
   const html = `
     <p>Week of: ${weekStart} – ${weekEnd}</p>
     ${scheduledDays.map((d,i) => `<div${i>0?' style="page-break-before:always"':''}>
       <h1>${d.schedule_date}</h1>
-      ${sauceProductionDayHtml(d.schedule_date, tasksByDayId[d.id], taskItemsMap, dailyOutMap)}
+      ${sauceProductionDayHtml(d.schedule_date, tasksByDayId[d.id], taskItemsMap, dailyOutMap, taskCompMap)}
     </div>`).join('')}
   `;
   runReportPrint(html);
@@ -14574,9 +15143,10 @@ async function renderSauceConfirmTab(){
   const allTaskItems = taskIds.length ? await sbGetAll(`erp_sauce_task_items?select=*&task_id=in.(${taskIds.join(',')})`) : [];
   SAUCE_CONFIRM_TASK_ITEMS = {};
   allTaskItems.forEach(r => { (SAUCE_CONFIRM_TASK_ITEMS[r.task_id] = SAUCE_CONFIRM_TASK_ITEMS[r.task_id] || []).push(r); });
+  SAUCE_CONFIRM_TASK_COMPONENTS = await fetchSauceTaskComponentsForTasks(SAUCE_CONFIRM_TASKS);
   document.getElementById('sauceConfirmTasksList').innerHTML = `
     <div class="tablewrap"><table><thead><tr>
-      <th>Location</th><th>Sauce</th><th>Mixes</th><th>Finished Goods Qty (cases)</th><th>Prod. / Best Before</th><th>Status</th><th class="no-print"></th>
+      <th>Location</th><th>Sauce</th><th>Mixes</th><th>Output Qty (cases / pcs)</th><th>Prod. / Best Before</th><th>Status</th><th class="no-print"></th>
     </tr></thead><tbody>
     ${SAUCE_CONFIRM_TASKS.map(t => {
       const s = SAUCES.find(x => x.id === t.sauce_id);
@@ -14612,12 +15182,29 @@ async function renderSauceConfirmTab(){
           }).join('')}
         </div>`;
       } else {
-        const suggested = t.confirmed_output_qty ?? suggestedSauceOutputCases(t);
+        // With Component outputs on the task the whole-recipe cases guess would overstate the
+        // finished part (some of the batch goes to components), so it isn't pre-filled then.
+        const hasComps = (SAUCE_CONFIRM_TASK_COMPONENTS[t.id] || []).length > 0;
+        // The planned finished cases chosen with the split (fix62) are the default; failing that, the
+        // whole-recipe guess — but only when there's no Component taking part of the weight.
+        const plannedFinished = parseFloat(t.planned_output_cases) > 0 ? parseFloat(t.planned_output_cases) : null;
+        const suggested = t.confirmed_output_qty ?? plannedFinished ?? (hasComps ? null : suggestedSauceOutputCases(t));
         // Cases are whole units — floor rather than round so the suggestion never implies
         // more finished goods than the recipe weight can actually fill.
         const qtyVal = (suggested != null && isFinite(suggested)) ? Math.floor(suggested) : '';
-        qtyCellHtml = editable ? `<input type="number" step="1" value="${qtyVal}" id="sauceConfirmQty_${t.id}" style="width:100px">` : fmtNum(t.confirmed_output_qty);
+        const finishedInput = editable ? `<input type="number" step="1" value="${qtyVal}" id="sauceConfirmQty_${t.id}" style="width:100px">` : fmtNum(t.confirmed_output_qty);
+        qtyCellHtml = hasComps
+          ? `<div style="display:flex;align-items:center;gap:6px">${finishedInput}<span style="font-size:12px">cases → Finished Goods</span></div>`
+          : finishedInput;
         dateCellHtml = `Prod: ${confirmProdDate} (Julian: ${confirmJulian})${bb?`<br>Best Before: ${bb}`:''}`;
+      }
+      // Component outputs (fix61): one pcs input each, recorded into Components stock on Confirm.
+      const taskComps = SAUCE_CONFIRM_TASK_COMPONENTS[t.id] || [];
+      if(taskComps.length){
+        qtyCellHtml += `<div style="display:flex;flex-direction:column;gap:4px;margin-top:6px">${taskComps.map(c => `<div style="display:flex;align-items:center;gap:6px">
+          ${editable ? `<input type="number" step="1" value="${c.confirmed_pcs ?? c.planned_pcs ?? ''}" id="sauceConfirmCompQty_${t.id}_${c.id}" style="width:90px">` : `<span>${fmtNum(c.confirmed_pcs)}</span>`}
+          <span style="font-size:12px">pcs → 🧩 <span style="color:var(--muted)">${escapeHtml(c.sachet_name)}</span></span>
+        </div>`).join('')}</div>`;
       }
       // Read-only here (matches the rest of Confirm Completion) — the remark itself stays
       // editable only in Create; this is just where it's surfaced so nothing gets missed while
@@ -14668,24 +15255,32 @@ async function confirmSauceTask(id){
   const destinations = [];
   let outputQty = null; // legacy single/no-match-sauce path
   let itemQtys = [];    // [{item_no, item_name, qty}] — multi-Item # sauce path
+  // Component outputs (fix61): each has its own pcs input and goes to Components (Sachets) alone —
+  // nothing is written there just because the sauce is linked to a component any more.
+  const compQtys = (SAUCE_CONFIRM_TASK_COMPONENTS[id] || []).map(c => {
+    const inp = document.getElementById(`sauceConfirmCompQty_${id}_${c.id}`);
+    return { row: c, qty: (inp && inp.value !== '') ? parseFloat(inp.value) || 0 : 0 };
+  });
+  if(compQtys.some(c => c.qty > 0)) destinations.push('Components (Sachets)');
   if(isMultiItem){
     itemQtys = taskItems.map(ti => {
       const inp = document.getElementById(`sauceConfirmItemQty_${id}_${ti.item_no}`);
       return { item_no: ti.item_no, item_name: ti.item_name, qty: (inp && inp.value !== '') ? parseFloat(inp.value) || 0 : 0, storage_choice: ti.storage_choice };
     });
     if(itemQtys.some(iq => iq.qty > 0)) destinations.push('Finished Goods In/Out');
-    if(sauceForMsg && sauceForMsg.component_sachet_name) destinations.push('Components (Sachets)');
   } else {
     const qtyInput = document.getElementById('sauceConfirmQty_'+id);
     outputQty = (qtyInput && qtyInput.value !== '') ? parseFloat(qtyInput.value) : null;
     if(outputQty && sauceForMsg){
       if(lookupSauceMatchedItems(sauceForMsg.item_code)[0]) destinations.push('Finished Goods In/Out');
-      if(sauceForMsg.component_sachet_name) destinations.push('Components (Sachets)');
     }
   }
-  const qtySummary = isMultiItem
-    ? itemQtys.filter(iq => iq.qty > 0).map(iq => `${fmtNum(iq.qty)} of #${iq.item_no}`).join(', ')
-    : fmtNum(outputQty);
+  const qtySummary = [
+    ...(isMultiItem
+      ? itemQtys.filter(iq => iq.qty > 0).map(iq => `${fmtNum(iq.qty)} cases of #${iq.item_no}`)
+      : (outputQty ? [`${fmtNum(outputQty)} cases`] : [])),
+    ...compQtys.filter(c => c.qty > 0).map(c => `${fmtNum(c.qty)} pcs of ${c.row.sachet_name}`)
+  ].join(', ') || '0';
   const confirmMsg = `Confirm ${fmtNum(mixes)} mixes of ${sauceForMsg?sauceForMsg.name:'this sauce'}?\n\nThis is the ACTUAL number of mixes made — double-check it's not just the plan before continuing (edit Mixes first if it's wrong). This deducts recipe ingredients` +
     (destinations.length ? ` and records ${qtySummary} into ${destinations.join(' and ')}` : '') +
     ', and cannot be undone.';
@@ -14704,6 +15299,12 @@ async function confirmSauceTask(id){
     const bb = sauce ? sauceCoolerBestBefore(sauce, prodDate, t.storage_choice) : null;
     let recordedSomewhere = false;
     let totalQtyForTask = outputQty;
+    // Component outputs: each row's pcs into Components stock, and the row marked Confirmed.
+    const compInserts = compQtys.filter(c => c.qty > 0).map(c => ({ entry_date: prodDate, sachet_name: c.row.sachet_name, in_qty: c.qty, out_qty: 0 }));
+    if(compInserts.length){ await sbInsert('erp_components_inout', compInserts); recordedSomewhere = true; }
+    for(const c of compQtys){
+      await sbUpdate('erp_sauce_task_components', c.row.id, { status: 'Confirmed', confirmed_pcs: c.qty, confirmed_at: new Date().toISOString() });
+    }
     if(isMultiItem){
       // Every linked Item # gets its own Finished Goods entry — this is the whole point of
       // letting a task span multiple items, unlike the single-item path below which only ever
@@ -14723,12 +15324,8 @@ async function confirmSauceTask(id){
         await sbUpdate('erp_sauce_task_items', row.id, { status: 'Confirmed', confirmed_cases: iq.qty, confirmed_at: new Date().toISOString() });
       }
       totalQtyForTask = itemQtys.reduce((s,iq) => s + iq.qty, 0);
-      if(sauce && sauce.component_sachet_name && totalQtyForTask > 0){
-        await sbInsert('erp_components_inout', [{ entry_date: prodDate, sachet_name: sauce.component_sachet_name, in_qty: totalQtyForTask, out_qty: 0 }]);
-        recordedSomewhere = true;
-      }
       if(!recordedSomewhere){
-        toast('⚠ No cases entered for any item — ingredients deducted, but no stock record created');
+        toast('⚠ No quantity entered for any item or component — ingredients deducted, but no stock record created');
       }
     } else if(outputQty){
       const item = sauce ? lookupSauceMatchedItems(sauce.item_code)[0] : null;
@@ -14740,19 +15337,12 @@ async function confirmSauceTask(id){
         }]);
         recordedSomewhere = true;
       }
-      // Some sauces are really a packaging component (e.g. a seasoning sachet sealed into
-      // another product) rather than a sellable item of their own — those add to Components
-      // (Sachets) stock instead of/alongside Finished Goods.
-      if(sauce && sauce.component_sachet_name){
-        await sbInsert('erp_components_inout', [{
-          entry_date: prodDate, sachet_name: sauce.component_sachet_name,
-          in_qty: outputQty, out_qty: 0
-        }]);
-        recordedSomewhere = true;
-      }
+      // Components are recorded per output row above (fix61), not inferred from the sauce.
       if(!recordedSomewhere){
-        toast('⚠ No linked Item # or Component for this sauce — ingredients deducted, but no stock record created');
+        toast('⚠ No linked Item # for this sauce — ingredients deducted, but no stock record created');
       }
+    } else if(!recordedSomewhere){
+      toast('⚠ No quantity entered — ingredients deducted, but no stock record created');
     }
     await sbUpdate('erp_sauce_schedule_tasks', t.id, { status: 'Confirmed', confirmed_mixes: mixes, confirmed_output_qty: totalQtyForTask, confirmed_at: new Date().toISOString() });
     await markSauceDayDoneIfAllTasksResolved();
@@ -14823,9 +15413,13 @@ document.getElementById('appVersion').textContent = APP_VERSION;
     applyTheme(t || (matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'));
   }catch(e){ applyTheme('light'); }
   try{
-    const c = await Store.get('color-theme');
-    applyColorTheme(c || '');
-  }catch(e){ applyColorTheme(''); }
+    let c = await Store.get('color-theme-v2');
+    if(c == null){
+      const legacy = await Store.get('color-theme'); // saved before Night Market became the default
+      c = legacy || DEFAULT_COLOR_THEME;
+    }
+    applyColorTheme(c === 'default' ? '' : c, false); // applying what's already saved (or the default) isn't a new choice
+  }catch(e){ applyColorTheme(DEFAULT_COLOR_THEME, false); }
   try{
     const f = await Store.get('font-theme');
     applyFontTheme(f || '');
