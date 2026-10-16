@@ -1352,6 +1352,8 @@
     </div>
     <div class="btnrow no-print">
       <button class="btn secondary" onclick="printStaffSchedule()">🖨 Print Staff Schedule</button>
+      <button class="btn secondary" onclick="enterStaffScheduleKiosk()">🖥 Kiosk Mode</button>
+      <button class="btn secondary can-write" onclick="openSsKioskSettings()" title="Which days the kiosk shows, for every screen">⚙ Kiosk Settings</button>
     </div>
     <div class="card" id="staffScheduleTableCard">
       <div class="tablewrap"><table id="staffScheduleGrid"></table></div>
@@ -2626,6 +2628,41 @@
 
 </div><!-- /.app-shell -->
 
+<!-- Staff Schedule Kiosk Mode: a full-screen read-only display (see enterStaffScheduleKiosk) -->
+<div id="ssKiosk" class="no-print" style="display:none;position:fixed;inset:0;z-index:9999;background:#fff;color:#000;flex-direction:column;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif">
+  <div id="ssKioskHead" style="background:#1c3350;color:#fff;padding:10px 18px;display:flex;align-items:baseline;gap:14px;flex:0 0 auto">
+    <b id="ssKioskTitle" style="font-weight:700">Staff Schedule</b>
+    <span id="ssKioskDate"></span>
+    <span style="flex:1"></span>
+    <span id="ssKioskClock"></span>
+    <button type="button" onclick="exitStaffScheduleKiosk()" title="Exit Kiosk Mode (Esc)" style="border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;border-radius:6px;padding:2px 10px;cursor:pointer;font-family:inherit;opacity:.7">✕ Exit</button>
+  </div>
+  <div id="ssKioskBody" style="flex:1 1 auto;overflow:hidden;padding:6px 10px;min-height:0"></div>
+  <div id="ssKioskFoot" style="flex:0 0 auto;border-top:1px solid #ccc;padding:6px 18px;display:flex;align-items:center;gap:12px"></div>
+</div>
+<!-- Staff Schedule Kiosk Settings (Admin/Operator): which days the kiosk shows, shared by every screen -->
+<div id="ssKioskSettings" class="no-print" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="max-width:520px;width:100%;margin:0;max-height:92vh;overflow:auto">
+    <h3 style="margin-top:0">Staff Schedule — Kiosk Settings</h3>
+    <p style="color:var(--muted);font-size:12px;margin-top:0">Which days the kiosk screen shows. Saved for every screen: a TV left running picks a change up within a minute.</p>
+    <label style="display:flex;gap:8px;align-items:flex-start;width:auto;margin:6px 0;font-weight:400"><input type="radio" name="ssKsMode" id="ssKsMode_auto" value="auto" style="width:auto;flex:0 0 auto;margin-top:3px" onchange="updateSsKioskSettingsNow()"><span><b>Automatic</b> — today until a set time, then tomorrow<br><span style="font-size:12px">Switch to tomorrow at <input type="time" id="ssKsSwitchTime" value="15:00" style="width:110px;display:inline-block" onchange="document.getElementById('ssKsMode_auto').checked=true;updateSsKioskSettingsNow()"></span></span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;width:auto;margin:6px 0;font-weight:400"><input type="radio" name="ssKsMode" id="ssKsMode_today" value="today" style="width:auto;flex:0 0 auto;margin-top:3px" onchange="updateSsKioskSettingsNow()"><span><b>Today only</b></span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;width:auto;margin:6px 0;font-weight:400"><input type="radio" name="ssKsMode" id="ssKsMode_tomorrow" value="tomorrow" style="width:auto;flex:0 0 auto;margin-top:3px" onchange="updateSsKioskSettingsNow()"><span><b>Tomorrow only</b></span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;width:auto;margin:6px 0;font-weight:400"><input type="radio" name="ssKsMode" id="ssKsMode_both" value="both" style="width:auto;flex:0 0 auto;margin-top:3px" onchange="updateSsKioskSettingsNow()"><span><b>Today and tomorrow</b> — side by side</span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;width:auto;margin:6px 0;font-weight:400"><input type="radio" name="ssKsMode" id="ssKsMode_span" value="span" style="width:auto;flex:0 0 auto;margin-top:3px" onchange="updateSsKioskSettingsNow()"><span><b>A set number of days</b><br><span style="font-size:12px">Start <select id="ssKsSpanStart" style="width:auto;display:inline-block" onchange="document.getElementById('ssKsMode_span').checked=true;updateSsKioskSettingsNow()"><option value="today">today</option><option value="tomorrow">tomorrow</option></select> show <select id="ssKsSpanDays" style="width:auto;display:inline-block" onchange="document.getElementById('ssKsMode_span').checked=true;updateSsKioskSettingsNow()"><option value="1">1 day</option><option value="2">2 days</option><option value="3">3 days</option></select></span></span></label>
+    <label style="display:flex;gap:8px;align-items:flex-start;width:auto;margin:6px 0;font-weight:400"><input type="radio" name="ssKsMode" id="ssKsMode_date" value="date" style="width:auto;flex:0 0 auto;margin-top:3px" onchange="updateSsKioskSettingsNow()"><span><b>One date</b><br><input type="date" id="ssKsDate" style="width:auto;display:inline-block;margin-top:2px" onchange="document.getElementById('ssKsMode_date').checked=true;updateSsKioskSettingsNow()"></span></label>
+    <div id="ssKsRollRow" style="margin:8px 0 0;padding:8px 10px;background:var(--chip);border-radius:8px;font-size:12px">
+      <label style="display:flex;align-items:center;gap:6px;width:auto;margin:0;font-weight:400"><input type="checkbox" id="ssKsRoll" style="width:auto;flex:0 0 auto" onchange="updateSsKioskSettingsNow()"><span><b>Move forward one day after</b> <input type="time" id="ssKsRollTime" value="15:00" style="width:110px;display:inline-block" onchange="document.getElementById('ssKsRoll').checked=true;updateSsKioskSettingsNow()"> every day</span></label>
+      <div style="color:var(--muted);margin-top:2px">For Today and tomorrow, and A set number of days: at that time the days slide ahead by one. Off = they stay as set.</div>
+    </div>
+    <div id="ssKsNow" style="background:var(--chip);border-radius:8px;padding:8px 10px;font-size:12px;margin:10px 0"></div>
+    <p style="color:var(--muted);font-size:11px;margin:0 0 8px">More days share the same width, so type gets smaller with 2 or 3 days.</p>
+    <div class="btnrow">
+      <button class="btn" onclick="saveSsKioskSettings()">💾 Save</button>
+      <button class="btn secondary" onclick="closeSsKioskSettings()">Cancel</button>
+    </div>
+  </div>
+</div>
 <div id="printReportArea" class="print-report"></div>
 
 <div class="toast" id="toast"></div>
@@ -6019,20 +6056,115 @@ async function applyCopyPreviousDay(){
 // touching. Deliberately implemented as a temporary swap of the STAFFING_RUNS global around one
 // synchronous render call, rather than threading a "visible lines" filter through all three
 // layout functions (Station/Pipeline/Roster) — none of them need to know paging exists.
-const KIOSK_LINES_PER_PAGE = 2;
-const KIOSK_PAGE_INTERVAL_MS = 8000;
+// Pages are built to fit THIS screen, not a fixed number of Lines: the shared areas (Flour Mixing Room,
+// Packaging Center) are their own page, then as many Lines as actually fit the viewport height go on
+// each page (measured by rendering them for real). A single Line taller than the screen is scaled
+// down just enough to fit (never below KIOSK_MIN_SCALE). If everything fits on one screen there's no
+// paging at all. A page stays up longer the more is on it.
+const KIOSK_MIN_PAGE_MS = 8000;
+const KIOSK_MAX_PAGE_MS = 25000;
+const KIOSK_MIN_SCALE = 0.5;
 let KIOSK_PAGE_INDEX = 0;
 let KIOSK_PAGE_TIMER = null;
-function kioskDistinctLineNames(){
-  return [...new Set(STAFFING_RUNS.map(r => r.line || '(No Line)'))].sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
+let KIOSK_PAGES = []; // [{kind:'all'|'shared'|'lines', lines:[...], scale}]
+let STAFFING_BOARD_LINES = null; // while rendering one kiosk page: the Lines on it (null = all)
+// Station/Pipeline always add a "Line 4" card for Sauce Production (it has no Runs of its own) — in
+// kiosk paging it belongs only on the page that carries Line 4, not on every page.
+function staffingSauceCardShown(){ return !STAFFING_BOARD_LINES || STAFFING_BOARD_LINES.has('Line 4'); }
+function kioskUnitNames(){
+  const names = new Set(STAFFING_RUNS.map(r => r.line || '(No Line)'));
+  if(STAFFING_VIEW !== 'roster') names.add('Line 4'); // Sauce Production's card (Roster has none)
+  return [...names].sort((a,b) => a.localeCompare(b, undefined, {numeric:true}));
 }
-function kioskPageCount(){
-  return Math.max(1, Math.ceil(kioskDistinctLineNames().length / KIOSK_LINES_PER_PAGE));
+function kioskPageEls(){
+  return ['flourMixingRoomBanner','packagingCenterBanner','staffingBoard'].map(id => document.getElementById(id)).filter(Boolean);
+}
+function kioskSetZoom(z){ kioskPageEls().forEach(el => { el.style.zoom = z && z < 1 ? String(z) : ''; }); }
+// Render one page's content: the shared banners and/or the board for just the given Lines.
+function kioskShowPage(page){
+  const flour = document.getElementById('flourMixingRoomBanner'), pack = document.getElementById('packagingCenterBanner'), board = document.getElementById('staffingBoard');
+  const showShared = page.kind !== 'lines', showBoard = page.kind !== 'shared';
+  flour.style.display = pack.style.display = showShared ? '' : 'none';
+  board.style.display = showBoard ? '' : 'none';
+  if(!showBoard){ board.innerHTML = ''; return; }
+  const originalRuns = STAFFING_RUNS;
+  STAFFING_BOARD_LINES = new Set(page.lines);
+  STAFFING_RUNS = originalRuns.filter(r => STAFFING_BOARD_LINES.has(r.line || '(No Line)'));
+  try{
+    if(STAFFING_VIEW === 'pipeline') renderStaffingBoardPipeline();
+    else if(STAFFING_VIEW === 'roster') renderStaffingBoardRoster();
+    else renderStaffingBoardStation();
+  } finally {
+    STAFFING_RUNS = originalRuns;
+    STAFFING_BOARD_LINES = null;
+  }
+}
+function kioskOverflowing(){ return document.documentElement.scrollHeight > window.innerHeight + 1; }
+// Scale (<= 1) at which the page just rendered fits the viewport height: 1 if it already does.
+function kioskFitScale(){
+  kioskSetZoom('');
+  if(!kioskOverflowing()) return 1;
+  const contentH = kioskPageEls().reduce((s, el) => s + (el.style.display === 'none' ? 0 : el.offsetHeight), 0);
+  const overhead = document.documentElement.scrollHeight - contentH; // header, padding, dots — not scaled
+  let s = Math.max(KIOSK_MIN_SCALE, Math.min(1, (window.innerHeight - overhead) / Math.max(1, contentH)));
+  for(let k = 0; k < 4; k++){
+    kioskSetZoom(s);
+    if(!kioskOverflowing() || s <= KIOSK_MIN_SCALE) break;
+    s = Math.max(KIOSK_MIN_SCALE, s * 0.96);
+  }
+  return s;
+}
+function kioskComputePages(){
+  const names = kioskUnitNames();
+  const hasShared = ['flourMixingRoomBanner','packagingCenterBanner'].some(id => (document.getElementById(id)?.innerHTML || '').trim());
+  const fitOf = page => { kioskShowPage(page); return kioskFitScale(); };
+  const all = { kind: 'all', lines: names };
+  all.scale = fitOf(all);
+  if(all.scale >= 1) return [all]; // it all fits on one screen — no paging
+  const pages = [];
+  if(hasShared){ const p = { kind: 'shared', lines: [] }; p.scale = fitOf(p); pages.push(p); }
+  let i = 0;
+  while(i < names.length){
+    let j = i + 1;
+    let best = { kind: 'lines', lines: names.slice(i, j) };
+    best.scale = fitOf(best);
+    if(best.scale >= 1){
+      while(j < names.length){
+        const cand = { kind: 'lines', lines: names.slice(i, j + 1) };
+        cand.scale = fitOf(cand);
+        if(cand.scale >= 1){ best = cand; j++; } else break;
+      }
+    }
+    pages.push(best);
+    i = j;
+  }
+  return pages.length ? pages : [all];
+}
+function kioskPageTitle(page){
+  if(page.kind === 'all') return 'All areas';
+  if(page.kind === 'shared') return 'Flour Mixing Room · Packaging Center';
+  return page.lines.join(' + ');
+}
+// How long the page on screen stays up: more on it, more time to read it.
+function kioskDwellMs(){
+  const len = kioskPageEls().reduce((s, el) => s + (el.style.display === 'none' ? 0 : (el.innerText || '').length), 0);
+  return Math.max(KIOSK_MIN_PAGE_MS, Math.min(KIOSK_MAX_PAGE_MS, 3000 + len * 22));
+}
+function kioskScheduleNext(){
+  if(KIOSK_PAGE_TIMER){ clearTimeout(KIOSK_PAGE_TIMER); KIOSK_PAGE_TIMER = null; }
+  if(!document.body.classList.contains('kiosk-mode') || KIOSK_PAGES.length <= 1) return;
+  KIOSK_PAGE_TIMER = setTimeout(() => { KIOSK_PAGE_TIMER = null; kioskAdvancePage(); }, kioskDwellMs());
 }
 function kioskAdvancePage(){
-  KIOSK_PAGE_INDEX = (KIOSK_PAGE_INDEX + 1) % kioskPageCount();
+  KIOSK_PAGE_INDEX = (KIOSK_PAGE_INDEX + 1) % Math.max(1, KIOSK_PAGES.length);
   renderStaffingBoard();
 }
+let KIOSK_RESIZE_TIMER = null;
+window.addEventListener('resize', () => {
+  if(!document.body.classList.contains('kiosk-mode')) return;
+  clearTimeout(KIOSK_RESIZE_TIMER);
+  KIOSK_RESIZE_TIMER = setTimeout(() => renderStaffingBoard(), 400); // re-measure for the new screen size
+});
 /* ============================================================
    Drag-and-drop assignment — an alternative to hunting through each position's own <select>.
    Every draggable chip carries its employee_id as plain-text drag data; every drop target calls
@@ -6108,28 +6240,32 @@ function renderStaffingBoard(){
   document.getElementById('staffingBoardEmpty').style.display = 'none';
   updateStaffingViewButtons();
   const kiosking = document.body.classList.contains('kiosk-mode');
-  const allLines = kioskDistinctLineNames();
-  const totalPages = kioskPageCount();
-  const paging = kiosking && allLines.length > KIOSK_LINES_PER_PAGE;
-  const originalRuns = STAFFING_RUNS;
-  if(paging){
-    if(KIOSK_PAGE_INDEX >= totalPages) KIOSK_PAGE_INDEX = 0;
-    const visible = new Set(allLines.slice(KIOSK_PAGE_INDEX * KIOSK_LINES_PER_PAGE, (KIOSK_PAGE_INDEX+1) * KIOSK_LINES_PER_PAGE));
-    STAFFING_RUNS = originalRuns.filter(r => visible.has(r.line || '(No Line)'));
-  }
-  try{
+  const dotsEl = document.getElementById('staffingKioskDots');
+  if(!kiosking){
+    // Normal screen: everything at once, exactly as before.
+    kioskSetZoom('');
+    ['flourMixingRoomBanner','packagingCenterBanner','staffingBoard'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = ''; });
+    if(dotsEl) dotsEl.innerHTML = '';
     if(STAFFING_VIEW === 'pipeline') renderStaffingBoardPipeline();
     else if(STAFFING_VIEW === 'roster') renderStaffingBoardRoster();
     else renderStaffingBoardStation();
-  } finally {
-    STAFFING_RUNS = originalRuns;
+    return;
   }
-  const dotsEl = document.getElementById('staffingKioskDots');
+  // Kiosk: build pages that fit this screen, then show the current one.
+  if(dotsEl){ dotsEl.style.flexDirection = 'column'; dotsEl.style.alignItems = 'center'; dotsEl.innerHTML = '<div style="height:48px"></div>'; } // reserve its height while measuring
+  KIOSK_PAGES = kioskComputePages();
+  if(KIOSK_PAGE_INDEX >= KIOSK_PAGES.length) KIOSK_PAGE_INDEX = 0;
+  const page = KIOSK_PAGES[KIOSK_PAGE_INDEX];
+  kioskShowPage(page);
+  kioskSetZoom(page.scale);
   if(dotsEl){
-    dotsEl.innerHTML = paging
-      ? Array.from({length: totalPages}).map((_,i) => `<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${i===KIOSK_PAGE_INDEX?'var(--accent)':'var(--line)'}"></span>`).join('')
+    dotsEl.innerHTML = KIOSK_PAGES.length > 1
+      ? `<div style="font-size:14px;font-weight:700;margin-bottom:6px">${escapeHtml(kioskPageTitle(page))} · ${KIOSK_PAGE_INDEX + 1} / ${KIOSK_PAGES.length}</div>
+         <div style="display:flex;gap:8px">${KIOSK_PAGES.map((_,i) => `<span style="width:8px;height:8px;border-radius:50%;display:inline-block;background:${i===KIOSK_PAGE_INDEX?'var(--accent)':'var(--line)'}"></span>`).join('')}</div>`
       : '';
   }
+  if(KIOSK_PAGES.length > 1){ if(!KIOSK_PAGE_TIMER) kioskScheduleNext(); }
+  else if(KIOSK_PAGE_TIMER){ clearTimeout(KIOSK_PAGE_TIMER); KIOSK_PAGE_TIMER = null; }
 }
 let FLOUR_MIXING_ROOM_STAFF = [];
 // The Flour Mixing Room is shared by every running Line rather than belonging to one — its
@@ -6831,7 +6967,7 @@ function renderStaffingBoardStation(){
   // "Line 4" always gets a card here even though it never has real Runs of its own — Sauce
   // Production is ordered in with the other Lines' cards (Chris), not a separate always-on
   // banner, so it has to join this same sorted list instead of rendering outside it.
-  const lineNames = [...new Set([...Object.keys(byLine), 'Line 4'])].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  const lineNames = [...new Set([...Object.keys(byLine), ...(staffingSauceCardShown() ? ['Line 4'] : [])])].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
   document.getElementById('staffingBoard').innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px">` +
     lineNames.map(line => {
       const runCardsHtml = (byLine[line]||[]).map(run => {
@@ -6903,7 +7039,7 @@ function renderStaffingBoardPipeline(){
   // "Line 4" always gets a card here even though it never has real Runs of its own — same reason
   // as Station's own version of this line (Chris: ordered in with the other Lines, not a
   // separate always-on banner).
-  const lineNames = [...new Set([...Object.keys(byLine), 'Line 4'])].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
+  const lineNames = [...new Set([...Object.keys(byLine), ...(staffingSauceCardShown() ? ['Line 4'] : [])])].sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
   document.getElementById('staffingBoard').innerHTML = lineNames.map(line => {
     if(line === 'Line 4'){
       const sauce = sauceProductionCardContentHtml();
@@ -7779,6 +7915,299 @@ function staffScheduleGridPrintHtml(scale, wrapPositions){
   <div class="ssp-title" style="font-size:16px;margin:0 0 ${Math.round(4 * scale)}px"><b>Staff Schedule</b> &nbsp; ${dates.length === 1 ? dates[0] : `${dates[0]} to ${dates[dates.length-1]}`}</div>
   <table class="ssp"><thead>${head1}${head2}</thead><tbody>${body}</tbody></table>`;
 }
+/* ============================================================
+   Staff Schedule Kiosk Mode — a full-screen, read-only display of the schedule, laid out like the
+   printed sheet (Name | Time | Position per day, section and Line banners, the same colors) and built
+   for a portrait screen: rows are packed top to bottom until the screen height is full, then the next
+   page starts, rotating automatically. Which days it shows is a setting shared by every screen
+   (erp_app_settings, key 'staff_schedule_kiosk', changed by an Admin/Operator in Kiosk Settings): by
+   default today until 3:00 pm and tomorrow after. Day Off / On Vacation / Request Off / Sick people
+   stay in the list (grey/black/red/blue); people with nothing at all in the shown days are left out.
+   ============================================================ */
+const SS_KIOSK_SETTING_KEY = 'staff_schedule_kiosk';
+const SS_KIOSK_DEFAULT_SETTINGS = { mode: 'auto', switchTime: '15:00', spanStart: 'today', spanDays: 2, date: '', rollForward: false, rollTime: '15:00' };
+let SS_KIOSK = { on: false, pages: [], index: 0, pageTimer: null, refreshTimer: null, clockTimer: null, dates: [], prev: null, settings: { ...SS_KIOSK_DEFAULT_SETTINGS } };
+async function ssKioskLoadSettings(){
+  try{
+    const rows = await sbGet(`erp_app_settings?select=value&key=eq.${SS_KIOSK_SETTING_KEY}`);
+    SS_KIOSK.settings = { ...SS_KIOSK_DEFAULT_SETTINGS, ...((rows[0] && rows[0].value) || {}) };
+  }catch(e){ /* table not there yet (fix65) — the default: today until 3:00 pm, then tomorrow */ }
+}
+// The dates the screen shows for a given setting, at a given moment.
+function ssKioskDatesFor(s, now){
+  now = now || new Date();
+  const today = todayStr(), tomorrow = addDaysStr(today, 1);
+  const minutesNow = now.getHours() * 60 + now.getMinutes();
+  const atOrAfter = hhmm => { const [h, m] = String(hhmm || '15:00').split(':').map(Number); return minutesNow >= (h || 0) * 60 + (m || 0); };
+  if(s.mode === 'today') return [today];
+  if(s.mode === 'tomorrow') return [tomorrow];
+  if(s.mode === 'date' && s.date) return [s.date];
+  if(s.mode === 'both' || s.mode === 'span'){
+    // Several days: "today and tomorrow" or N days from today/tomorrow. With roll-forward on, the
+    // whole window slides one day ahead once the roll time has passed.
+    const start0 = s.mode === 'span' && s.spanStart === 'tomorrow' ? tomorrow : today;
+    const start = (s.rollForward && atOrAfter(s.rollTime)) ? addDaysStr(start0, 1) : start0;
+    const n = s.mode === 'both' ? 2 : Math.max(1, Math.min(3, parseInt(s.spanDays, 10) || 1));
+    return Array.from({ length: n }, (_, i) => addDaysStr(start, i));
+  }
+  // auto: today until the switch time, then tomorrow
+  return [atOrAfter(s.switchTime) ? tomorrow : today];
+}
+function ssKioskFontPx(nDays){
+  const base = Math.min(window.innerWidth, window.innerHeight) / 52;
+  const factor = nDays <= 1 ? 1 : nDays === 2 ? 0.78 : 0.62; // more days share the same width, so smaller type
+  return Math.max(12, Math.min(30, Math.round(base * factor)));
+}
+// The rows as units — one per Line (or per section without Lines) — each carrying its section. A
+// person is listed if they have anything in any of the shown days.
+function ssKioskUnits(){
+  const data = STAFF_SCHEDULE_DATA;
+  if(!data || !data.dates.length) return [];
+  const units = [];
+  data.sections.forEach(sec => sec.groups.forEach(g => {
+    const rows = g.rows.filter(r => r.cells.some(c => c && !c.empty));
+    if(rows.length) units.push({ section: sec.name, label: g.label || null, rows });
+  }));
+  return units;
+}
+function ssKioskCellsHtml(c){
+  if(!c || c.empty) return '<td></td><td></td>';
+  if(c.onLeave) return '<td colspan="2" style="background:#000;color:#fff;text-align:center">On Vacation</td>';
+  if(c.requestOff || c.sick){
+    const s = LEAVE_TYPE_STYLE[c.requestOff ? 'request_off' : 'sick'];
+    return `<td colspan="2" style="background:${s.bg};color:${s.fg};text-align:center">${s.label}${c.note ? ` · <span style="font-weight:400">${escapeHtml(c.note)}</span>` : ''}</td>`;
+  }
+  if(c.dayOff) return '<td colspan="2" style="background:#eef1f4;text-align:center">Day Off</td>';
+  return `<td style="background:${c.color}">${escapeHtml(c.time || '')}</td><td style="background:${c.color}" title="${escapeHtml(c.position || '')}">${escapeHtml(c.position || '')}</td>`;
+}
+function ssKioskPageHtml(units, fs){
+  const dates = STAFF_SCHEDULE_DATA.dates;
+  const n = dates.length;
+  const colSpan = 1 + n * 2;
+  let prevSection = null;
+  const body = units.map(u => {
+    const secRow = u.section !== prevSection ? `<tr class="sec"><td colspan="${colSpan}">${escapeHtml(u.section)}</td></tr>` : '';
+    prevSection = u.section;
+    const grpRow = u.label ? `<tr class="grp"><td colspan="${colSpan}">${escapeHtml(u.label)}</td></tr>` : '';
+    return secRow + grpRow + u.rows.map(r => `<tr><td class="nm" title="${escapeHtml(r.employee.name)}">${escapeHtml(r.employee.name)}</td>${r.cells.map(ssKioskCellsHtml).join('')}</tr>`).join('');
+  }).join('');
+  const nameW = n === 1 ? 30 : n === 2 ? 22 : 18;
+  const head = n === 1
+    ? '<tr><th></th><th>Time</th><th>Position</th></tr>'
+    : `<tr><th rowspan="2"></th>${dates.map(d => `<th colspan="2">${escapeHtml(staffScheduleDateLabel(d))}</th>`).join('')}</tr><tr>${dates.map(() => '<th>Time</th><th>Position</th>').join('')}</tr>`;
+  return `<style>
+    #ssKioskBody table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:${fs}px;line-height:1.25}
+    #ssKioskBody th,#ssKioskBody td{border:1px solid #777;padding:${Math.round(fs*0.18)}px ${Math.round(fs*0.4)}px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#000;vertical-align:middle}
+    #ssKioskBody th{font-weight:700;background:#fff;text-align:center;font-size:${fs}px;text-transform:none;letter-spacing:0;color:#000}
+    /* Name, Time and Position all share one size and weight (the global th/td rules would shrink th) */
+    #ssKioskBody td{font-size:${fs}px;font-weight:700}
+    #ssKioskBody td.nm{width:${nameW}%}
+    #ssKioskBody tr.sec td{background:#9fc0e4;color:#b00000;font-weight:700;font-style:italic}
+    #ssKioskBody tr.grp td{background:#dbe7f5;font-weight:700}
+  </style>
+  <table><thead>${head}</thead><tbody>${body}</tbody></table>`;
+}
+function ssKioskOverflowing(){
+  const b = document.getElementById('ssKioskBody');
+  return b.scrollHeight > b.clientHeight + 1;
+}
+// Packs units into pages by rendering them for real and checking they fit the body's height; a single
+// unit taller than the screen is scaled down just enough to fit (never below KIOSK_MIN_SCALE).
+function ssKioskComputePages(units, fs){
+  const body = document.getElementById('ssKioskBody');
+  const fits = list => { body.style.zoom = ''; body.innerHTML = ssKioskPageHtml(list, fs); return !ssKioskOverflowing(); };
+  const fitScale = list => {
+    body.style.zoom = ''; body.innerHTML = ssKioskPageHtml(list, fs);
+    if(!ssKioskOverflowing()) return 1;
+    let s = Math.max(KIOSK_MIN_SCALE, Math.min(1, body.clientHeight / Math.max(1, body.scrollHeight)));
+    for(let k = 0; k < 4; k++){ body.style.zoom = String(s); if(!ssKioskOverflowing() || s <= KIOSK_MIN_SCALE) break; s = Math.max(KIOSK_MIN_SCALE, s * 0.96); }
+    return s;
+  };
+  const pages = [];
+  let i = 0;
+  while(i < units.length){
+    let j = i + 1;
+    const scale = fitScale(units.slice(i, j));
+    if(scale >= 1){
+      while(j < units.length && fits(units.slice(i, j + 1))) j++;
+    }
+    pages.push({ units: units.slice(i, j), scale });
+    i = j;
+  }
+  body.style.zoom = '';
+  return pages;
+}
+function ssKioskPageLabel(page){
+  const parts = [];
+  page.units.forEach(u => { const t = u.label || u.section; if(parts[parts.length-1] !== t) parts.push(t); });
+  return parts.length > 3 ? `${parts[0]} → ${parts[parts.length-1]}` : parts.join(' · ');
+}
+function ssKioskDateText(dates){
+  const today = todayStr(), tomorrow = addDaysStr(today, 1);
+  if(dates.length === 1) return (dates[0] === tomorrow ? 'Tomorrow · ' : '') + staffScheduleDateLabel(dates[0]);
+  return `${staffScheduleDateLabel(dates[0])} – ${staffScheduleDateLabel(dates[dates.length-1])}`;
+}
+function ssKioskRender(){
+  if(!SS_KIOSK.on) return;
+  const dates = STAFF_SCHEDULE_DATA ? STAFF_SCHEDULE_DATA.dates : SS_KIOSK.dates;
+  const fs = ssKioskFontPx(dates.length);
+  const body = document.getElementById('ssKioskBody');
+  const units = ssKioskUnits();
+  document.getElementById('ssKioskHead').style.fontSize = Math.round(fs * 1.15) + 'px';
+  document.getElementById('ssKioskFoot').style.fontSize = Math.round(fs * 0.9) + 'px';
+  document.getElementById('ssKioskDate').textContent = ssKioskDateText(dates);
+  if(!units.length){
+    body.innerHTML = `<div style="padding:40px;text-align:center;font-size:${fs * 1.4}px;color:#666">No one is scheduled for ${escapeHtml(ssKioskDateText(dates))}</div>`;
+    document.getElementById('ssKioskFoot').innerHTML = '';
+    SS_KIOSK.pages = [];
+    if(SS_KIOSK.pageTimer){ clearTimeout(SS_KIOSK.pageTimer); SS_KIOSK.pageTimer = null; }
+    return;
+  }
+  SS_KIOSK.pages = ssKioskComputePages(units, fs);
+  if(SS_KIOSK.index >= SS_KIOSK.pages.length) SS_KIOSK.index = 0;
+  const page = SS_KIOSK.pages[SS_KIOSK.index];
+  body.style.zoom = '';
+  body.innerHTML = ssKioskPageHtml(page.units, fs);
+  if(page.scale < 1) body.style.zoom = String(page.scale);
+  const n = SS_KIOSK.pages.length;
+  document.getElementById('ssKioskFoot').innerHTML = `<span style="font-weight:700">${escapeHtml(ssKioskPageLabel(page))}</span><span style="flex:1"></span>` + (n > 1
+    ? `<span>${SS_KIOSK.index + 1} / ${n}</span><span style="display:flex;gap:6px">${SS_KIOSK.pages.map((_, i) => `<span style="width:${Math.round(fs*0.5)}px;height:${Math.round(fs*0.5)}px;border-radius:50%;display:inline-block;background:${i === SS_KIOSK.index ? '#185FA5' : '#ccc'}"></span>`).join('')}</span>`
+    : '');
+  if(n > 1){ if(!SS_KIOSK.pageTimer) ssKioskScheduleNext(); }
+  else if(SS_KIOSK.pageTimer){ clearTimeout(SS_KIOSK.pageTimer); SS_KIOSK.pageTimer = null; }
+}
+function ssKioskScheduleNext(){
+  if(SS_KIOSK.pageTimer){ clearTimeout(SS_KIOSK.pageTimer); SS_KIOSK.pageTimer = null; }
+  if(!SS_KIOSK.on || SS_KIOSK.pages.length <= 1) return;
+  const len = (document.getElementById('ssKioskBody').innerText || '').length;
+  const ms = Math.max(KIOSK_MIN_PAGE_MS, Math.min(KIOSK_MAX_PAGE_MS, 3000 + len * 22));
+  SS_KIOSK.pageTimer = setTimeout(() => {
+    SS_KIOSK.pageTimer = null;
+    SS_KIOSK.index = (SS_KIOSK.index + 1) % Math.max(1, SS_KIOSK.pages.length);
+    ssKioskRender();
+  }, ms);
+}
+// Re-reads the shared setting and the schedule, then redraws. Run on entry and every minute, so a
+// changed setting reaches a screen nobody is touching within a minute, the 3:00 pm switch (or whatever
+// time is set) happens on its own, and it moves to the next day after midnight.
+async function ssKioskRefresh(){
+  if(!SS_KIOSK.on) return;
+  await ssKioskLoadSettings();
+  const dates = ssKioskDatesFor(SS_KIOSK.settings);
+  const changed = dates.join() !== SS_KIOSK.dates.join();
+  SS_KIOSK.dates = dates;
+  // Loaded through the Staff Schedule screen's own loader: Day mode for one date, Range for several.
+  if(dates.length === 1){
+    STAFF_SCHEDULE_MODE = 'day';
+    document.getElementById('staffScheduleViewDate').value = dates[0];
+  } else {
+    STAFF_SCHEDULE_MODE = 'range';
+    document.getElementById('staffScheduleRangeFrom').value = dates[0];
+    document.getElementById('staffScheduleRangeTo').value = dates[dates.length - 1];
+  }
+  await refreshStaffScheduleScreen();
+  if(changed) SS_KIOSK.index = 0;
+  ssKioskRender();
+}
+function ssKioskTickClock(){
+  const el = document.getElementById('ssKioskClock');
+  if(el) el.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+async function enterStaffScheduleKiosk(){
+  if(SS_KIOSK.on) return;
+  SS_KIOSK.prev = {
+    mode: STAFF_SCHEDULE_MODE,
+    date: document.getElementById('staffScheduleViewDate').value,
+    from: document.getElementById('staffScheduleRangeFrom').value,
+    to: document.getElementById('staffScheduleRangeTo').value
+  };
+  SS_KIOSK.on = true; SS_KIOSK.index = 0; SS_KIOSK.dates = [];
+  document.getElementById('ssKiosk').style.display = 'flex';
+  ssKioskTickClock();
+  SS_KIOSK.clockTimer = setInterval(ssKioskTickClock, 1000);
+  SS_KIOSK.refreshTimer = setInterval(ssKioskRefresh, 60000);
+  await ssKioskRefresh();
+}
+function exitStaffScheduleKiosk(){
+  if(!SS_KIOSK.on) return;
+  SS_KIOSK.on = false;
+  ['pageTimer','refreshTimer','clockTimer'].forEach(k => { if(SS_KIOSK[k]){ clearTimeout(SS_KIOSK[k]); clearInterval(SS_KIOSK[k]); SS_KIOSK[k] = null; } });
+  document.getElementById('ssKiosk').style.display = 'none';
+  document.getElementById('ssKioskBody').innerHTML = '';
+  // Put the Staff Schedule screen back on what it was showing before the kiosk took it over.
+  if(SS_KIOSK.prev){
+    document.getElementById('staffScheduleViewDate').value = SS_KIOSK.prev.date;
+    document.getElementById('staffScheduleRangeFrom').value = SS_KIOSK.prev.from;
+    document.getElementById('staffScheduleRangeTo').value = SS_KIOSK.prev.to;
+    setStaffScheduleMode(SS_KIOSK.prev.mode);
+    SS_KIOSK.prev = null;
+  }
+}
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && SS_KIOSK.on) exitStaffScheduleKiosk(); });
+window.addEventListener('resize', () => { if(SS_KIOSK.on){ clearTimeout(SS_KIOSK.resizeTimer); SS_KIOSK.resizeTimer = setTimeout(ssKioskRender, 400); } });
+
+/* ---- Kiosk Settings (Admin/Operator): which days the Staff Schedule kiosk shows, for every screen ---- */
+async function openSsKioskSettings(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  await ssKioskLoadSettings();
+  const s = SS_KIOSK.settings;
+  document.getElementById('ssKsMode_' + (['auto','today','tomorrow','both','span','date'].includes(s.mode) ? s.mode : 'auto')).checked = true;
+  document.getElementById('ssKsSwitchTime').value = s.switchTime || '15:00';
+  document.getElementById('ssKsSpanStart').value = s.spanStart || 'today';
+  document.getElementById('ssKsSpanDays').value = String(s.spanDays || 2);
+  document.getElementById('ssKsDate').value = s.date || todayStr();
+  document.getElementById('ssKsRoll').checked = !!s.rollForward;
+  document.getElementById('ssKsRollTime').value = s.rollTime || '15:00';
+  document.getElementById('ssKioskSettings').style.display = 'flex';
+  updateSsKioskSettingsNow();
+}
+function ssKsFormSettings(){
+  const mode = (document.querySelector('input[name="ssKsMode"]:checked') || {}).value || 'auto';
+  return {
+    mode,
+    switchTime: document.getElementById('ssKsSwitchTime').value || '15:00',
+    spanStart: document.getElementById('ssKsSpanStart').value,
+    spanDays: parseInt(document.getElementById('ssKsSpanDays').value, 10) || 2,
+    date: document.getElementById('ssKsDate').value,
+    rollForward: document.getElementById('ssKsRoll').checked,
+    rollTime: document.getElementById('ssKsRollTime').value || '15:00'
+  };
+}
+function updateSsKioskSettingsNow(){
+  const s = ssKsFormSettings();
+  const multi = s.mode === 'both' || (s.mode === 'span' && (parseInt(s.spanDays, 10) || 1) > 1);
+  // Roll-forward only means something for the several-day options.
+  const rollable = s.mode === 'both' || s.mode === 'span';
+  document.getElementById('ssKsRollRow').style.opacity = rollable ? '' : '.45';
+  document.getElementById('ssKsRoll').disabled = !rollable;
+  document.getElementById('ssKsRollTime').disabled = !rollable;
+  const dates = ssKioskDatesFor(s);
+  const clock = hhmm => { const [h, m] = String(hhmm).split(':').map(Number); const t = new Date(); t.setHours(h || 0, m || 0, 0, 0); return t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
+  let text = `Right now the screen will show <b>${escapeHtml(ssKioskDateText(dates))}</b>.`;
+  if(s.mode === 'auto'){
+    text += ` At ${clock(s.switchTime)} it changes to tomorrow.`;
+  } else if(rollable && s.rollForward){
+    // What it shows once the roll time has passed (or already is, if it has).
+    const after = ssKioskDatesFor(s, new Date(2000, 0, 1, 23, 59));
+    const before = ssKioskDatesFor({ ...s, rollForward: false });
+    text += after.join() === before.join() ? '' : ` At ${clock(s.rollTime)} each day the days slide ahead by one (after that: <b>${escapeHtml(ssKioskDateText(after))}</b>).`;
+  }
+  document.getElementById('ssKsNow').innerHTML = text;
+}
+function closeSsKioskSettings(){ document.getElementById('ssKioskSettings').style.display = 'none'; }
+async function saveSsKioskSettings(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const s = ssKsFormSettings();
+  if(s.mode === 'date' && !s.date){ toast('Pick a date'); return; }
+  try{
+    // Upsert on the key: a screen with the kiosk running reads this again within a minute.
+    await sb('erp_app_settings', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=representation' }, body: JSON.stringify([{ key: SS_KIOSK_SETTING_KEY, value: s, updated_at: new Date().toISOString() }]) });
+    SS_KIOSK.settings = { ...SS_KIOSK_DEFAULT_SETTINGS, ...s };
+    toast('Kiosk settings saved for every screen');
+    closeSsKioskSettings();
+    if(SS_KIOSK.on) ssKioskRefresh();
+  }catch(e){ toast('Save failed: ' + e.message + ' (has fix65-app-settings.sql been run?)'); }
+}
 let KIOSK_INTERVAL = null;
 function enterKioskMode(){
   showScreen('schedule-staffing');
@@ -7790,15 +8219,14 @@ function enterKioskMode(){
     refreshStaffingScreen();
   }, 60000);
   KIOSK_PAGE_INDEX = 0;
-  if(KIOSK_PAGE_TIMER) clearInterval(KIOSK_PAGE_TIMER);
-  KIOSK_PAGE_TIMER = setInterval(kioskAdvancePage, KIOSK_PAGE_INTERVAL_MS);
-  renderStaffingBoard();
+  if(KIOSK_PAGE_TIMER){ clearTimeout(KIOSK_PAGE_TIMER); KIOSK_PAGE_TIMER = null; }
+  renderStaffingBoard(); // builds the pages and starts the page timer (kioskScheduleNext)
 }
 function exitKioskMode(){
   document.body.classList.remove('kiosk-mode');
   document.getElementById('exitKioskBtn').style.display = 'none';
   if(KIOSK_INTERVAL){ clearInterval(KIOSK_INTERVAL); KIOSK_INTERVAL = null; }
-  if(KIOSK_PAGE_TIMER){ clearInterval(KIOSK_PAGE_TIMER); KIOSK_PAGE_TIMER = null; }
+  if(KIOSK_PAGE_TIMER){ clearTimeout(KIOSK_PAGE_TIMER); KIOSK_PAGE_TIMER = null; }
   renderStaffingBoard();
 }
 async function refreshScheduleScreen(){
@@ -10259,7 +10687,16 @@ function renderLineSummary(runs, items, hiddenRunIds){
       const datesBlock = packingDiffers
         ? `<span class="chip" style="margin-left:8px" title="This run's production day differs from its packing day">📦 Produced: ${run.run_date} · Packed: ${run.packing_date}</span>`
         : '';
-      const runInfoBlock = `<div style="margin-bottom:6px">
+      // A Packaging Line only run has no dough, batches or product of its own — the group heading
+      // above already says what it is, so only its status (following its items), dates and remark show.
+      const pkgOnly = isPackagingOnlyRun(run);
+      const pkgAllDone = pkgOnly && runItems.length > 0 && runItems.every(it => it.status === 'Confirmed' || it.status === 'Cancelled') && runItems.some(it => it.status === 'Confirmed');
+      const pkgStatusChip = run.status === 'Cancelled' ? `<span class="chip cancel">Cancelled</span>` : pkgAllDone ? `<span class="chip ok">Packed</span>` : `<span class="chip">Planned</span>`;
+      const runInfoBlock = pkgOnly ? `<div style="margin-bottom:6px">
+        <span>${pkgStatusChip}</span>
+        ${datesBlock}
+        ${run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:700;font-style:italic;margin-top:4px">📝 ${escapeHtml(run.remark)}</div>` : ''}
+      </div>` : `<div style="margin-bottom:6px">
         <strong>${fmtNum(mixes)} batches of ${run.product_name}${p&&p.lactic_acid_oil?` (Lactic Acid Oil: ${p.lactic_acid_oil})`:''}</strong>
         <span style="font-weight:400;color:var(--muted);font-size:12px;margin-left:8px">
           ${p&&p.weight_per_mix_kg?`Weight/mix: ${fmtNum(p.weight_per_mix_kg)} kg`:''}${p&&p.yield_factor?` · Yield: ${fmtNum(p.yield_factor)}`:''}${mixTimeMin!=null?` · Mix Time: ${fmtNum(mixTimeMin)} min`:''}
