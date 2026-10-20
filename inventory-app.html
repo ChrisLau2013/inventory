@@ -345,8 +345,27 @@
   body.no-write .viewer-only{display:block !important}
   .subnav-readonly-note{display:none;font-size:11px;font-weight:600;color:var(--muted);opacity:.75;padding:4px 20px 8px}
   body.kiosk-mode .topnav, body.kiosk-mode #sidebarNav, body.kiosk-mode .no-kiosk{display:none !important}
+  /* Display account (fix66): a compact three-tab, read-only screen instead of the normal menus */
+  #displayBar{display:none}
+  body.display-mode #displayBar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:sticky;top:0;z-index:25;background:#1c3350;color:#fff;padding:8px 16px}
+  body.display-mode .topnav, body.display-mode .desktop-topbar, body.display-mode #sidebarNav, body.display-mode #subNav, body.display-mode .no-display{display:none !important}
+  body.display-mode .shell-body{flex-direction:column !important}
+  body.display-mode main{max-width:100%;padding:16px}
+  body.kiosk-mode #displayBar{display:none !important}
+  #displayBar b{font-weight:600;font-size:15px}
+  #displayBar .dtabs{display:flex;gap:4px;margin-left:8px;flex-wrap:wrap}
+  #displayBar .dtabs button{border:none;background:transparent;color:#cfd9e6;padding:5px 14px;border-radius:8px;font:inherit;font-size:13px;cursor:pointer}
+  #displayBar .dtabs button.on{background:#fff;color:#1c3350;font-weight:600}
+  #displayBar .dro{font-size:11px;padding:1px 8px;border-radius:99px;background:rgba(255,255,255,.15)}
+  #displayBar .dbtn{border:1px solid rgba(255,255,255,.35);background:transparent;color:#fff;border-radius:8px;padding:3px 12px;font:inherit;font-size:12px;cursor:pointer}
   body.kiosk-mode main{max-width:100%;padding:24px}
-  body.kiosk-mode #screen-schedule-staffing h2{font-size:28px}
+  body.kiosk-mode #screen-schedule-staffing h2{display:none}
+  /* Staffing Kiosk header: same bar as the Staff Schedule kiosk (#ssKioskHead), full-bleed over main's padding */
+  body.kiosk-mode:not(.dashboard-kiosk-mode) .desktop-topbar{display:none !important} /* at ≥1024px the brand bar would sit above the Kiosk header */
+  #stKioskHead{display:none}
+  body.kiosk-mode #stKioskHead{display:flex;align-items:baseline;gap:14px;background:#1c3350;color:#fff;padding:10px 18px;margin:-24px -24px 16px;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif}
+  #stKioskHead b{font-weight:700}
+  #stKioskHead button{border:1px solid rgba(255,255,255,.4);background:transparent;color:#fff;border-radius:6px;padding:2px 10px;cursor:pointer;font-family:inherit;opacity:.7}
   body.no-write .subnav-readonly-note{display:block}
   body.no-admin .admin-only{display:none !important}
   .no-can-write{display:none}
@@ -711,6 +730,20 @@
     <div id="desktopTopbarConnSlot"></div>
   </header>
 
+  <!-- Display account bar (see startDisplayMode): shown instead of the menus for a display account -->
+  <div id="displayBar">
+    <b>Hon's Wun-Tun House</b>
+    <div class="dtabs" id="displayTabs"></div>
+    <span style="flex:1"></span>
+    <span class="dro">Read only</span>
+    <button type="button" class="dbtn" id="displayKioskBtn" onclick="displayToggleKiosk()">Kiosk mode</button>
+    <div style="position:relative">
+      <button type="button" class="dbtn" id="displayMenuBtn" onclick="document.getElementById('displayMenu').style.display = document.getElementById('displayMenu').style.display === 'block' ? 'none' : 'block'" aria-label="Menu">⋯</button>
+      <div id="displayMenu" style="display:none;position:absolute;right:0;top:34px;background:#fff;color:#111;border:1px solid #ccc;border-radius:8px;padding:6px 0;min-width:130px;z-index:30">
+        <a href="#" onclick="doLogout();return false" style="display:block;padding:6px 14px;color:#111;text-decoration:none;font-size:13px">Sign out</a>
+      </div>
+    </div>
+  </div>
   <div class="shell-body">
   <nav id="sidebarNav"></nav>
 
@@ -1293,8 +1326,8 @@
       <div class="empty" id="scheduledDaysEmptyPreview" style="display:none">Nothing scheduled for today or later yet</div>
     </div>
     <div class="btnrow no-print">
-      <button class="btn secondary" onclick="printProductionReport()">🖨 Print Production Team Report</button>
-      <button class="btn secondary" onclick="printPackagingReport()">🖨 Print Packaging Team Report</button>
+      <button class="btn secondary" onclick="openReportLinePicker('production')">🖨 Print Production Team Report</button>
+      <button class="btn secondary" onclick="openReportLinePicker('packaging')">🖨 Print Packaging Team Report</button>
     </div>
     <div id="lineSummaryTable"></div>
     <div class="empty" id="lineSummaryEmpty" style="display:none">No runs for this date</div>
@@ -1302,13 +1335,20 @@
 
   <!-- DAILY PRODUCTION SCHEDULE: STAFFING -->
   <section class="screen" id="screen-schedule-staffing">
+    <div id="stKioskHead">
+      <b>Staffing — Production Steps &amp; Positions</b>
+      <span id="stKioskDate"></span>
+      <span style="flex:1"></span>
+      <span id="stKioskClock"></span>
+      <button type="button" onclick="exitKioskMode()" title="Exit Kiosk Mode (Esc)">✕ Exit</button>
+    </div>
     <h2>Staffing — Production Steps &amp; Positions</h2>
-    <p style="color:var(--muted);font-size:13px;margin-top:0">Per-Run process steps, their status, and who's assigned to each position. Steps are generated automatically from each product's Process Steps template the first time a Run is opened here.</p>
+    <p class="no-kiosk" style="color:var(--muted);font-size:13px;margin-top:0">Per-Run process steps, their status, and who's assigned to each position. Steps are generated automatically from each product's Process Steps template the first time a Run is opened here.</p>
     <div class="row no-kiosk" style="align-items:center">
       <h3 style="flex:2">Staffing Board</h3>
       <input type="date" id="staffingViewDate" onchange="refreshStaffingScreen()" style="max-width:160px">
       <button class="btn secondary can-write" onclick="showCopyPreviousDayPreview()" style="flex:0 0 auto">📋 Copy from previous day</button>
-      <button class="btn secondary" onclick="enterKioskMode()" style="flex:0 0 auto">🖥 Kiosk Mode</button>
+      <button class="btn secondary no-display" onclick="enterKioskMode()" style="flex:0 0 auto">🖥 Kiosk Mode</button>
     </div>
     <div class="row no-kiosk" style="align-items:center;margin-top:-6px">
       <span style="font-size:12px;color:var(--muted)">Layout:</span>
@@ -1316,7 +1356,6 @@
       <button class="btn secondary" id="staffingViewBtn_pipeline" style="padding:6px 12px;font-size:12px" onclick="setStaffingView('pipeline')">Pipeline strip</button>
       <button class="btn secondary" id="staffingViewBtn_roster" style="padding:6px 12px;font-size:12px" onclick="setStaffingView('roster')">Roster grid</button>
     </div>
-    <button class="btn secondary" onclick="exitKioskMode()" style="display:none" id="exitKioskBtn">✕ Exit Kiosk Mode</button>
     <div id="staffingCopyPreview" class="no-kiosk"></div>
     <div id="unassignedPoolBanner" class="no-kiosk"></div>
     <div id="flourMixingRoomBanner"></div>
@@ -1352,7 +1391,7 @@
     </div>
     <div class="btnrow no-print">
       <button class="btn secondary" onclick="printStaffSchedule()">🖨 Print Staff Schedule</button>
-      <button class="btn secondary" onclick="enterStaffScheduleKiosk()">🖥 Kiosk Mode</button>
+      <button class="btn secondary no-display" onclick="enterStaffScheduleKiosk()">🖥 Kiosk Mode</button>
       <button class="btn secondary can-write" onclick="openSsKioskSettings()" title="Which days the kiosk shows, for every screen">⚙ Kiosk Settings</button>
     </div>
     <div class="card" id="staffScheduleTableCard">
@@ -1444,7 +1483,7 @@
     <div class="card" id="historyTotalsCard" style="display:none">
       <h3>Totals by Product</h3>
       <p style="color:var(--muted);font-size:12px;margin-top:0">Everything in the date range added up — mixes per <span id="historyTotalsKind">dough</span>, then cases per packed item. Cancelled runs are left out.</p>
-      <div class="tablewrap"><table><thead><tr><th id="historyTotalsKindHead">Dough</th><th>Runs</th><th>Mixes (confirmed / planned)</th><th>Cases (confirmed / planned)</th></tr></thead>
+      <div class="tablewrap"><table><thead><tr><th id="historyTotalsKindHead">Dough</th><th>Runs</th><th>Mixes (confirmed / planned)</th><th>Cases (confirmed / planned)</th><th id="historyTotalsYieldHead" title="Total packed kg ÷ total dough kg over fully confirmed runs">Avg Yield (actual / target)</th></tr></thead>
       <tbody id="historyTotalsByProduct"></tbody></table></div>
       <div class="tablewrap" style="margin-top:12px"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Planned Cases</th><th>Confirmed Cases</th></tr></thead>
       <tbody id="historyTotalsByItem"></tbody></table></div>
@@ -1623,6 +1662,7 @@
       <tbody id="employeesTable"></tbody></table></div>
       <div class="empty" id="employeesEmpty" style="display:none">No employees yet</div>
     </div>
+    <div class="card can-write" id="timeOffOverview"></div>
     <div class="card can-write">
       <h3 style="margin-top:0">Employee Leave / Time Off</h3>
       <p style="color:var(--muted);font-size:12px;margin-top:0">Dates an employee is away — separate from their weekly Not Available days above. Request off (a one-off day they asked for), Vacation or Sick. Staff Schedule shows each type in its own color, and the Staffing board warns before scheduling someone on one of these days.</p>
@@ -2640,6 +2680,20 @@
   <div id="ssKioskBody" style="flex:1 1 auto;overflow:hidden;padding:6px 10px;min-height:0"></div>
   <div id="ssKioskFoot" style="flex:0 0 auto;border-top:1px solid #ccc;padding:6px 18px;display:flex;align-items:center;gap:12px"></div>
 </div>
+<!-- Line picker for Print Production / Packaging Team Report (Production Schedule → Preview) -->
+<div id="reportLinePicker" class="no-print" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="max-width:460px;width:100%;margin:0;max-height:92vh;overflow:auto">
+    <h3 id="reportPickerTitle" style="margin:0 0 2px">Print report</h3>
+    <p id="reportPickerDate" style="color:var(--muted);font-size:12px;margin:0 0 8px"></p>
+    <div style="display:flex;gap:12px;font-size:12px;margin-bottom:6px"><a href="#" onclick="setReportPickerAll(true);return false" style="color:var(--accent)">Select all</a><a href="#" onclick="setReportPickerAll(false);return false" style="color:var(--accent)">Select none</a></div>
+    <div id="reportPickerList"></div>
+    <div class="btnrow" style="align-items:center">
+      <button class="btn" id="reportPickerPrintBtn" onclick="printPickedReport()">🖨 Print</button>
+      <button class="btn secondary" onclick="closeReportLinePicker()">Cancel</button>
+      <span id="reportPickerTotal" style="margin-left:auto;font-size:12px;color:var(--muted)"></span>
+    </div>
+  </div>
+</div>
 <!-- Staff Schedule Kiosk Settings (Admin/Operator): which days the kiosk shows, shared by every screen -->
 <div id="ssKioskSettings" class="no-print" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px">
   <div class="card" style="max-width:520px;width:100%;margin:0;max-height:92vh;overflow:auto">
@@ -2651,6 +2705,11 @@
     <label style="display:flex;gap:8px;align-items:flex-start;width:auto;margin:6px 0;font-weight:400"><input type="radio" name="ssKsMode" id="ssKsMode_both" value="both" style="width:auto;flex:0 0 auto;margin-top:3px" onchange="updateSsKioskSettingsNow()"><span><b>Today and tomorrow</b> — side by side</span></label>
     <label style="display:flex;gap:8px;align-items:flex-start;width:auto;margin:6px 0;font-weight:400"><input type="radio" name="ssKsMode" id="ssKsMode_span" value="span" style="width:auto;flex:0 0 auto;margin-top:3px" onchange="updateSsKioskSettingsNow()"><span><b>A set number of days</b><br><span style="font-size:12px">Start <select id="ssKsSpanStart" style="width:auto;display:inline-block" onchange="document.getElementById('ssKsMode_span').checked=true;updateSsKioskSettingsNow()"><option value="today">today</option><option value="tomorrow">tomorrow</option></select> show <select id="ssKsSpanDays" style="width:auto;display:inline-block" onchange="document.getElementById('ssKsMode_span').checked=true;updateSsKioskSettingsNow()"><option value="1">1 day</option><option value="2">2 days</option><option value="3">3 days</option></select></span></span></label>
     <label style="display:flex;gap:8px;align-items:flex-start;width:auto;margin:6px 0;font-weight:400"><input type="radio" name="ssKsMode" id="ssKsMode_date" value="date" style="width:auto;flex:0 0 auto;margin-top:3px" onchange="updateSsKioskSettingsNow()"><span><b>One date</b><br><input type="date" id="ssKsDate" style="width:auto;display:inline-block;margin-top:2px" onchange="document.getElementById('ssKsMode_date').checked=true;updateSsKioskSettingsNow()"></span></label>
+    <div id="ssKsFriRow" style="margin:8px 0 0;padding:8px 10px;background:var(--chip);border-radius:8px;font-size:12px">
+      <label style="display:flex;align-items:center;gap:6px;width:auto;margin:0;font-weight:400"><input type="checkbox" id="ssKsFri" style="width:auto;flex:0 0 auto" onchange="updateSsKioskSettingsNow()"><span><b>Friday rule — on Fridays, after</b> <input type="time" id="ssKsFriTime" value="15:00" style="width:110px;display:inline-block" onchange="document.getElementById('ssKsFri').checked=true;updateSsKioskSettingsNow()"> <b>show Saturday to Monday</b></span></label>
+      <div style="margin-top:6px">Through the weekend <select id="ssKsWeekend" style="width:auto;display:inline-block" onchange="updateSsKioskSettingsNow()"><option value="keep">keep showing Saturday to Monday (until Monday)</option><option value="normal">go back to the normal setting on Saturday morning</option></select></div>
+      <div style="color:var(--muted);margin-top:4px">Works with Automatic, Today only and Tomorrow only. Monday is back to the normal setting.</div>
+    </div>
     <div id="ssKsRollRow" style="margin:8px 0 0;padding:8px 10px;background:var(--chip);border-radius:8px;font-size:12px">
       <label style="display:flex;align-items:center;gap:6px;width:auto;margin:0;font-weight:400"><input type="checkbox" id="ssKsRoll" style="width:auto;flex:0 0 auto" onchange="updateSsKioskSettingsNow()"><span><b>Move forward one day after</b> <input type="time" id="ssKsRollTime" value="15:00" style="width:110px;display:inline-block" onchange="document.getElementById('ssKsRoll').checked=true;updateSsKioskSettingsNow()"> every day</span></label>
       <div style="color:var(--muted);margin-top:2px">For Today and tomorrow, and A set number of days: at that time the days slide ahead by one. Off = they stay as set.</div>
@@ -2890,6 +2949,7 @@ async function submitLogin(){
   }
 }
 async function doLogout(){
+  stopDisplayMode();
   exitKioskMode();
   SESSION = null; CURRENT_USER = null;
   try{ sessionStorage.removeItem('auth-session'); }catch(e){}
@@ -2915,7 +2975,8 @@ async function fetchProfile(){
     try{
       // blocked_screens (fix60) may not exist yet — fall back to the old columns instead of
       // treating a missing column as a failed login.
-      rows = await sbGet(`erp_profiles?select=id,email,role,display_name,allowed_screens,blocked_screens&id=eq.${SESSION.user.id}`)
+      rows = await sbGet(`erp_profiles?select=id,email,role,display_name,allowed_screens,blocked_screens,display_mode,display_first,display_kiosk,display_rotate_secs&id=eq.${SESSION.user.id}`)
+        .catch(() => sbGet(`erp_profiles?select=id,email,role,display_name,allowed_screens,blocked_screens&id=eq.${SESSION.user.id}`))   // fix66 not run yet
         .catch(() => sbGet(`erp_profiles?select=id,email,role,display_name,allowed_screens&id=eq.${SESSION.user.id}`));
       if(rows && rows.length) break;
     }catch(e){ /* fall through to retry/fallback below */ }
@@ -2966,6 +3027,7 @@ async function afterLogin(){
   // loadRolePermissions must finish before isScreenAllowed below, since a restricted Editor/Viewer's
   // first-allowed-screen depends on it.
   await Promise.all([fetchProfile(), loadCaches(), loadRolePermissions()]);
+  if(isDisplayAccount()){ startDisplayMode(); return; }
   const firstAllowed = isScreenAllowed('dashboard') ? 'dashboard' : (getAllScreensList().find(s => isScreenAllowed(s.screen))?.screen || 'account');
   showScreen(firstAllowed);
 }
@@ -3065,6 +3127,7 @@ function moduleHasSubNav(mod){
   return document.querySelectorAll(`#subNav button[data-module="${mod}"]`).length > 1;
 }
 function isScreenAllowed(screen){
+  if(isDisplayAccount()) return DISPLAY_TABS.some(t => t.screen === screen); // a display account sees only its three tabs
   if(isAdmin()) return true; // admins are never restricted
   // Per-user Block (Manage Users → Customize menu, fix60) wins over everything below: hidden for
   // this one person even if their role (or a grant) would show it. My Account is never blockable.
@@ -5123,6 +5186,7 @@ function leaveTypeBadgeHtml(type){
   const s = LEAVE_TYPE_STYLE[type] || LEAVE_TYPE_STYLE.vacation;
   return `<span style="background:${s.bg};color:${s.fg};border:1px solid rgba(0,0,0,.15);border-radius:99px;padding:1px 9px;font-size:11px;font-weight:600;white-space:nowrap">${s.label}</span>`;
 }
+let EMPLOYEE_LEAVE_EDIT_ID = null; // the leave row being edited in place (null = none)
 function renderEmployeeLeaveTable(){
   const tbody = document.getElementById('employeeLeaveTable');
   if(!tbody) return;
@@ -5133,17 +5197,189 @@ function renderEmployeeLeaveTable(){
   const rows = EMPLOYEE_LEAVE.filter(l => l.end_date >= today).sort((a,b) => a.start_date.localeCompare(b.start_date));
   tbody.innerHTML = rows.map(l => {
     const emp = EMPLOYEES.find(e => e.id === l.employee_id);
+    const name = emp ? escapeHtml(emp.name) : '(deleted employee)';
+    if(l.id === EMPLOYEE_LEAVE_EDIT_ID){
+      // Edit in place: dates, type and note become boxes; Save checks for clashes with existing assignments.
+      const typeOpts = ['request_off','vacation','sick','day_off'].map(t => `<option value="${t}" ${l.type===t?'selected':''}>${LEAVE_TYPE_STYLE[t].label}</option>`).join('');
+      return `<tr style="background:var(--chip)">
+        <td>${name}</td>
+        <td><input type="date" id="leaveEditStart" value="${l.start_date}" onchange="const e=document.getElementById('leaveEditEnd'); if(e.value < this.value) e.value=this.value"></td>
+        <td><input type="date" id="leaveEditEnd" value="${l.end_date}"></td>
+        <td><select id="leaveEditType">${typeOpts}</select></td>
+        <td><input id="leaveEditNote" value="${escapeHtml(l.note || '')}" placeholder="Note" style="min-width:120px"></td>
+        <td class="no-print can-write" style="white-space:nowrap">
+          <button class="btn" style="padding:6px 10px;font-size:12px" onclick="saveEmployeeLeaveEdit(${l.id})">Save</button>
+          <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="cancelEmployeeLeaveEdit()">Cancel</button>
+        </td>
+      </tr>`;
+    }
     return `<tr>
-      <td>${emp ? emp.name : '(deleted employee)'}</td>
+      <td>${name}</td>
       <td>${l.start_date}</td><td>${l.end_date}</td>
       <td>${leaveTypeBadgeHtml(l.type)}</td>
-      <td>${l.note||''}</td>
+      <td>${escapeHtml(l.note || '')}</td>
       <td class="no-print can-write" style="white-space:nowrap">
+        <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="editEmployeeLeave(${l.id})">✎ Edit</button>
         <button class="btn secondary" style="padding:6px 10px;font-size:12px;color:var(--danger)" onclick="deleteEmployeeLeave(${l.id})">✕ Delete</button>
       </td>
     </tr>`;
   }).join('');
   document.getElementById('employeeLeaveEmpty').style.display = rows.length ? 'none' : 'block';
+  renderTimeOffOverview();
+}
+function editEmployeeLeave(id){ EMPLOYEE_LEAVE_EDIT_ID = id; renderEmployeeLeaveTable(); }
+function cancelEmployeeLeaveEdit(){ EMPLOYEE_LEAVE_EDIT_ID = null; renderEmployeeLeaveTable(); }
+// Dates in [from, to] on which this employee already has a spot (a Line step, Flour Mixing Room,
+// Packaging Center pool/position, Sauce Production) — used to warn before a leave lands on them.
+async function employeeAssignedDates(employeeId, from, to){
+  const dates = new Set();
+  try{
+    const runs = await sbGet(`erp_production_runs?select=id,run_date&run_date=gte.${from}&run_date=lte.${to}&limit=2000`);
+    if(runs.length){
+      const dateByRun = {}; runs.forEach(r => { dateByRun[r.id] = r.run_date; });
+      const steps = await sbGet(`erp_run_steps?select=id,run_id&run_id=in.(${runs.map(r => r.id).join(',')})&limit=5000`);
+      if(steps.length){
+        const runByStep = {}; steps.forEach(s => { runByStep[s.id] = s.run_id; });
+        const asg = await sbGet(`erp_run_step_assignments?select=run_step_id&employee_id=eq.${employeeId}&run_step_id=in.(${steps.map(s => s.id).join(',')})&limit=5000`);
+        asg.forEach(a => { const d = dateByRun[runByStep[a.run_step_id]]; if(d) dates.add(d); });
+      }
+    }
+    for(const t of ['erp_flour_mixing_room_staff','erp_packaging_center_staff','erp_packaging_center_positions','erp_sauce_production_positions']){
+      (await sbGet(`${t}?select=staff_date&employee_id=eq.${employeeId}&staff_date=gte.${from}&staff_date=lte.${to}&limit=500`).catch(() => [])).forEach(r => dates.add(r.staff_date));
+    }
+  }catch(e){ /* a failed lookup just means no warning */ }
+  return [...dates].sort();
+}
+async function saveEmployeeLeaveEdit(id){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const l = EMPLOYEE_LEAVE.find(x => x.id === id);
+  if(!l) return;
+  const start = document.getElementById('leaveEditStart').value, end = document.getElementById('leaveEditEnd').value;
+  if(!start || !end){ toast('Please enter both a start and end date'); return; }
+  if(end < start){ toast('End Date must be on or after Start Date'); return; }
+  const type = document.getElementById('leaveEditType').value;
+  const note = document.getElementById('leaveEditNote').value.trim();
+  try{
+    // Only the days newly covered matter: a day already inside the old range was already warned about.
+    const assigned = (await employeeAssignedDates(l.employee_id, start, end)).filter(d => d < l.start_date || d > l.end_date);
+    if(assigned.length){
+      const emp = EMPLOYEES.find(e => e.id === l.employee_id);
+      if(!confirm(`${emp ? emp.name : 'This employee'} is already assigned on ${assigned.join(', ')}. Save these dates anyway? (Their assignments stay; Staffing will flag them.)`)) return;
+    }
+    await sbUpdate('erp_employee_leave', id, { start_date: start, end_date: end, type, note: note || null });
+    toast('Time off updated');
+    EMPLOYEE_LEAVE_EDIT_ID = null;
+    await refreshScheduleScreen();
+  }catch(e){ toast('Update failed: ' + e.message + (/type_check|check constraint/i.test(e.message) ? ' (has fix57-leave-types.sql been run?)' : '')); }
+}
+
+/* ---- Time Off Overview: who has time off coming up, and where it overlaps ---- */
+let TTO_WEEKS = 4, TTO_TYPE = 'all', TTO_FROM = '', TTO_TO = ''; // TTO_WEEKS: 2 | 4 | 8 | 'all' | 'custom' (then TTO_FROM/TTO_TO)
+function ttoAreaOf(e){
+  if(!e) return 'Unknown';
+  if(e.default_position_type === 'flour') return 'Flour Mixing Room';
+  if(e.default_position_type === 'packaging' || e.default_position_type === 'packaging_pool') return 'Packaging';
+  if(e.default_position_type === 'run') return e.default_position_line || 'Line (not set)';
+  return 'No default position';
+}
+function ttoDayLabel(d){ return new Date(d + 'T00:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }); }
+// What the Overview works out for the next `weeks` weeks (today onward) from the leave records.
+function computeTimeOffOverview(weeks, type){
+  const today = todayStr();
+  let firstDay = today, lastDay;
+  if(weeks === 'custom'){
+    // A date range picked by hand (it may start in the past, to look back at leave already taken).
+    // At most a year; From after To is swapped rather than rejected.
+    firstDay = TTO_FROM || today; lastDay = TTO_TO || addDaysStr(firstDay, 27);
+    if(lastDay < firstDay){ const t = firstDay; firstDay = lastDay; lastDay = t; }
+    const cap = addDaysStr(firstDay, 365);
+    if(lastDay > cap) lastDay = cap;
+  } else if(weeks === 'all'){
+    // Everything on file: from today through the last day of the latest leave (at most a year out).
+    const ends = EMPLOYEE_LEAVE.filter(l => l.end_date >= today && (type === 'all' || l.type === type)).map(l => l.end_date);
+    lastDay = ends.length ? ends.reduce((a, b) => a > b ? a : b) : addDaysStr(today, 27);
+    const cap = addDaysStr(today, 365);
+    if(lastDay > cap) lastDay = cap;
+  } else {
+    lastDay = addDaysStr(today, weeks * 7 - 1);
+  }
+  const dates = [];
+  for(let d = firstDay; d <= lastDay; d = addDaysStr(d, 1)) dates.push(d);
+  const recs = EMPLOYEE_LEAVE.filter(l => l.end_date >= firstDay && l.start_date <= lastDay && (type === 'all' || l.type === type));
+  const rank = { vacation: 4, request_off: 3, sick: 2, day_off: 1 }; // which type shows when one person has several on a day
+  const byEmp = {}; // empId -> { date -> {type, note} }
+  recs.forEach(l => {
+    for(let d = l.start_date < firstDay ? firstDay : l.start_date; d <= l.end_date && d <= lastDay; d = addDaysStr(d, 1)){
+      const cur = (byEmp[l.employee_id] = byEmp[l.employee_id] || {})[d];
+      if(!cur || rank[l.type] > rank[cur.type]) byEmp[l.employee_id][d] = { type: l.type, note: l.note || '' };
+    }
+  });
+  const offByDate = {}; // date -> [empIds]
+  dates.forEach(d => { offByDate[d] = Object.keys(byEmp).filter(id => byEmp[id][d]).map(Number); });
+  const empName = id => (EMPLOYEES.find(e => e.id === id) || {}).name || '(deleted employee)';
+  // Overlaps: runs of consecutive days with the same 2+ people off, merged into one row.
+  const overlaps = [];
+  dates.forEach(d => {
+    const ids = offByDate[d].slice().sort((a, b) => a - b);
+    if(ids.length < 2) return;
+    const key = ids.join(',');
+    const last = overlaps[overlaps.length - 1];
+    if(last && last.key === key && addDaysStr(last.to, 1) === d) last.to = d;
+    else overlaps.push({ key, from: d, to: d, ids });
+  });
+  return {
+    dates, byEmp, offByDate, overlaps, empName,
+    empIds: Object.keys(byEmp).map(Number).sort((a, b) => empName(a).localeCompare(empName(b))),
+    stats: {
+      employees: Object.keys(byEmp).length,
+      records: recs.length,
+      personDays: dates.reduce((s, d) => s + offByDate[d].length, 0),
+      heavyDays: dates.filter(d => offByDate[d].length >= 3).length
+    }
+  };
+}
+function setTimeOffOverviewPeriod(v){
+  if(v === 'all' || v === 'custom') TTO_WEEKS = v; else TTO_WEEKS = Number(v);
+  if(v === 'custom' && (!TTO_FROM || !TTO_TO)){ TTO_FROM = todayStr(); TTO_TO = addDaysStr(TTO_FROM, 27); } // opens on the next 4 weeks
+  renderTimeOffOverview();
+}
+function renderTimeOffOverview(){
+  const el = document.getElementById('timeOffOverview');
+  if(!el) return;
+  const o = computeTimeOffOverview(TTO_WEEKS, TTO_TYPE);
+  const n = o.dates.length;
+  const fs = n > 28 ? 8 : 10;
+  // On a long stretch the day numbers would be unreadable crammed together: show every one up to
+  // 6 weeks, then just the 1st of the month and Mondays.
+  const showDayNo = d => n <= 42 || d.slice(8) === '01' || new Date(d + 'T00:00:00').getDay() === 1;
+  const colorOf = t => t === 'vacation' ? '#444' : t === 'request_off' ? '#f09595' : t === 'sick' ? '#85b7eb' : '#c9ced4';
+  const timeline = o.empIds.length ? `<div style="display:grid;grid-template-columns:130px repeat(${n},minmax(0,1fr));gap:2px;align-items:center;font-size:${fs}px;margin-top:8px">
+      <span></span>${o.dates.map(d => `<span style="text-align:center;color:var(--muted)" title="${ttoDayLabel(d)}">${showDayNo(d) ? Number(d.slice(8)) : ''}</span>`).join('')}
+      ${o.empIds.map(id => `<span style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeHtml(o.empName(id))}">${escapeHtml(o.empName(id))}</span>` +
+        o.dates.map(d => { const c = o.byEmp[id][d]; return c ? `<span style="height:16px;border-radius:3px;background:${colorOf(c.type)}" title="${escapeHtml(o.empName(id))} · ${ttoDayLabel(d)} · ${LEAVE_TYPE_STYLE[c.type].label}${c.note ? ' · ' + escapeHtml(c.note) : ''}"></span>` : '<span style="height:16px;border-radius:3px;background:var(--chip)"></span>'; }).join('')).join('')}
+      <span style="font-size:11px;font-weight:700">People off</span>${o.dates.map(d => { const c = o.offByDate[d].length; return `<span style="height:16px;line-height:16px;border-radius:3px;text-align:center;font-weight:700;background:${c >= 3 ? '#f09595' : c === 2 ? '#fac775' : 'var(--chip)'};color:${c >= 3 ? '#501313' : c === 2 ? '#412402' : 'var(--text)'}">${c || ''}</span>`; }).join('')}
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px">One bar per person: <span style="color:#444">■</span> Vacation · <span style="color:#f09595">■</span> Request off · <span style="color:#85b7eb">■</span> Sick · <span style="color:#c9ced4">■</span> Day Off. The bottom row counts people off each day: amber 2, red 3 or more.</div>` : '<div class="empty" style="margin-top:8px">No time off in this period</div>';
+  const areaSummary = ids => {
+    const counts = {}; ids.forEach(id => { const a = ttoAreaOf(EMPLOYEES.find(e => e.id === id)); counts[a] = (counts[a] || 0) + 1; });
+    return Object.keys(counts).sort().map(a => `${escapeHtml(a)}${counts[a] > 1 ? ' ×' + counts[a] : ''}`).join(', ');
+  };
+  const peak = o.overlaps.slice().sort((a, b) => b.ids.length - a.ids.length || a.from.localeCompare(b.from))[0];
+  const overlapHtml = o.overlaps.length ? `<div style="background:var(--chip);border-radius:8px;padding:6px 10px;font-size:12px;margin:10px 0 6px"><b>Biggest overlap:</b> ${ttoDayLabel(peak.from)}${peak.to !== peak.from ? ' to ' + ttoDayLabel(peak.to) : ''} — ${peak.ids.length} people off at once: ${peak.ids.map(id => escapeHtml(o.empName(id))).join(', ')}</div>
+    <div class="tablewrap"><table><thead><tr><th>Overlapping dates</th><th>People off</th><th>Who</th><th>Where they usually work</th></tr></thead><tbody>
+    ${o.overlaps.map(x => `<tr><td>${ttoDayLabel(x.from)}${x.to !== x.from ? ' to ' + ttoDayLabel(x.to) : ''}</td><td style="font-weight:700;color:${x.ids.length >= 3 ? 'var(--danger)' : 'inherit'}">${x.ids.length}</td><td>${x.ids.map(id => escapeHtml(o.empName(id))).join(', ')}</td><td>${areaSummary(x.ids)}</td></tr>`).join('')}
+    </tbody></table></div>` : '<div style="color:var(--muted);font-size:12px;margin-top:10px">No two people are off on the same day in this period.</div>';
+  const kpi = (v, l) => `<div class="kpi" style="padding:8px 10px"><div class="n" style="font-size:20px">${v}</div><div class="l">${l}</div></div>`;
+  el.innerHTML = `<h3 style="margin-top:0">Time Off Overview</h3>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:8px">
+      ${kpi(o.stats.employees, 'employees with time off')}${kpi(o.stats.records, 'leave records')}${kpi(o.stats.personDays, (TTO_WEEKS === 'all' || TTO_WEEKS === 'custom') ? `person-days off, ${ttoDayLabel(o.dates[0])} to ${ttoDayLabel(o.dates[n-1])}` : `person-days off in the next ${TTO_WEEKS} weeks`)}${kpi(o.stats.heavyDays, 'days with 3 or more people off')}
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:12px">
+      <span>Show</span><select style="width:auto" onchange="setTimeOffOverviewPeriod(this.value)">${[2,4,8].map(w => `<option value="${w}" ${TTO_WEEKS===w?'selected':''}>the next ${w} weeks</option>`).join('')}<option value="all" ${TTO_WEEKS==='all'?'selected':''}>all current time off (to the last day)</option><option value="custom" ${TTO_WEEKS==='custom'?'selected':''}>a date range…</option></select>
+      ${TTO_WEEKS === 'custom' ? `<span>From</span><input type="date" style="width:auto" value="${o.dates[0]}" onchange="TTO_FROM=this.value;renderTimeOffOverview()"><span>To</span><input type="date" style="width:auto" value="${o.dates[n-1]}" onchange="TTO_TO=this.value;renderTimeOffOverview()">` : ''}
+      <span>Type</span><select style="width:auto" onchange="TTO_TYPE=this.value;renderTimeOffOverview()">${[['all','All'],['request_off','Request off'],['vacation','Vacation'],['sick','Sick'],['day_off','Day Off']].map(([v, t]) => `<option value="${v}" ${TTO_TYPE===v?'selected':''}>${t}</option>`).join('')}</select>
+    </div>
+    ${timeline}${overlapHtml}`;
 }
 let STAFFING_RUNS = [];
 let STAFFING_STEPS = [];
@@ -5518,7 +5754,14 @@ async function updateAssignmentStartTime(assignmentId, value){
       await sbUpdate('erp_run_step_assignments', s.id, { start_time: startTime });
       s.start_time = startTime;
     }
-    if(siblings.length) renderStaffingBoard();
+    // Other doughs' copies of this time show the new value too — set in place, NOT by re-rendering
+    // the whole board: a time box fires its change event as soon as a part of it is typed (the hour
+    // alone is enough), and a re-render here replaced the very box being typed in, so the cursor
+    // jumped away before the minutes could be entered.
+    siblings.forEach(s => {
+      const inp = document.querySelector(`input[data-assign-time="${s.id}"]`);
+      if(inp && inp !== document.activeElement) inp.value = startTime ? startTime.slice(0, 5) : '';
+    });
   }catch(e){ toast('Update failed: ' + e.message); }
 }
 // Persisted so a supervisor's preferred layout survives a reload — the three views share every
@@ -5870,7 +6113,7 @@ function buildAssignmentParts(a, run, selectWidth){
   const stationKey = staffingAssignmentStationKey(a);
   const primaryId = (stationKey && a.employee_id != null) ? staffingPrimaryTimeSlotId(stationKey, a.employee_id) : null;
   const isDuplicateTimeSlot = primaryId != null && primaryId !== a.id;
-  const timeHtml = isDuplicateTimeSlot ? '' : `<input type="time" value="${a.start_time ? a.start_time.slice(0,5) : ''}" style="width:auto;flex:0 0 auto;padding:4px 6px;font-size:12px" onchange="updateAssignmentStartTime(${a.id}, this.value)">`;
+  const timeHtml = isDuplicateTimeSlot ? '' : `<input type="time" value="${a.start_time ? a.start_time.slice(0,5) : ''}" data-assign-time="${a.id}" style="width:auto;flex:0 0 auto;padding:4px 6px;font-size:12px" onchange="updateAssignmentStartTime(${a.id}, this.value)">`;
   const timeText = (!isDuplicateTimeSlot && a.start_time) ? a.start_time.slice(0,5) : '';
   const readonlyHtml = `<span>${a.erp_employees ? a.erp_employees.name : '— Unassigned'}${timeText ? ' ' + timeText : ''}</span>`;
   // One-click "clear + mark Day Off" shortcut (same idea as Staff Schedule's own filled-cell
@@ -6252,6 +6495,7 @@ function renderStaffingBoard(){
     return;
   }
   // Kiosk: build pages that fit this screen, then show the current one.
+  stKioskUpdateHead(); // header first — its height is part of what the pages are measured against
   if(dotsEl){ dotsEl.style.flexDirection = 'column'; dotsEl.style.alignItems = 'center'; dotsEl.innerHTML = '<div style="height:48px"></div>'; } // reserve its height while measuring
   KIOSK_PAGES = kioskComputePages();
   if(KIOSK_PAGE_INDEX >= KIOSK_PAGES.length) KIOSK_PAGE_INDEX = 0;
@@ -7925,7 +8169,7 @@ function staffScheduleGridPrintHtml(scale, wrapPositions){
    stay in the list (grey/black/red/blue); people with nothing at all in the shown days are left out.
    ============================================================ */
 const SS_KIOSK_SETTING_KEY = 'staff_schedule_kiosk';
-const SS_KIOSK_DEFAULT_SETTINGS = { mode: 'auto', switchTime: '15:00', spanStart: 'today', spanDays: 2, date: '', rollForward: false, rollTime: '15:00' };
+const SS_KIOSK_DEFAULT_SETTINGS = { mode: 'auto', switchTime: '15:00', spanStart: 'today', spanDays: 2, date: '', rollForward: false, rollTime: '15:00', fridayRule: false, fridayTime: '15:00', weekendHold: 'keep' };
 let SS_KIOSK = { on: false, pages: [], index: 0, pageTimer: null, refreshTimer: null, clockTimer: null, dates: [], prev: null, settings: { ...SS_KIOSK_DEFAULT_SETTINGS } };
 async function ssKioskLoadSettings(){
   try{
@@ -7939,6 +8183,17 @@ function ssKioskDatesFor(s, now){
   const today = todayStr(), tomorrow = addDaysStr(today, 1);
   const minutesNow = now.getHours() * 60 + now.getMinutes();
   const atOrAfter = hhmm => { const [h, m] = String(hhmm || '15:00').split(':').map(Number); return minutesNow >= (h || 0) * 60 + (m || 0); };
+  // Friday rule (with Automatic / Today only / Tomorrow only): from the set time on Friday the screen
+  // shows Saturday, Sunday and Monday; through the weekend it either keeps that window (the default)
+  // or goes back to the normal setting. Monday is the normal setting again.
+  if(s.fridayRule && (s.mode === 'auto' || s.mode === 'today' || s.mode === 'tomorrow')){
+    const dow = now.getDay(); // 5 = Friday, 6 = Saturday, 0 = Sunday
+    if(dow === 5 && atOrAfter(s.fridayTime)) return [addDaysStr(today, 1), addDaysStr(today, 2), addDaysStr(today, 3)];
+    if(s.weekendHold !== 'normal'){
+      if(dow === 6) return [today, addDaysStr(today, 1), addDaysStr(today, 2)];
+      if(dow === 0) return [addDaysStr(today, -1), today, addDaysStr(today, 1)];
+    }
+  }
   if(s.mode === 'today') return [today];
   if(s.mode === 'tomorrow') return [tomorrow];
   if(s.mode === 'date' && s.date) return [s.date];
@@ -8130,6 +8385,7 @@ async function enterStaffScheduleKiosk(){
 }
 function exitStaffScheduleKiosk(){
   if(!SS_KIOSK.on) return;
+  if(isDisplayAccount() && !DISPLAY.switching) DISPLAY.kioskWanted = false; // the person left Kiosk on purpose
   SS_KIOSK.on = false;
   ['pageTimer','refreshTimer','clockTimer'].forEach(k => { if(SS_KIOSK[k]){ clearTimeout(SS_KIOSK[k]); clearInterval(SS_KIOSK[k]); SS_KIOSK[k] = null; } });
   document.getElementById('ssKiosk').style.display = 'none';
@@ -8143,8 +8399,88 @@ function exitStaffScheduleKiosk(){
     SS_KIOSK.prev = null;
   }
 }
-document.addEventListener('keydown', e => { if(e.key === 'Escape' && SS_KIOSK.on) exitStaffScheduleKiosk(); });
+document.addEventListener('keydown', e => {
+  if(e.key !== 'Escape') return;
+  if(SS_KIOSK.on) exitStaffScheduleKiosk();
+  else if(document.body.classList.contains('kiosk-mode') && !document.body.classList.contains('dashboard-kiosk-mode')) exitKioskMode();
+});
 window.addEventListener('resize', () => { if(SS_KIOSK.on){ clearTimeout(SS_KIOSK.resizeTimer); SS_KIOSK.resizeTimer = setTimeout(ssKioskRender, 400); } });
+
+/* ============================================================
+   Display account (fix66) — a Viewer marked "Display account" in Manage Users signs in to a compact,
+   read-only screen with just three tabs (Production Preview, Staffing, Staff Schedule) for a
+   shop-floor TV. Optionally it opens straight into Kiosk mode and/or flips through the tabs by
+   itself. Everything else is closed to them (isScreenAllowed).
+   ============================================================ */
+const DISPLAY_TABS = [
+  { screen: 'schedule-preview', label: 'Production Preview', kiosk: null },
+  { screen: 'schedule-staffing', label: 'Staffing', kiosk: 'staffing' },
+  { screen: 'schedule-staff-schedule', label: 'Staff Schedule', kiosk: 'ss' }
+];
+let DISPLAY = { current: null, kioskWanted: false, rotateTimer: null, switching: false };
+function isDisplayAccount(){ return !!(CURRENT_USER && CURRENT_USER.display_mode && CURRENT_USER.role === 'viewer'); }
+function displayKioskOn(tab){
+  return tab && ((tab.kiosk === 'staffing' && document.body.classList.contains('kiosk-mode')) || (tab.kiosk === 'ss' && SS_KIOSK.on));
+}
+function displayRenderBar(){
+  document.getElementById('displayTabs').innerHTML = DISPLAY_TABS.map(t => `<button type="button" class="${t.screen === DISPLAY.current ? 'on' : ''}" onclick="displayGoTab('${t.screen}', true)">${t.label}</button>`).join('');
+  const tab = DISPLAY_TABS.find(t => t.screen === DISPLAY.current);
+  const btn = document.getElementById('displayKioskBtn');
+  btn.style.display = tab && tab.kiosk ? '' : 'none'; // Production Preview has no Kiosk view
+  btn.textContent = displayKioskOn(tab) ? 'Exit kiosk' : 'Kiosk mode';
+}
+// Leave any Kiosk view, switch tab, then go back into Kiosk there if the person (or the account's
+// setting) wants it and the tab has one. `manual` = the person clicked the tab.
+function displayGoTab(screen, manual){
+  const tab = DISPLAY_TABS.find(t => t.screen === screen);
+  if(!tab) return;
+  DISPLAY.switching = true;
+  try{
+    if(document.body.classList.contains('kiosk-mode')) exitKioskMode();
+    if(SS_KIOSK.on) exitStaffScheduleKiosk();
+  } finally { DISPLAY.switching = false; }
+  DISPLAY.current = screen;
+  showScreen(screen);
+  if(DISPLAY.kioskWanted && tab.kiosk){
+    if(tab.kiosk === 'staffing') enterKioskMode(); else enterStaffScheduleKiosk();
+  }
+  displayRenderBar();
+  if(manual) displayRestartRotation(); // a manual click restarts the rotation timer so it doesn't flip right away
+}
+function displayToggleKiosk(){
+  const tab = DISPLAY_TABS.find(t => t.screen === DISPLAY.current);
+  if(!tab || !tab.kiosk) return;
+  if(displayKioskOn(tab)){
+    if(tab.kiosk === 'staffing') exitKioskMode(); else exitStaffScheduleKiosk(); // also clears kioskWanted
+  } else {
+    DISPLAY.kioskWanted = true;
+    if(tab.kiosk === 'staffing') enterKioskMode(); else enterStaffScheduleKiosk();
+  }
+  displayRenderBar();
+}
+function displayRotateNext(){
+  const i = DISPLAY_TABS.findIndex(t => t.screen === DISPLAY.current);
+  displayGoTab(DISPLAY_TABS[(i + 1) % DISPLAY_TABS.length].screen, false);
+}
+function displayRestartRotation(){
+  if(DISPLAY.rotateTimer){ clearInterval(DISPLAY.rotateTimer); DISPLAY.rotateTimer = null; }
+  const secs = Number(CURRENT_USER && CURRENT_USER.display_rotate_secs) || 0;
+  if(secs > 0) DISPLAY.rotateTimer = setInterval(displayRotateNext, secs * 1000);
+}
+function startDisplayMode(){
+  document.body.classList.add('display-mode');
+  document.getElementById('displayMenu').style.display = 'none';
+  const first = DISPLAY_TABS.some(t => t.screen === CURRENT_USER.display_first) ? CURRENT_USER.display_first : 'schedule-staffing';
+  DISPLAY.kioskWanted = !!CURRENT_USER.display_kiosk;
+  displayGoTab(first, false);
+  displayRestartRotation();
+}
+function stopDisplayMode(){
+  if(DISPLAY.rotateTimer){ clearInterval(DISPLAY.rotateTimer); DISPLAY.rotateTimer = null; }
+  DISPLAY.kioskWanted = false; DISPLAY.current = null;
+  if(SS_KIOSK.on){ DISPLAY.switching = true; exitStaffScheduleKiosk(); DISPLAY.switching = false; }
+  document.body.classList.remove('display-mode');
+}
 
 /* ---- Kiosk Settings (Admin/Operator): which days the Staff Schedule kiosk shows, for every screen ---- */
 async function openSsKioskSettings(){
@@ -8158,6 +8494,9 @@ async function openSsKioskSettings(){
   document.getElementById('ssKsDate').value = s.date || todayStr();
   document.getElementById('ssKsRoll').checked = !!s.rollForward;
   document.getElementById('ssKsRollTime').value = s.rollTime || '15:00';
+  document.getElementById('ssKsFri').checked = !!s.fridayRule;
+  document.getElementById('ssKsFriTime').value = s.fridayTime || '15:00';
+  document.getElementById('ssKsWeekend').value = s.weekendHold === 'normal' ? 'normal' : 'keep';
   document.getElementById('ssKioskSettings').style.display = 'flex';
   updateSsKioskSettingsNow();
 }
@@ -8170,7 +8509,10 @@ function ssKsFormSettings(){
     spanDays: parseInt(document.getElementById('ssKsSpanDays').value, 10) || 2,
     date: document.getElementById('ssKsDate').value,
     rollForward: document.getElementById('ssKsRoll').checked,
-    rollTime: document.getElementById('ssKsRollTime').value || '15:00'
+    rollTime: document.getElementById('ssKsRollTime').value || '15:00',
+    fridayRule: document.getElementById('ssKsFri').checked,
+    fridayTime: document.getElementById('ssKsFriTime').value || '15:00',
+    weekendHold: document.getElementById('ssKsWeekend').value === 'normal' ? 'normal' : 'keep'
   };
 }
 function updateSsKioskSettingsNow(){
@@ -8181,6 +8523,10 @@ function updateSsKioskSettingsNow(){
   document.getElementById('ssKsRollRow').style.opacity = rollable ? '' : '.45';
   document.getElementById('ssKsRoll').disabled = !rollable;
   document.getElementById('ssKsRollTime').disabled = !rollable;
+  // The Friday rule only goes with the one-day options (Automatic / Today only / Tomorrow only).
+  const friApplies = s.mode === 'auto' || s.mode === 'today' || s.mode === 'tomorrow';
+  document.getElementById('ssKsFriRow').style.opacity = friApplies ? '' : '.45';
+  ['ssKsFri', 'ssKsFriTime', 'ssKsWeekend'].forEach(id => { document.getElementById(id).disabled = !friApplies; });
   const dates = ssKioskDatesFor(s);
   const clock = hhmm => { const [h, m] = String(hhmm).split(':').map(Number); const t = new Date(); t.setHours(h || 0, m || 0, 0, 0); return t.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
   let text = `Right now the screen will show <b>${escapeHtml(ssKioskDateText(dates))}</b>.`;
@@ -8191,6 +8537,13 @@ function updateSsKioskSettingsNow(){
     const after = ssKioskDatesFor(s, new Date(2000, 0, 1, 23, 59));
     const before = ssKioskDatesFor({ ...s, rollForward: false });
     text += after.join() === before.join() ? '' : ` At ${clock(s.rollTime)} each day the days slide ahead by one (after that: <b>${escapeHtml(ssKioskDateText(after))}</b>).`;
+  }
+  if(friApplies && s.fridayRule){
+    // What the screen will show on the coming Friday once the Friday time has passed.
+    let fri = todayStr();
+    while(new Date(fri + 'T00:00:00').getDay() !== 5) fri = addDaysStr(fri, 1);
+    const after = [addDaysStr(fri, 1), addDaysStr(fri, 2), addDaysStr(fri, 3)];
+    text += ` On Friday at ${clock(s.fridayTime)} it changes to <b>${escapeHtml(ssKioskDateText(after))}</b>.`;
   }
   document.getElementById('ssKsNow').innerHTML = text;
 }
@@ -8209,10 +8562,23 @@ async function saveSsKioskSettings(){
   }catch(e){ toast('Save failed: ' + e.message + ' (has fix65-app-settings.sql been run?)'); }
 }
 let KIOSK_INTERVAL = null;
+let ST_KIOSK_CLOCK = null;
+// The Staffing Kiosk title bar: same look and type size as the Staff Schedule kiosk's.
+function stKioskTickClock(){
+  const el = document.getElementById('stKioskClock');
+  if(el) el.textContent = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+}
+function stKioskUpdateHead(){
+  document.getElementById('stKioskHead').style.fontSize = Math.round(ssKioskFontPx(1) * 1.15) + 'px';
+  const d = document.getElementById('staffingViewDate').value || todayStr();
+  document.getElementById('stKioskDate').textContent = staffScheduleDateLabel(d);
+}
 function enterKioskMode(){
   showScreen('schedule-staffing');
   document.body.classList.add('kiosk-mode');
-  document.getElementById('exitKioskBtn').style.display = '';
+  stKioskTickClock();
+  if(ST_KIOSK_CLOCK) clearInterval(ST_KIOSK_CLOCK);
+  ST_KIOSK_CLOCK = setInterval(stKioskTickClock, 1000);
   if(KIOSK_INTERVAL) clearInterval(KIOSK_INTERVAL);
   KIOSK_INTERVAL = setInterval(() => {
     document.getElementById('staffingViewDate').value = todayStr();
@@ -8223,8 +8589,9 @@ function enterKioskMode(){
   renderStaffingBoard(); // builds the pages and starts the page timer (kioskScheduleNext)
 }
 function exitKioskMode(){
+  if(isDisplayAccount() && !DISPLAY.switching) DISPLAY.kioskWanted = false; // the person left Kiosk on purpose
   document.body.classList.remove('kiosk-mode');
-  document.getElementById('exitKioskBtn').style.display = 'none';
+  if(ST_KIOSK_CLOCK){ clearInterval(ST_KIOSK_CLOCK); ST_KIOSK_CLOCK = null; }
   if(KIOSK_INTERVAL){ clearInterval(KIOSK_INTERVAL); KIOSK_INTERVAL = null; }
   if(KIOSK_PAGE_TIMER){ clearTimeout(KIOSK_PAGE_TIMER); KIOSK_PAGE_TIMER = null; }
   renderStaffingBoard();
@@ -10223,33 +10590,57 @@ async function searchDoughHistory(from, to, productName){
   if(productName) query += `&product_name=eq.${encodeURIComponent(productName)}`;
   const runs = await sbGet(query + '&order=run_date.asc,line.asc&limit=1000');
   if(!runs.length) return [];
-  const items = await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,confirmed_cases,status&run_id=in.(${runs.map(r=>r.id).join(',')})&limit=2000`);
-  return runs.map(r => ({
-    date: r.run_date, label: r.line, subLabel: r.product_name, status: r.status,
-    product: r.product_name, plannedMixes: parseFloat(r.planned_mixes)||0, confirmedMixes: parseFloat(r.confirmed_mixes)||0,
-    // An item cancelled on its own never got made — leave it out of the history's items and totals
-    items: items.filter(it => it.run_id === r.id && it.status !== 'Cancelled')
-  }));
+  const items = await sbGet(`erp_production_run_items?select=id,run_id,item_no,item_name,planned_cases,confirmed_cases,status,production_date,expired_date&run_id=in.(${runs.map(r=>r.id).join(',')})&limit=2000`);
+  return runs.map(r => {
+    const runItems = items.filter(it => it.run_id === r.id);
+    const p = getProductInfo(r.product_name);
+    // Same Yield the Confirm screen shows: packed kg ÷ dough kg, only once the run and all its items are confirmed
+    const actualYield = runActualYield(r, runItems, p);
+    const inKg = actualYield != null ? (parseFloat(r.confirmed_mixes)||0) * p.weight_per_mix_kg : null;
+    return {
+      kind: 'dough',
+      date: r.run_date, label: r.line, subLabel: r.product_name, status: r.status,
+      product: r.product_name, plannedMixes: parseFloat(r.planned_mixes)||0, confirmedMixes: parseFloat(r.confirmed_mixes)||0,
+      actualYield, targetYield: p && p.yield_factor != null ? Number(p.yield_factor) : null,
+      inKg, outKg: inKg != null ? inKg * actualYield : null,
+      // An item cancelled on its own never got made — leave it out of the history's items and totals
+      items: runItems.filter(it => it.status !== 'Cancelled').map(it => ({ ...it, prodDate: it.production_date || '', bestBefore: it.expired_date || '', julian: it.production_date ? toJulianDate(it.production_date) : (it.expired_date ? toJulianDate(it.expired_date) : '') }))
+    };
+  });
+}
+// A Production Schedule item's Julian/dates for the History table (sauce version: "-DDD" Julian and a
+// Best Before only for Cooler-storage items, same rules as the Sauce Production screens).
+function sauceHistoryDates(it, sauce, prodDate, storageChoice){
+  const item = sauceTaskItemRecord(it);
+  return { prodDate: prodDate || '', bestBefore: sauceCoolerBestBeforeForItem(item, sauce, prodDate, storageChoice) || '', julian: toSauceJulian(prodDate) };
 }
 async function searchSauceHistory(from, to, sauceName){
   const days = await sbGet(`erp_sauce_schedule_days?select=id,schedule_date&schedule_date=gte.${from}&schedule_date=lte.${to}&order=schedule_date.asc&limit=1000`);
   if(!days.length) return [];
   const dayById = {}; days.forEach(d => dayById[d.id] = d);
-  let taskQuery = `erp_sauce_schedule_tasks?select=id,day_id,sauce_id,location,status,mixes,confirmed_mixes,confirmed_output_qty&day_id=in.(${days.map(d=>d.id).join(',')})`;
+  let taskQuery = `erp_sauce_schedule_tasks?select=id,day_id,sauce_id,location,status,mixes,confirmed_mixes,confirmed_output_qty,storage_choice&day_id=in.(${days.map(d=>d.id).join(',')})`;
   if(sauceName){
     const sauce = SAUCES.find(s => s.name === sauceName);
     if(!sauce) return [];
     taskQuery += `&sauce_id=eq.${sauce.id}`;
   }
-  const tasks = await sbGet(taskQuery + '&order=id.asc&limit=1000');
+  const tasks = await sbGet(taskQuery + '&order=id.asc&limit=1000')
+    .catch(() => sbGet(taskQuery.replace(',storage_choice', '') + '&order=id.asc&limit=1000')); // fix41 not run yet
   if(!tasks.length) return [];
-  const items = await sbGet(`erp_sauce_task_items?select=id,task_id,item_no,item_name,planned_cases,confirmed_cases&task_id=in.(${tasks.map(t=>t.id).join(',')})&limit=2000`);
-  return tasks.map(t => ({
-    date: dayById[t.day_id] ? dayById[t.day_id].schedule_date : '',
-    label: t.location || '(no location)', subLabel: sauceRecipeSauceName(t.sauce_id), status: t.status,
-    product: sauceRecipeSauceName(t.sauce_id), plannedMixes: parseFloat(t.mixes)||0, confirmedMixes: parseFloat(t.confirmed_mixes)||0,
-    items: sauceHistoryItemsForTask(t, items.filter(it => it.task_id === t.id))
-  }));
+  const taskIdList = tasks.map(t=>t.id).join(',');
+  const items = await sbGet(`erp_sauce_task_items?select=id,task_id,item_no,item_name,planned_cases,confirmed_cases,storage_choice&task_id=in.(${taskIdList})&limit=2000`)
+    .catch(() => sbGet(`erp_sauce_task_items?select=id,task_id,item_no,item_name,planned_cases,confirmed_cases&task_id=in.(${taskIdList})&limit=2000`));
+  return tasks.map(t => {
+    const date = dayById[t.day_id] ? dayById[t.day_id].schedule_date : '';
+    const sauce = SAUCES.find(s => s.id === t.sauce_id);
+    return {
+      kind: 'sauce',
+      date,
+      label: t.location || '(no location)', subLabel: sauceRecipeSauceName(t.sauce_id), status: t.status,
+      product: sauceRecipeSauceName(t.sauce_id), plannedMixes: parseFloat(t.mixes)||0, confirmedMixes: parseFloat(t.confirmed_mixes)||0,
+      items: sauceHistoryItemsForTask(t, items.filter(it => it.task_id === t.id)).map(it => ({ ...it, ...sauceHistoryDates(it, sauce, date, it.storage_choice || t.storage_choice) }))
+    };
+  });
 }
 // A single/no-match sauce task never gets erp_sauce_task_items rows (only multi-Item # tasks do —
 // see confirmSauceTask's legacy path), so its item and cases are recorded elsewhere: the item is
@@ -10268,6 +10659,7 @@ function sauceHistoryItemsForTask(task, taskItems){
     confirmed_cases: task.confirmed_output_qty
   }];
 }
+function fmtYield(n){ return Number(n).toFixed(3); }
 function renderProdHistoryResults(groups){
   const summaryCard = document.getElementById('historySummaryCard');
   const list = document.getElementById('historyResultsList');
@@ -10302,8 +10694,10 @@ function renderProdHistoryResults(groups){
   const byProduct = {};
   countableGroups.forEach(g => {
     const key = g.product || '(unknown)';
-    const p = byProduct[key] = byProduct[key] || { runs:0, plannedMixes:0, confirmedMixes:0, plannedCases:0, confirmedCases:0 };
+    const p = byProduct[key] = byProduct[key] || { runs:0, plannedMixes:0, confirmedMixes:0, plannedCases:0, confirmedCases:0, inKg:0, outKg:0, target:null };
     p.runs++;
+    if(g.inKg != null){ p.inKg += g.inKg; p.outKg += g.outKg; } // only fully confirmed runs have a yield
+    if(g.targetYield != null) p.target = g.targetYield;
     p.plannedMixes += g.plannedMixes;
     p.confirmedMixes += g.confirmedMixes;
     g.items.forEach(it => {
@@ -10311,9 +10705,11 @@ function renderProdHistoryResults(groups){
       p.confirmedCases += parseFloat(it.confirmed_cases)||0;
     });
   });
+  const showYield = HISTORY_MODE === 'dough'; // sauces have no yield figure
+  document.getElementById('historyTotalsYieldHead').style.display = showYield ? '' : 'none';
   document.getElementById('historyTotalsByProduct').innerHTML = Object.entries(byProduct)
     .sort((a,b) => b[1].confirmedCases - a[1].confirmedCases)
-    .map(([name, p]) => `<tr><td style="font-weight:600">${name}</td><td>${p.runs}</td><td>${fmtNum(p.confirmedMixes)} / ${fmtNum(p.plannedMixes)}</td><td>${fmtNum(p.confirmedCases)} / ${p.hasPlanned ? fmtNum(p.plannedCases) : '–'}</td></tr>`).join('');
+    .map(([name, p]) => `<tr><td style="font-weight:600">${name}</td><td>${p.runs}</td><td>${fmtNum(p.confirmedMixes)} / ${fmtNum(p.plannedMixes)}</td><td>${fmtNum(p.confirmedCases)} / ${p.hasPlanned ? fmtNum(p.plannedCases) : '–'}</td>${showYield ? `<td>${p.inKg > 0 ? fmtYield(p.outKg / p.inKg) : '–'} / ${p.target != null ? fmtYield(p.target) : '–'}</td>` : ''}</tr>`).join('');
   // Totals by packed item
   const byItem = {};
   countableGroups.forEach(g => g.items.forEach(it => {
@@ -10333,9 +10729,15 @@ function renderProdHistoryResults(groups){
       <h3 style="flex:1;margin:0">${g.date} — ${g.label}${g.subLabel ? ' · ' + g.subLabel : ''}</h3>
       <span class="chip">${g.status||''}</span>
     </div>
-    <div style="font-size:12.5px;margin:6px 0 10px"><strong>Mixes:</strong> ${fmtNum(g.confirmedMixes)} confirmed / ${fmtNum(g.plannedMixes)} planned</div>
-    ${g.items.length ? `<div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Planned Cases</th><th>Confirmed Cases</th></tr></thead>
-    <tbody>${g.items.map(it => `<tr><td>${it.item_no}</td><td>${it.item_name||''}</td><td>${fmtNum(it.planned_cases)}</td><td>${it.confirmed_cases!=null?fmtNum(it.confirmed_cases):'–'}</td></tr>`).join('')}</tbody></table></div>`
+    <div style="font-size:12.5px;margin:6px 0 10px;display:flex;flex-wrap:wrap;gap:4px 18px">
+      <span><strong>Mixes:</strong> ${fmtNum(g.confirmedMixes)} confirmed / ${fmtNum(g.plannedMixes)} planned</span>
+      ${g.kind === 'dough' ? `<span><strong>Actual yield:</strong> ${g.actualYield != null
+        ? `${fmtYield(g.actualYield)}${g.targetYield != null ? ` <span style="color:var(--muted)">(target ${fmtYield(g.targetYield)}, <span style="color:${g.actualYield >= g.targetYield ? 'var(--green)' : 'var(--danger)'}">${g.actualYield >= g.targetYield ? '+' : '−'}${fmtYield(Math.abs(g.actualYield - g.targetYield))}</span>)</span>` : ''}`
+        : '<span style="color:var(--muted)">– (after the run and all its items are confirmed)</span>'}</span>
+      ${g.inKg != null ? `<span><strong>Dough in → packed out:</strong> ${fmtNum(Math.round(g.inKg * 10) / 10)} kg → ${fmtNum(Math.round(g.outKg * 10) / 10)} kg</span>` : ''}` : ''}
+    </div>
+    ${g.items.length ? `<div class="tablewrap"><table><thead><tr><th>Item #</th><th>Item Name</th><th>Planned Cases</th><th>Confirmed Cases</th><th>Production Date</th><th>${g.kind === 'sauce' ? 'Best Before' : 'Exp / Best Before'}</th><th>Lot (Julian)</th></tr></thead>
+    <tbody>${g.items.map(it => `<tr><td>${it.item_no}</td><td>${it.item_name||''}</td><td>${fmtNum(it.planned_cases)}</td><td>${it.confirmed_cases!=null?fmtNum(it.confirmed_cases):'–'}</td><td>${it.prodDate||'–'}</td><td>${it.bestBefore||'–'}</td><td>${it.julian||'–'}</td></tr>`).join('')}</tbody></table></div>`
       : '<div class="empty">No items recorded</div>'}
   </div>`).join('');
 }
@@ -11828,7 +12230,8 @@ async function refreshAdjustScreen(){
 async function refreshUsersScreen(){
   if(!connected || !isAdmin()) return;
   try{
-    USERS_DATA = await sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens,blocked_screens&order=created_at.asc&limit=500')
+    USERS_DATA = await sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens,blocked_screens,display_mode,display_first,display_kiosk,display_rotate_secs&order=created_at.asc&limit=500')
+      .catch(() => sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens,blocked_screens&order=created_at.asc&limit=500')) // fix66 not run yet
       .catch(() => sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens&order=created_at.asc&limit=500')); // fix60 not run yet
     renderUsersTable();
   }catch(e){ /* table may not exist yet if fix7-schema.sql hasn't been run */ }
@@ -11880,6 +12283,7 @@ function roleAllowsScreen(role, screen){
 function customizableScreens(){ return getAllScreensList().filter(s => s.screen !== 'account'); }
 function userMenuAccessSummaryHtml(u){
   if(u.role === 'admin') return '<span class="chip">Admin: every screen</span>';
+  if(u.display_mode && u.role === 'viewer') return '<span class="chip" style="background:#e1f5ee;color:#085041;border:1px solid rgba(0,0,0,.12)">Display account</span>';
   const grants = Array.isArray(u.allowed_screens) ? u.allowed_screens.length : 0;
   const blocks = Array.isArray(u.blocked_screens) ? u.blocked_screens.length : 0;
   if(!grants && !blocks) return '<span class="chip">Role default</span>';
@@ -11943,7 +12347,18 @@ function openUserMenuPanel(userId, keepChoices){
     </div>`;
   };
   const who = u.display_name || u.email || '';
-  panel.innerHTML = `<h3 style="margin-top:0">Customize menu: ${escapeHtml(who)} (${roleLabel(u.role)})</h3>
+  // Display account (fix66): only for a Viewer — makes them a read-only three-tab screen for a TV.
+  const dispOn = !!u.display_mode;
+  const displayBlock = u.role !== 'viewer' ? '' : `<div style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 12px;background:var(--chip)">
+      <label style="display:flex;align-items:center;gap:8px;width:auto;margin:0;font-weight:400"><input type="checkbox" id="udDisplay" ${dispOn?'checked':''} style="width:auto;flex:0 0 auto" onchange="document.getElementById('udDisplayOpts').style.display=this.checked?'':'none'"><span><b>Display account</b> — this user only sees Production Preview, Staffing and Staff Schedule, read only (for a shop-floor TV)</span></label>
+      <div id="udDisplayOpts" style="display:${dispOn?'':'none'};margin:8px 0 0 26px;font-size:12px">
+        <div style="margin-bottom:6px">Open on <select id="udFirst" style="width:auto;display:inline-block">${DISPLAY_TABS.map(t => `<option value="${t.screen}" ${(u.display_first || 'schedule-staffing') === t.screen ? 'selected' : ''}>${t.label}</option>`).join('')}</select></div>
+        <label style="display:flex;align-items:center;gap:6px;width:auto;margin:0 0 6px;font-weight:400"><input type="checkbox" id="udKiosk" ${u.display_kiosk?'checked':''} style="width:auto;flex:0 0 auto">Start in Kiosk mode (Staffing and Staff Schedule have one)</label>
+        <div>Rotate through the three tabs <select id="udRotate" style="width:auto;display:inline-block">${[[0,'Off (stay on one)'],[60,'every 1 minute'],[120,'every 2 minutes'],[300,'every 5 minutes']].map(([s, l]) => `<option value="${s}" ${(Number(u.display_rotate_secs) || 0) === s ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+        <div style="color:var(--muted);margin-top:6px">Everything else is closed to this user. The menu choices below don't apply while this is on.</div>
+      </div>
+    </div>`;
+  panel.innerHTML = `<h3 style="margin-top:0">Customize menu: ${escapeHtml(who)} (${roleLabel(u.role)})</h3>${displayBlock}
     <div id="userMenuSummary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:12px"></div>
     <p style="color:var(--muted);font-size:12px;margin:0 0 8px">Default follows the ${roleLabel(u.role)} role. Grant adds a screen for this person only; Block hides one the role would show. Admins are never restricted.</p>
     ${Object.keys(byModule).map(m => `<div style="font-weight:700;font-size:12px;margin:10px 0 2px;text-transform:capitalize">${escapeHtml(m)}</div>${byModule[m].map(s => seg(s, roleAllowsScreen(u.role, s.screen))).join('')}`).join('')}
@@ -11998,10 +12413,21 @@ async function saveUserMenuPanel(){
   if(!u) return;
   const { grants, blocks } = userMenuChoices();
   const patch = { allowed_screens: grants.length ? grants : null, blocked_screens: blocks.length ? blocks : null };
+  // Display account settings (a Viewer only). The columns (fix66) are sent only if they exist or the
+  // account is being turned on, so saving the menu still works on a database without them.
+  const dispBox = document.getElementById('udDisplay');
+  if(dispBox){
+    const dispColsExist = USERS_DATA.some(x => 'display_mode' in x);
+    if(dispColsExist || dispBox.checked){
+      patch.display_mode = dispBox.checked;
+      patch.display_first = document.getElementById('udFirst').value;
+      patch.display_kiosk = document.getElementById('udKiosk').checked;
+      patch.display_rotate_secs = Number(document.getElementById('udRotate').value) || null;
+    }
+  }
   try{
     await sbUpdate('erp_profiles', u.id, patch);
-    u.allowed_screens = patch.allowed_screens;
-    u.blocked_screens = patch.blocked_screens;
+    Object.assign(u, patch); // keeps allowed_screens / blocked_screens and any display fields in step
     toast('Menu access saved');
     closeUserMenuPanel();
     renderUsersTable();
@@ -12651,8 +13077,67 @@ function measureOffscreenHeight(html, widthPx){
   area.innerHTML = prevHtml;
   return h;
 }
-async function printProductionReport(){
+/* ---- Line picker for the two team reports: choose which Lines go on the printout ---- */
+let REPORT_PICKER = null; // { kind:'production'|'packaging', date, lines:[{line, runs, qty, counts}] }
+async function openReportLinePicker(kind){
   const date = document.getElementById('previewViewDate').value || todayStr();
+  let lines = [];
+  if(kind === 'production'){
+    const byLine = {};
+    (await productionReportRuns(date)).forEach(r => { (byLine[r.line || '(No Line)'] = byLine[r.line || '(No Line)'] || []).push(r); });
+    lines = Object.keys(byLine).map(l => ({
+      line: l, runs: byLine[l].length,
+      // same counting rule as the report's own total: Cancelled runs and Line 2-T don't count
+      qty: byLine[l].reduce((s, r) => s + (r.status === 'Cancelled' ? 0 : (parseFloat(r.status === 'Confirmed' ? r.confirmed_mixes : r.planned_mixes) || 0)), 0),
+      counts: l.trim().toLowerCase() !== 'line 2-t'
+    }));
+  } else {
+    const { runs, items, byLine } = await packagingReportByLine(date);
+    if(!runs.length){ toast('No runs to print for this date'); return; }
+    lines = Object.keys(byLine).map(l => ({
+      line: l, runs: byLine[l].length,
+      qty: byLine[l].reduce((s, r) => s + items.filter(it => it.run_id === r.id && it.status !== 'Cancelled').reduce((s2, it) => s2 + (parseFloat(it.planned_cases) || 0), 0), 0),
+      counts: true
+    }));
+  }
+  lines.sort((a, b) => a.line.localeCompare(b.line, undefined, { numeric: true }));
+  if(!lines.length){ toast(kind === 'production' ? 'No runs to print for this date' : 'No packed items to print for this date'); return; }
+  REPORT_PICKER = { kind, date, lines };
+  document.getElementById('reportPickerTitle').textContent = kind === 'production' ? 'Print Production Team Report' : 'Print Packaging Team Report';
+  document.getElementById('reportPickerDate').textContent = date + '. Pick the Lines to print.';
+  document.getElementById('reportPickerList').innerHTML = lines.map((l, i) => `<label style="display:flex;align-items:center;gap:8px;width:auto;margin:0 0 5px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;font-weight:400">
+    <input type="checkbox" class="reportPickerCb" data-i="${i}" checked style="width:auto;flex:0 0 auto" onchange="updateReportPicker()">
+    <span style="flex:1;font-weight:600">${escapeHtml(l.line)}</span>
+    <span style="color:var(--muted);font-size:12px">${l.runs} run${l.runs === 1 ? '' : 's'} · ${fmtNum(l.qty)} ${kind === 'production' ? 'batch' + (l.qty === 1 ? '' : 'es') : 'cases'}</span></label>`).join('');
+  document.getElementById('reportLinePicker').style.display = 'flex';
+  updateReportPicker();
+}
+function reportPickerSelected(){
+  return [...document.querySelectorAll('.reportPickerCb:checked')].map(cb => REPORT_PICKER.lines[Number(cb.dataset.i)]);
+}
+function updateReportPicker(){
+  const sel = reportPickerSelected();
+  const total = sel.filter(l => l.counts).reduce((s, l) => s + l.qty, 0);
+  const btn = document.getElementById('reportPickerPrintBtn');
+  btn.textContent = `🖨 Print ${sel.length} Line${sel.length === 1 ? '' : 's'}`;
+  btn.disabled = !sel.length;
+  document.getElementById('reportPickerTotal').textContent = sel.length ? `${fmtNum(total)} ${REPORT_PICKER.kind === 'production' ? 'batches' : 'cases'} in total` : '';
+}
+function setReportPickerAll(on){
+  document.querySelectorAll('.reportPickerCb').forEach(cb => { cb.checked = on; });
+  updateReportPicker();
+}
+function closeReportLinePicker(){ document.getElementById('reportLinePicker').style.display = 'none'; }
+async function printPickedReport(){
+  if(!REPORT_PICKER) return;
+  const { kind } = REPORT_PICKER;
+  const filter = new Set(reportPickerSelected().map(l => l.line));
+  if(!filter.size) return;
+  closeReportLinePicker();
+  if(kind === 'production') await printProductionReport(filter); else await printPackagingReport(filter);
+}
+// The runs the Production Team Report covers for a date (before any Line choice).
+async function productionReportRuns(date){
   // fetchRunsAndItems OR's in packing_date too (see its own comment) so the shared Preview
   // screen can show a Line-6-style run on both its production and packing day — but this
   // report is specifically "what to make today," so it re-narrows to run_date itself, or a
@@ -12661,7 +13146,12 @@ async function printProductionReport(){
   const hiddenLines = await staffingHiddenLineNames();
   const { runs: allRuns } = await fetchRunsAndItems(date);
   // Packaging-only runs aren't made on a Line — they only belong on the Packaging Team Report.
-  const runs = allRuns.filter(r => r.run_date === date && !isPackagingOnlyRun(r) && (!r.line || !hiddenLines.has(r.line)));
+  return allRuns.filter(r => r.run_date === date && !isPackagingOnlyRun(r) && (!r.line || !hiddenLines.has(r.line)));
+}
+// `lineFilter`: a Set of Line names to include (from the Line picker); null = every Line.
+async function printProductionReport(lineFilter){
+  const date = document.getElementById('previewViewDate').value || todayStr();
+  const runs = (await productionReportRuns(date)).filter(r => !lineFilter || lineFilter.has(r.line || '(No Line)'));
   if(!runs.length){ toast('No runs to print for this date'); return; }
   // Line 2-T's batches are excluded from the grand total (still shown in its own line section
   // below); Cancelled runs are excluded too — nothing was actually mixed, so they shouldn't
@@ -12692,8 +13182,8 @@ async function printProductionReport(){
   `;
   runReportPrint(html);
 }
-async function printPackagingReport(){
-  const date = document.getElementById('previewViewDate').value || todayStr();
+// The runs the Packaging Team Report covers for a date, grouped by Line (before any Line choice).
+async function packagingReportByLine(date){
   // Includes a run on BOTH its production day and its packing day when those differ (e.g.
   // Line 6): printed on the production day it's an advance preview so production/packaging
   // staff can see it's coming, printed on the actual packing day it's the real due-today task.
@@ -12701,7 +13191,6 @@ async function printPackagingReport(){
   const hiddenLines = await staffingHiddenLineNames();
   const { runs: allRuns, items } = await fetchRunsAndItems(date);
   const runs = allRuns.filter(r => !r.line || !hiddenLines.has(r.line));
-  if(!runs.length){ toast('No runs to print for this date'); return; }
   if(CURRENT_USER && CURRENT_USER.role === 'viewer') await loadLineEarlyItems();
   const byLine = {};
   runs.forEach(r => {
@@ -12711,6 +13200,15 @@ async function printPackagingReport(){
     const l = r.line || '(No Line)';
     (byLine[l]=byLine[l]||[]).push(r);
   });
+  return { runs, items, byLine };
+}
+// `lineFilter`: a Set of Line names to include (from the Line picker); null = every Line.
+async function printPackagingReport(lineFilter){
+  const date = document.getElementById('previewViewDate').value || todayStr();
+  const { runs, items, byLine: allByLine } = await packagingReportByLine(date);
+  if(!runs.length){ toast('No runs to print for this date'); return; }
+  const byLine = {};
+  Object.keys(allByLine).forEach(l => { if(!lineFilter || lineFilter.has(l)) byLine[l] = allByLine[l]; });
   const lines = Object.keys(byLine).sort((a,b)=>a.localeCompare(b, undefined, {numeric:true}));
   if(!lines.length){ toast('No packed items to print for this date'); return; }
   const html = `
