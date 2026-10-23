@@ -754,11 +754,14 @@
     <div style="max-width:420px;margin:40px auto 0">
       <div class="card">
         <h2 id="loginTitle">Sign In</h2>
-        <p style="color:var(--muted);font-size:13px;margin-top:0">Sign in to view and edit inventory data. New here? Create an account below — you'll start as a read-only viewer until an admin upgrades your access.</p>
+        <p id="loginIntro" style="color:var(--muted);font-size:13px;margin-top:0">Sign in to view and edit inventory data. New here? Create an account below — you'll start as a read-only viewer until an admin upgrades your access.</p>
         <label>Email</label>
         <input type="email" id="loginEmail" placeholder="you@company.com">
-        <label>Password</label>
-        <input type="password" id="loginPassword" placeholder="••••••••">
+        <div id="loginPwWrap">
+          <label>Password</label>
+          <input type="password" id="loginPassword" placeholder="••••••••">
+        </div>
+        <a href="#" id="loginForgotLink" onclick="setLoginMode('reset');return false" style="display:inline-block;margin-top:10px;font-size:12px;color:var(--accent)">Forgot password?</a>
         <div class="btnrow">
           <button class="btn" id="loginSubmitBtn" onclick="submitLogin()">Sign In</button>
           <button class="btn secondary" onclick="toggleLoginMode()" id="loginModeToggle">Create Account Instead</button>
@@ -1531,12 +1534,13 @@
           <div><label>Positions needed</label><input type="number" step="1" min="1" id="stepPositionCount" value="1"></div>
         </div>
         <label style="display:flex;align-items:center;gap:6px;width:auto;margin-top:6px"><input type="checkbox" id="stepIsOptional" style="width:auto;flex:0 0 auto">Optional — only add to a Run when it's actually needed, not every time</label>
+        <label style="display:flex;align-items:center;gap:6px;width:auto;margin-top:6px"><input type="checkbox" id="stepOnPackingDay" style="width:auto;flex:0 0 auto">Done on the packing day — for a run made one day and packed a later day, this step is staffed on the packing day instead of the production day</label>
         <input type="hidden" id="stepEditId">
         <div class="btnrow">
           <button class="btn secondary" onclick="submitProductStep()">＋ Save Step</button>
           <button class="btn secondary" onclick="resetProductStepForm()">✕ Cancel</button>
         </div>
-        <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Order</th><th>Step</th><th>Positions</th><th>Optional</th><th></th></tr></thead>
+        <div class="tablewrap" style="margin-top:10px"><table><thead><tr><th>Order</th><th>Step</th><th>Positions</th><th>Optional</th><th>Packing day</th><th></th></tr></thead>
         <tbody id="prodStepsTable"></tbody></table></div>
         <div class="empty" id="prodStepsEmpty" style="display:none">No steps defined yet</div>
       </div>
@@ -2680,6 +2684,19 @@
   <div id="ssKioskBody" style="flex:1 1 auto;overflow:hidden;padding:6px 10px;min-height:0"></div>
   <div id="ssKioskFoot" style="flex:0 0 auto;border-top:1px solid #ccc;padding:6px 18px;display:flex;align-items:center;gap:12px"></div>
 </div>
+<!-- Set a new password: shown when someone arrives from a password-reset email (see consumeAuthRedirectHash) -->
+<div id="recoveryModal" class="no-print" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.55);align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="max-width:420px;width:100%;margin:0">
+    <h3 style="margin:0 0 4px">Set a New Password</h3>
+    <p style="color:var(--muted);font-size:13px;margin:0 0 6px">Choose a new password for <strong id="recoveryEmail"></strong>.</p>
+    <label>New Password</label>
+    <input type="password" id="recoveryNewPassword" placeholder="At least 6 characters" autocomplete="new-password">
+    <label>Confirm New Password</label>
+    <input type="password" id="recoveryConfirmPassword" placeholder="Re-enter the new password" autocomplete="new-password" onkeydown="if(event.key==='Enter') saveRecoveryPassword()">
+    <div class="btnrow"><button class="btn" onclick="saveRecoveryPassword()">🔒 Save Password</button></div>
+    <p id="recoveryStatus" style="font-size:12px;color:var(--muted);margin-top:10px"></p>
+  </div>
+</div>
 <!-- Line picker for Print Production / Packaging Team Report (Production Schedule → Preview) -->
 <div id="reportLinePicker" class="no-print" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px">
   <div class="card" style="max-width:460px;width:100%;margin:0;max-height:92vh;overflow:auto">
@@ -2911,18 +2928,66 @@ async function restoreSession(){
     return true;
   }catch(e){ SESSION = null; return false; }
 }
-function toggleLoginMode(){
-  LOGIN_MODE = LOGIN_MODE === 'signin' ? 'signup' : 'signin';
-  document.getElementById('loginTitle').textContent = LOGIN_MODE==='signin' ? 'Sign In' : 'Create Account';
-  document.getElementById('loginSubmitBtn').textContent = LOGIN_MODE==='signin' ? 'Sign In' : 'Create Account';
-  document.getElementById('loginModeToggle').textContent = LOGIN_MODE==='signin' ? 'Create Account Instead' : 'Back to Sign In';
+const LOGIN_INTRO_TEXT = "Sign in to view and edit inventory data. New here? Create an account below — you'll start as a read-only viewer until an admin upgrades your access.";
+// 'signin' | 'signup' | 'reset' (Forgot password? — asks for just the email and sends a reset link)
+function setLoginMode(mode){
+  LOGIN_MODE = mode;
+  document.getElementById('loginTitle').textContent = mode==='signin' ? 'Sign In' : mode==='signup' ? 'Create Account' : 'Reset Password';
+  document.getElementById('loginSubmitBtn').textContent = mode==='signin' ? 'Sign In' : mode==='signup' ? 'Create Account' : 'Send Reset Link';
+  document.getElementById('loginModeToggle').textContent = mode==='signin' ? 'Create Account Instead' : 'Back to Sign In';
+  document.getElementById('loginIntro').textContent = mode==='reset' ? "Enter your account email and we'll send you a link to set a new password." : LOGIN_INTRO_TEXT;
+  document.getElementById('loginPwWrap').style.display = mode==='reset' ? 'none' : '';
+  document.getElementById('loginForgotLink').style.display = mode==='signin' ? 'inline-block' : 'none';
   document.getElementById('loginStatus').textContent = '';
+}
+function toggleLoginMode(){ setLoginMode(LOGIN_MODE === 'signin' ? 'signup' : 'signin'); } // from Create Account or Reset Password it goes back to Sign In
+// Same message whether or not the email has an account, so this can't be used to find out who does.
+async function sendPasswordReset(email){
+  const statusEl = document.getElementById('loginStatus');
+  if(!email){ statusEl.textContent = 'Enter your account email first.'; return; }
+  statusEl.textContent = 'Sending...';
+  try{
+    // Brings the link back to this same page (it has to be listed under Redirect URLs in Supabase);
+    // opened straight from a file there's no address to come back to, so Supabase's Site URL is used.
+    const back = /^https?:$/.test(location.protocol) ? '?redirect_to=' + encodeURIComponent(location.origin + location.pathname) : '';
+    await authFetch('recover' + back, { email });
+    statusEl.innerHTML = '✅ If that email has an account, a reset link is on its way. Check your inbox (and spam).';
+  }catch(e){ statusEl.innerHTML = '❌ ' + escapeHtml(e.message); }
+}
+// The link in the reset email brings the person back here signed in (see consumeAuthRedirectHash)
+// and this asks for the new password before going on into the app.
+function showRecoveryModal(){
+  document.getElementById('recoveryNewPassword').value = '';
+  document.getElementById('recoveryConfirmPassword').value = '';
+  document.getElementById('recoveryStatus').textContent = '';
+  document.getElementById('recoveryModal').style.display = 'flex';
+  document.getElementById('recoveryNewPassword').focus();
+}
+async function saveRecoveryPassword(){
+  const statusEl = document.getElementById('recoveryStatus');
+  const pw = document.getElementById('recoveryNewPassword').value;
+  if(!pw || pw.length < 6){ statusEl.textContent = 'Password must be at least 6 characters.'; return; }
+  if(pw !== document.getElementById('recoveryConfirmPassword').value){ statusEl.textContent = "Passwords don't match."; return; }
+  statusEl.textContent = 'Saving...';
+  try{
+    const res = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/user', {
+      method: 'PUT',
+      headers: { 'apikey': CFG.key, 'Authorization': 'Bearer ' + SESSION.access_token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pw })
+    });
+    const data = await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error_description || data.msg || data.error || ('Error ' + res.status));
+    document.getElementById('recoveryModal').style.display = 'none';
+    toast('Password updated — you\'re signed in');
+    await afterLogin();
+  }catch(e){ statusEl.textContent = '❌ ' + e.message; }
 }
 async function submitLogin(){
   const email = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
   const statusEl = document.getElementById('loginStatus');
   if(!CFG.url || !CFG.key){ statusEl.textContent = 'Set up the Supabase connection below first.'; return; }
+  if(LOGIN_MODE === 'reset'){ await sendPasswordReset(email); return; }
   if(!email || !password){ statusEl.textContent = 'Please enter email and password.'; return; }
   statusEl.textContent = LOGIN_MODE==='signup' ? 'Creating account...' : 'Signing in...';
   try{
@@ -5234,14 +5299,17 @@ function cancelEmployeeLeaveEdit(){ EMPLOYEE_LEAVE_EDIT_ID = null; renderEmploye
 async function employeeAssignedDates(employeeId, from, to){
   const dates = new Set();
   try{
-    const runs = await sbGet(`erp_production_runs?select=id,run_date&run_date=gte.${from}&run_date=lte.${to}&limit=2000`);
+    // Runs made in the range plus runs only packed in it (a marked packing step is worked on the packing day)
+    const runs = await sbGet(`erp_production_runs?select=id,run_date,packing_date&or=(and(run_date.gte.${from},run_date.lte.${to}),and(packing_date.gte.${from},packing_date.lte.${to}))&limit=2000`)
+      .catch(() => sbGet(`erp_production_runs?select=id,run_date&run_date=gte.${from}&run_date=lte.${to}&limit=2000`));
     if(runs.length){
-      const dateByRun = {}; runs.forEach(r => { dateByRun[r.id] = r.run_date; });
-      const steps = await sbGet(`erp_run_steps?select=id,run_id&run_id=in.(${runs.map(r => r.id).join(',')})&limit=5000`);
+      const runById = {}; runs.forEach(r => { runById[r.id] = r; });
+      const steps = await sbGet(`erp_run_steps?select=id,run_id,on_packing_day&run_id=in.(${runs.map(r => r.id).join(',')})&limit=5000`)
+        .catch(() => sbGet(`erp_run_steps?select=id,run_id&run_id=in.(${runs.map(r => r.id).join(',')})&limit=5000`));
       if(steps.length){
-        const runByStep = {}; steps.forEach(s => { runByStep[s.id] = s.run_id; });
+        const stepById = {}; steps.forEach(s => { stepById[s.id] = s; });
         const asg = await sbGet(`erp_run_step_assignments?select=run_step_id&employee_id=eq.${employeeId}&run_step_id=in.(${steps.map(s => s.id).join(',')})&limit=5000`);
-        asg.forEach(a => { const d = dateByRun[runByStep[a.run_step_id]]; if(d) dates.add(d); });
+        asg.forEach(a => { const s = stepById[a.run_step_id]; const r = s ? runById[s.run_id] : null; const d = r ? stepWorkDate(r, s) : null; if(d && d >= from && d <= to) dates.add(d); });
       }
     }
     for(const t of ['erp_flour_mixing_room_staff','erp_packaging_center_staff','erp_packaging_center_positions','erp_sauce_production_positions']){
@@ -5384,6 +5452,38 @@ function renderTimeOffOverview(){
 let STAFFING_RUNS = [];
 let STAFFING_STEPS = [];
 let STAFFING_ASSIGNMENTS = [];
+// A product's Process Step template rows. on_packing_day (fix67) is left out of the query if that
+// column isn't there yet, so everything keeps working (steps just never move to the packing day).
+async function loadProductStepTemplate(productId, extraFilter){
+  const q = cols => `erp_product_steps?select=${cols}&product_id=eq.${productId}${extraFilter || ''}&order=sort_order.asc,id.asc&limit=200`;
+  return sbGet(q('id,step_name,sort_order,position_count,is_optional,on_packing_day'))
+    .catch(() => sbGet(q('id,step_name,sort_order,position_count,is_optional')));
+}
+// Inserts erp_run_steps rows that carry on_packing_day; retries without it when fix67 hasn't been run.
+async function insertRunSteps(rows){
+  try{ return await sbInsert('erp_run_steps', rows); }
+  catch(e){
+    if(!rows.some(r => 'on_packing_day' in r)) throw e;
+    return sbInsert('erp_run_steps', rows.map(({ on_packing_day, ...rest }) => rest));
+  }
+}
+// A run made on one day and packed on a later one (packing_date after run_date) has its steps split
+// across the two days: steps marked "Done on the packing day" belong to the packing day, the rest to
+// the production day. Everything else (same-day runs, or products with no marked step) is one day.
+function stepWorkDate(run, step){
+  return (step && step.on_packing_day && run.packing_date) ? run.packing_date : run.run_date;
+}
+// Which part of `run` Staffing shows when viewing `date`: 'all' (the whole run, as always),
+// 'production' (only the not-marked steps), 'packing' (only the marked ones) or null (not on this date).
+function staffingRunPhase(run, runSteps, date){
+  if(!run.packing_date || run.packing_date === run.run_date) return run.run_date === date ? 'all' : null;
+  if(!runSteps.some(s => s.on_packing_day)) return run.run_date === date ? 'all' : null; // nothing marked — nothing moves
+  if(run.run_date === date) return 'production';
+  if(run.packing_date === date) return 'packing';
+  return null;
+}
+// The date the Staffing board is showing — every assignment on it belongs to that day.
+function staffingBoardDate(){ return document.getElementById('staffingViewDate').value || todayStr(); }
 // Generates this Run's erp_run_steps (snapshot of its product's erp_product_steps template)
 // plus one empty erp_run_step_assignments row per position, the first time this Run is opened
 // on the Staffing screen. No-ops if the Run already has steps — safe to call on every load.
@@ -5394,7 +5494,7 @@ async function ensureRunSteps(run){
   const productRows = await sbGet(`erp_products?select=id&name=eq.${encodeURIComponent(run.product_name)}&limit=1`);
   const product = productRows[0];
   if(!product) return; // no matching product (e.g. product renamed/deleted since the run was made) — nothing to generate from
-  const fullTemplate = await sbGet(`erp_product_steps?select=id,step_name,sort_order,position_count,is_optional&product_id=eq.${product.id}&order=sort_order.asc,id.asc&limit=200`);
+  const fullTemplate = await loadProductStepTemplate(product.id);
   if(!fullTemplate.length) return; // product has no step template defined yet
   // Optional steps (see stepIsOptional / addOptionalStepToRun) don't get auto-generated — they
   // only show up on a Run once someone explicitly adds them there, because they're not needed
@@ -5404,8 +5504,8 @@ async function ensureRunSteps(run){
   // product_step_id ties this snapshot row back to the exact template row it came from, so a
   // later reorder (which reassigns sort_order values — see moveProductStepOrder) can't be
   // confused for "this is now a different step" the way matching by sort_order alone would be.
-  const insertedSteps = await sbInsert('erp_run_steps', template.map(t => ({
-    run_id: run.id, step_name: t.step_name, sort_order: t.sort_order, status: 'not_started', product_step_id: t.id
+  const insertedSteps = await insertRunSteps(template.map(t => ({
+    run_id: run.id, step_name: t.step_name, sort_order: t.sort_order, status: 'not_started', product_step_id: t.id, on_packing_day: !!t.on_packing_day
   })));
   const assignmentRows = [];
   insertedSteps.forEach((step, i) => {
@@ -5445,25 +5545,50 @@ async function resyncRunSteps(runs){
       const productRows = await sbGet(`erp_products?select=id&name=eq.${encodeURIComponent(productName)}&limit=1`);
       const product = productRows[0];
       if(!product) continue;
-      const template = await sbGet(`erp_product_steps?select=id,step_name,sort_order,position_count,is_optional&product_id=eq.${product.id}&order=sort_order.asc,id.asc&limit=200`);
+      const template = await loadProductStepTemplate(product.id);
       if(!template.length) continue;
       const templateById = {};
       const templateBySortOrder = {}; // legacy fallback only
       template.forEach(t => { templateById[t.id] = t; templateBySortOrder[t.sort_order] = t; });
       const runIdsForProduct = runs.filter(r => r.product_name === productName).map(r => r.id);
       if(!runIdsForProduct.length) continue;
-      const existingSteps = await sbGet(`erp_run_steps?select=id,run_id,step_name,sort_order,product_step_id&run_id=in.(${runIdsForProduct.join(',')})&limit=2000`);
+      const existingSteps = await sbGet(`erp_run_steps?select=id,run_id,step_name,sort_order,status,product_step_id,on_packing_day&run_id=in.(${runIdsForProduct.join(',')})&limit=2000`)
+        .catch(() => sbGet(`erp_run_steps?select=id,run_id,step_name,sort_order,status,product_step_id&run_id=in.(${runIdsForProduct.join(',')})&limit=2000`)); // fix67 not run yet
+      const hasPackingFlag = existingSteps.length && 'on_packing_day' in existingSteps[0];
+      const positionSync = []; // [{ step, want }] — run steps whose number of positions may differ from the template's
       for(const step of existingSteps){
         const t = step.product_step_id != null ? templateById[step.product_step_id] : templateBySortOrder[step.sort_order];
         if(t){
+          if(step.status !== 'completed') positionSync.push({ step, want: Math.max(1, parseInt(t.position_count, 10) || 1) });
           const patch = {};
           if(t.step_name !== step.step_name) patch.step_name = t.step_name;
+          // A change to "Done on the packing day" on the product's step reaches runs already made
+          if(hasPackingFlag && 'on_packing_day' in t && !!t.on_packing_day !== !!step.on_packing_day) patch.on_packing_day = !!t.on_packing_day;
           // Opportunistically backfills product_step_id on legacy rows created before that
           // column existed — matched here via the sort_order fallback, same as the rename
           // check above. Without this, a legacy row never gains the stable id, so a later
           // template-step deletion (see deleteProductStep) could never find it to cascade to.
           if(step.product_step_id == null) patch.product_step_id = t.id;
           if(Object.keys(patch).length) await sbUpdate('erp_run_steps', step.id, patch);
+        }
+      }
+      // "Positions needed" changed on the product's step after this run's steps were made: add the
+      // missing positions, or drop the extra ones — but only extras nobody is assigned to, and never
+      // on a completed step, so no one already placed (or work already done) is ever erased.
+      if(positionSync.length){
+        const asgRows = await sbGet(`erp_run_step_assignments?select=id,run_step_id,position_label,employee_id&run_step_id=in.(${positionSync.map(x => x.step.id).join(',')})&limit=5000`);
+        const posNum = a => parseInt(String(a.position_label).replace(/\D+/g, ''), 10) || 0;
+        for(const { step, want } of positionSync){
+          const mine = asgRows.filter(a => a.run_step_id === step.id);
+          if(mine.length < want){
+            const have = new Set(mine.map(posNum));
+            const add = [];
+            for(let p = 1; p <= want; p++){ if(!have.has(p)) add.push({ run_step_id: step.id, position_label: `Position ${p}` }); }
+            if(add.length) await sbInsert('erp_run_step_assignments', add);
+          } else if(mine.length > want){
+            const drop = mine.filter(a => posNum(a) > want && a.employee_id == null).map(a => a.id);
+            if(drop.length) await sb(`erp_run_step_assignments?id=in.(${drop.join(',')})`, { method: 'DELETE' });
+          }
         }
       }
       const haveByRun = {};
@@ -5477,8 +5602,8 @@ async function resyncRunSteps(runs){
         // required steps get silently backfilled onto a Run that's missing them.
         const missing = template.filter(t => !t.is_optional && !have.has(`id:${t.id}`) && !have.has(`so:${t.sort_order}`));
         if(!missing.length) continue;
-        const insertedSteps = await sbInsert('erp_run_steps', missing.map(t => ({
-          run_id: runId, step_name: t.step_name, sort_order: t.sort_order, status: 'not_started', product_step_id: t.id
+        const insertedSteps = await insertRunSteps(missing.map(t => ({
+          run_id: runId, step_name: t.step_name, sort_order: t.sort_order, status: 'not_started', product_step_id: t.id, on_packing_day: !!t.on_packing_day
         })));
         const assignmentRows = [];
         insertedSteps.forEach((step, i) => {
@@ -5550,10 +5675,15 @@ async function refreshStaffingScreenOnce(){
       if(p.packaging_headcount != null) PRODUCT_PACKAGING_HEADCOUNT[p.name] = p.packaging_headcount;
     });
     const hiddenLines = await staffingHiddenLineNames();
-    const runColsToday = 'id,run_date,line,product_name,planned_mixes,confirmed_mixes,status,remark';
-    const runFilterToday = `&run_date=eq.${date}&order=sort_order.asc.nullslast,id.asc&limit=200`;
+    // Runs made today, plus runs made earlier but PACKED today (their marked packing steps show today —
+    // see staffingRunPhase). The OR needs packing_date (fix58); without it only today's own runs load.
+    const runColsToday = 'id,run_date,packing_date,line,product_name,planned_mixes,confirmed_mixes,status,remark';
+    const runFilterToday = `&or=(run_date.eq.${date},packing_date.eq.${date})&order=sort_order.asc.nullslast,id.asc&limit=200`;
+    const runColsOld = 'id,run_date,line,product_name,planned_mixes,confirmed_mixes,status,remark';
+    const runFilterOld = `&run_date=eq.${date}&order=sort_order.asc.nullslast,id.asc&limit=200`;
     const allRunsToday = await sbGet(`erp_production_runs?select=${runColsToday},packaging_headcount${runFilterToday}`)
-      .catch(() => sbGet(`erp_production_runs?select=${runColsToday}${runFilterToday}`)); // fix59 not run yet
+      .catch(() => sbGet(`erp_production_runs?select=${runColsToday}${runFilterToday}`)) // fix59 not run yet
+      .catch(() => sbGet(`erp_production_runs?select=${runColsOld}${runFilterOld}`)); // fix58 not run yet
     // Packaging-only runs (see PACKAGING_ONLY_LINE) have no Line, steps or positions — they only
     // add to the Packaging pool's headcount (packagingCenterPoolNeeded) — so they're kept out of
     // the Line-based Staffing board but still handed to the pool calculation.
@@ -5563,17 +5693,29 @@ async function refreshStaffingScreenOnce(){
     // A Line with "Show in Production Staffing" off is skipped entirely here — Create/Preview/
     // Confirm Completion are untouched (they query erp_production_runs directly, not this
     // screen), only the Staffing board/Staff Schedule/printed reports honor this flag.
-    const runs = allRunsToday.filter(r => !isPackagingOnlyRun(r) && (!r.line || !hiddenLines.has(r.line)));
-    const runIds0 = runs.map(r => r.id);
+    const runs0 = allRunsToday.filter(r => !isPackagingOnlyRun(r) && (!r.line || !hiddenLines.has(r.line)));
+    const runIds0 = runs0.map(r => r.id);
     const haveSteps = runIds0.length
       ? new Set((await sbGet(`erp_run_steps?select=run_id&run_id=in.(${runIds0.join(',')})&limit=2000`)).map(s => s.run_id))
       : new Set();
-    for(const run of runs){ if(!haveSteps.has(run.id)) await ensureRunSteps(run); }
-    await resyncRunSteps(runs);
-    const runIds = runs.map(r => r.id);
-    const steps = runIds.length
-      ? await sbGet(`erp_run_steps?select=id,run_id,step_name,sort_order,status,started_at,completed_at,product_step_id&run_id=in.(${runIds.join(',')})&order=sort_order.asc,id.asc&limit=2000`)
+    for(const run of runs0){ if(!haveSteps.has(run.id)) await ensureRunSteps(run); }
+    await resyncRunSteps(runs0);
+    const stepCols = 'id,run_id,step_name,sort_order,status,started_at,completed_at,product_step_id';
+    const stepQuery = cols => `erp_run_steps?select=${cols}&run_id=in.(${runIds0.join(',')})&order=sort_order.asc,id.asc&limit=2000`;
+    const allSteps = runIds0.length
+      ? await sbGet(stepQuery(stepCols + ',on_packing_day')).catch(() => sbGet(stepQuery(stepCols))) // fix67 not run yet
       : [];
+    // A run made earlier and packed today shows only its packing steps; a run made today and packed
+    // later shows only its production steps (its packing steps are on the packing day). Same-day runs
+    // show everything, as always.
+    const runs = runs0.filter(r => {
+      r._phase = staffingRunPhase(r, allSteps.filter(s => s.run_id === r.id), date);
+      return !!r._phase;
+    });
+    const steps = allSteps.filter(s => {
+      const run = runs.find(r => r.id === s.run_id);
+      return run && (run._phase === 'all' || (run._phase === 'production' ? !s.on_packing_day : !!s.on_packing_day));
+    });
     const stepIds = steps.map(s => s.id);
     const assignments = stepIds.length
       ? await sbGet(`erp_run_step_assignments?select=id,run_step_id,position_label,employee_id,start_time,erp_employees(name)&run_step_id=in.(${stepIds.join(',')})&order=position_label.asc&limit=5000`)
@@ -5646,7 +5788,7 @@ async function updateAssignmentEmployee(assignmentId, employeeIdStr){
   const previousEmployeeId = a.employee_id; // before this change — see propagateStationAssignment
   // A soft block, not a hard one — floor staff sometimes need to override this in a pinch, but
   // they should have to confirm it rather than assign someone on their day off/leave by accident.
-  const reason = employee && run ? employeeUnavailableReason(employee, run.run_date) : null;
+  const reason = employee && run ? employeeUnavailableReason(employee, staffingBoardDate()) : null; // the board's day (a packing step of a run made earlier is worked today)
   if(reason){
     if(!confirm(`${employee.name} is ${reason.full}. Assign anyway?`)){
       renderStaffingBoard(); // revert the <select> back to its actual saved value
@@ -5692,7 +5834,7 @@ async function updateAssignmentEmployee(assignmentId, employeeIdStr){
     }
     // They were deliberately placed on a day they're normally off — remember that so the next
     // refresh's self-heal doesn't mistake it for a stale auto-fill and clear it.
-    if(reason && employeeId != null && run) await recordStaffingOverride(employeeId, run.run_date);
+    if(reason && employeeId != null && run) await recordStaffingOverride(employeeId, staffingBoardDate());
     // Skipped when the user had to override an unavailable warning above — that confirm was for
     // this one slot only, so it isn't carried into other runs.
     const carried = !reason ? await propagateStationAssignment(a, previousEmployeeId) : 0;
@@ -6033,7 +6175,7 @@ async function autoFillDefaultPositions(date){
     }catch(e){ console.error('autoFillDefaultPositions (packaging position) failed', e); }
   }
 
-  const linesRunning = new Set(STAFFING_RUNS.filter(r => FLOUR_MIXING_ROOM_LINES.includes(r.line)).map(r => r.line));
+  const linesRunning = new Set(STAFFING_RUNS.filter(r => r._phase !== 'packing' && FLOUR_MIXING_ROOM_LINES.includes(r.line)).map(r => r.line)); // a run only here to be packed isn't mixed today
   const flourNeeded = linesRunning.size ? Math.max(2, linesRunning.size) : 0;
   let flourRemaining = flourNeeded - FLOUR_MIXING_ROOM_STAFF.length;
   while(flourRemaining > 0){
@@ -6089,13 +6231,13 @@ function buildAssignmentParts(a, run, selectWidth){
   // Someone occupied elsewhere today still shows up here (tagged with where) instead of just
   // disappearing — picking them confirms and moves them, see updateAssignmentEmployee.
   const employeeOptions = '<option value="">— Unassigned</option>' + EMPLOYEES.filter(e => (e.active || e.id === a.employee_id)).map(e => {
-    const r = employeeUnavailableReason(e, run.run_date);
+    const r = employeeUnavailableReason(e, staffingBoardDate());
     const elsewhere = (!r && e.id !== a.employee_id && takenElsewhere.has(e.id)) ? staffingLocationLabel(e.id, exclusionOpts) : null;
     const tag = r ? ` (${r.short})` : (elsewhere ? ` (in ${elsewhere})` : '');
     return `<option value="${e.id}" ${a.employee_id===e.id?'selected':''}>${e.name}${tag}</option>`;
   }).join('');
   const assignedEmployee = a.employee_id ? EMPLOYEES.find(e => e.id === a.employee_id) : null;
-  const assignedReason = employeeUnavailableReason(assignedEmployee, run.run_date);
+  const assignedReason = employeeUnavailableReason(assignedEmployee, staffingBoardDate());
   const warningHtml = assignedReason
     ? `<span style="color:var(--danger);font-weight:700;font-size:11px" title="${assignedReason.full}">⚠ ${assignedReason.short}</span>` : '';
   // max-width caps the closed box regardless of selectWidth — a native <select> with width:auto
@@ -6525,7 +6667,7 @@ const FLOUR_MIXING_ROOM_LINES = ['Line 1', 'Line 2', 'Line 3'];
 function renderFlourMixingRoomBanner(){
   const el = document.getElementById('flourMixingRoomBanner');
   if(!el) return;
-  const linesRunning = new Set(STAFFING_RUNS.map(r => r.line).filter(l => FLOUR_MIXING_ROOM_LINES.includes(l)));
+  const linesRunning = new Set(STAFFING_RUNS.filter(r => r._phase !== 'packing').map(r => r.line).filter(l => FLOUR_MIXING_ROOM_LINES.includes(l))); // a run only here to be packed isn't mixed today
   // The room always runs a minimum crew of 2 once ANY of Line 1-3 is going — 1 line running
   // still needs 2 people, same as 2 lines. It only scales past that once a 3rd line joins in.
   const needed = linesRunning.size ? Math.max(2, linesRunning.size) : 0;
@@ -6760,7 +6902,8 @@ function packagingOnlyHeadcount(runs, date){
   return runs.filter(r => isPackagingOnlyRun(r) && r.status !== 'Cancelled' && (!date || (r.packing_date || r.run_date) === date)).reduce((sum, r) => sum + (parseInt(r.packaging_headcount, 10) || 0), 0);
 }
 function packagingCenterPoolNeeded(){
-  const relevantRuns = STAFFING_RUNS.filter(r => FLOUR_MIXING_ROOM_LINES.includes(r.line));
+  // A run whose packing steps are on a later day doesn't need the packing crew today.
+  const relevantRuns = STAFFING_RUNS.filter(r => r._phase !== 'production' && FLOUR_MIXING_ROOM_LINES.includes(r.line));
   const maxByLine = {};
   relevantRuns.forEach(r => {
     const h = PRODUCT_PACKAGING_HEADCOUNT[r.product_name] || 0;
@@ -6997,7 +7140,9 @@ function sauceProductionCardContentHtml(){
 // The <option>s for Manage Product Doughs' Process Steps "Step Name" select — shared by the
 // initial populate in loadCaches and by editProductStep's "unlisted legacy value" fallback below.
 function productionPositionOptionsHtml(){
+  // A-Z with numbers in natural order (Line 2 before Line 10), so a long list is easy to scan
   return POSITION_ROWS.filter(p => p.category === 'production')
+    .sort((a, b) => String(a.label).localeCompare(String(b.label), undefined, { numeric: true, sensitivity: 'base' }))
     .map(p => `<option value="${escapeHtml(p.label)}">${escapeHtml(p.label)}</option>`).join('');
 }
 // Only Production Step positions can be tied to a Line — this shop's position names sometimes
@@ -7226,10 +7371,11 @@ function renderStaffingBoardStation(){
         </div>
         <div style="font-weight:700;margin-bottom:${run.remark?2:8}px">${run.product_name} · ${fmtNum(mixes)} batches</div>
         ${run.remark ? `<div style="font-size:12px;color:var(--danger);font-weight:700;font-style:italic;margin-bottom:8px">📝 ${escapeHtml(run.remark)}</div>` : ''}
+        ${staffingPhaseNoteHtml(run)}
         ${steps.map((step,idx) => {
           const assigns = STAFFING_ASSIGNMENTS.filter(a => a.run_step_id === step.id);
           const isLastStep = idx === steps.length - 1;
-          const pcTag = (isLastStep && PRODUCT_GOES_TO_PACKAGING_CENTER.has(run.product_name)) ? packagingCenterTagHtml() : '';
+          const pcTag = (isLastStep && run._phase !== 'production' && PRODUCT_GOES_TO_PACKAGING_CENTER.has(run.product_name)) ? packagingCenterTagHtml() : '';
           if(step.status === 'completed'){
             const who = assigns.filter(a => a.erp_employees).map(a => a.erp_employees.name).join(', ') || 'Unassigned';
             const doneAt = step.completed_at ? new Date(step.completed_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
@@ -7306,6 +7452,7 @@ function renderStaffingBoardPipeline(){
             <div style="font-weight:700;font-size:15px">${run.product_name}</div>
             <div style="font-size:13px;color:var(--muted)">${fmtNum(mixes)} batches</div>
             ${run.remark ? `<div style="font-size:13px;color:var(--danger);font-weight:700;font-style:italic;margin-top:4px">📝 ${escapeHtml(run.remark)}</div>` : ''}
+            ${staffingPhaseNoteHtml(run, true)}
           </div>
           <div style="display:flex;flex-wrap:wrap;align-items:flex-start;row-gap:14px;min-width:0">
             ${steps.map((step,i) => {
@@ -7339,7 +7486,7 @@ function renderStaffingBoardPipeline(){
                 : '';
               return nodeHtml + connectorHtml;
             }).join('')}
-            ${PRODUCT_GOES_TO_PACKAGING_CENTER.has(run.product_name) ? packagingCenterPipelineTerminalHtml() : ''}
+            ${run._phase !== 'production' && PRODUCT_GOES_TO_PACKAGING_CENTER.has(run.product_name) ? packagingCenterPipelineTerminalHtml() : ''}
             <div style="flex:0 0 auto;margin-left:6px;align-self:center">${addStepButtonHtml(run.id)}</div>
           </div>
         </div>`;
@@ -7350,6 +7497,13 @@ function renderStaffingBoardPipeline(){
 // Small dashed, unfilled tag for Station/Roster — same "no fill, muted, dashed" language as the
 // Pipeline strip's terminal node (packagingCenterPipelineTerminalHtml), just shaped as an inline
 // tag instead of a connector+circle since those two layouts don't have a line to extend.
+// A run whose steps are split over two days says so on its card (see staffingRunPhase).
+function staffingPhaseNoteHtml(run, compact){
+  const style = `font-size:${compact ? 11 : 12}px;color:var(--muted);margin-bottom:${compact ? 4 : 8}px`;
+  if(run._phase === 'packing') return `<div style="${style}" title="Made on ${run.run_date}, packed on ${run.packing_date}">📦 Produced ${staffScheduleDateLabel(run.run_date)} — packing steps today</div>`;
+  if(run._phase === 'production') return `<div style="${style}" title="Made on ${run.run_date}, packed on ${run.packing_date}">📦 Packing steps are on ${staffScheduleDateLabel(run.packing_date)}</div>`;
+  return '';
+}
 function packagingCenterTagHtml(){
   return `<span style="font-size:10px;font-weight:400;padding:1px 7px;border-radius:99px;border:1px dashed var(--line);color:var(--muted);white-space:nowrap;margin-left:6px">⇒ Packaging Center</span>`;
 }
@@ -7408,9 +7562,12 @@ async function showAddStepPicker(runId){
     const productRows = await sbGet(`erp_products?select=id&name=eq.${encodeURIComponent(run.product_name)}&limit=1`);
     const product = productRows[0];
     if(!product){ toast('No matching Product Dough found for this Run'); return; }
-    const optionalTemplate = await sbGet(`erp_product_steps?select=id,step_name,sort_order,position_count&product_id=eq.${product.id}&is_optional=eq.true&order=sort_order.asc,id.asc&limit=200`);
+    const optionalTemplate = await loadProductStepTemplate(product.id, '&is_optional=eq.true');
+    // Only offer steps that belong to the part of the run on screen (a run split across two days
+    // would otherwise lose a step added for the other day from view, and could be added twice)
+    const phaseOk = t => run._phase === 'production' ? !t.on_packing_day : run._phase === 'packing' ? !!t.on_packing_day : true;
     const existingIds = new Set(STAFFING_STEPS.filter(s => s.run_id === runId).map(s => s.product_step_id));
-    const available = optionalTemplate.filter(t => !existingIds.has(t.id));
+    const available = optionalTemplate.filter(t => !existingIds.has(t.id) && phaseOk(t));
     if(!available.length){ toast('No optional steps left to add for this Run — either none are defined, or they\'re all already added'); return; }
     const options = '<option value="">Select step...</option>' + available.map(t => `<option value="${t.id}">${t.step_name}</option>`).join('');
     btn.outerHTML = `<select id="addStepSelect_${runId}" style="width:auto;font-size:11px;padding:3px 6px" onchange="addOptionalStepToRun(${runId}, this.value)">${options}</select>`;
@@ -7421,10 +7578,11 @@ async function addOptionalStepToRun(runId, productStepIdStr){
   if(!productStepIdStr){ renderStaffingBoard(); return; } // picker closed without a choice
   if(!canWrite()){ toast('You have read-only access'); return; }
   try{
-    const stepRows = await sbGet(`erp_product_steps?select=id,step_name,sort_order,position_count&id=eq.${productStepIdStr}&limit=1`);
+    const stepRows = await sbGet(`erp_product_steps?select=id,step_name,sort_order,position_count,on_packing_day&id=eq.${productStepIdStr}&limit=1`)
+      .catch(() => sbGet(`erp_product_steps?select=id,step_name,sort_order,position_count&id=eq.${productStepIdStr}&limit=1`)); // fix67 not run yet
     const t = stepRows[0];
     if(!t){ toast('Step not found'); return; }
-    const inserted = await sbInsert('erp_run_steps', [{ run_id: runId, step_name: t.step_name, sort_order: t.sort_order, status: 'not_started', product_step_id: t.id }]);
+    const inserted = await insertRunSteps([{ run_id: runId, step_name: t.step_name, sort_order: t.sort_order, status: 'not_started', product_step_id: t.id, on_packing_day: !!t.on_packing_day }]);
     const positionCount = t.position_count || 1;
     const assignmentRows = [];
     for(let p = 1; p <= positionCount; p++){ assignmentRows.push({ run_step_id: inserted[0].id, position_label: `Position ${p}` }); }
@@ -7469,8 +7627,9 @@ function renderStaffingBoardRoster(){
       const timeCell = a
         ? (parts.editable ? parts.timeHtml : (parts.timeText || '–'))
         : '–';
-      const pcTag = (isLastStep && PRODUCT_GOES_TO_PACKAGING_CENTER.has(run.product_name)) ? packagingCenterTagHtml() : '';
-      const remarkHtml = (isFirstRowOfRun && run.remark) ? `<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${escapeHtml(run.remark)}</div>` : '';
+      const pcTag = (isLastStep && run._phase !== 'production' && PRODUCT_GOES_TO_PACKAGING_CENTER.has(run.product_name)) ? packagingCenterTagHtml() : '';
+      const remarkHtml = (isFirstRowOfRun && run.remark ? `<div style="font-size:11px;color:var(--danger);font-weight:700;font-style:italic">📝 ${escapeHtml(run.remark)}</div>` : '')
+        + (isFirstRowOfRun ? staffingPhaseNoteHtml(run, true) : '');
       const addStepRow = (isLastStep && isLastRowOfStep) ? `<tr><td colspan="6" style="padding-top:2px;padding-bottom:8px">${addStepButtonHtml(run.id)}</td></tr>` : '';
       return `<tr style="border-left:3px solid ${stripeColor(step.status)}">
         <td style="font-weight:600">${step.step_name}${pcTag}${removeRunStepButtonHtml(step, run)}</td>
@@ -7741,10 +7900,15 @@ async function refreshStaffScheduleScreen(){
     const employees = await sbGet('erp_employees?select=id,name,active,default_position_type,default_position_line,no_available_days&order=name.asc&limit=1000');
     const employeeLeave = await sbGet('erp_employee_leave?select=id,employee_id,start_date,end_date,type,note&limit=5000');
     const hiddenLines = await staffingHiddenLineNames();
-    const allRuns = await sbGet(`erp_production_runs?select=id,line,run_date&run_date=gte.${from}&run_date=lte.${to}&limit=2000`);
+    // Runs made in the range plus runs only PACKED in it (their marked packing steps land on the packing day)
+    const allRuns = await sbGet(`erp_production_runs?select=id,line,run_date,packing_date&or=(and(run_date.gte.${from},run_date.lte.${to}),and(packing_date.gte.${from},packing_date.lte.${to}))&limit=2000`)
+      .catch(() => sbGet(`erp_production_runs?select=id,line,run_date&run_date=gte.${from}&run_date=lte.${to}&limit=2000`)); // fix58 not run yet
     const runs = allRuns.filter(r => !r.line || !hiddenLines.has(r.line));
     const runIds = runs.map(r => r.id);
-    const steps = runIds.length ? await sbGet(`erp_run_steps?select=id,run_id,step_name&run_id=in.(${runIds.join(',')})&limit=5000`) : [];
+    const steps = runIds.length
+      ? await sbGet(`erp_run_steps?select=id,run_id,step_name,on_packing_day&run_id=in.(${runIds.join(',')})&limit=5000`)
+          .catch(() => sbGet(`erp_run_steps?select=id,run_id,step_name&run_id=in.(${runIds.join(',')})&limit=5000`)) // fix67 not run yet
+      : [];
     const stepIds = steps.map(s => s.id);
     const assignments = stepIds.length ? await sbGet(`erp_run_step_assignments?select=id,run_step_id,employee_id,start_time&run_step_id=in.(${stepIds.join(',')})&limit=10000`) : [];
     const flourRows = await sbGet(`erp_flour_mixing_room_staff?select=id,employee_id,staff_date,start_time&staff_date=gte.${from}&staff_date=lte.${to}&limit=2000`);
@@ -7773,7 +7937,7 @@ async function refreshStaffScheduleScreen(){
       // A Line that is itself the packaging line (name contains "Packag") is Packaging staff, so its
       // cells sit in the Packaging section/headcount and share the Packaging color (`line` is kept).
       const dept = /packag/i.test(run.line || '') ? 'Packaging' : 'Line Production';
-      setCell(a.employee_id, run.run_date, { time: staffScheduleFormatShift(a.start_time), rawTime: a.start_time, position: step.step_name, color: dept === 'Packaging' ? staffSchedulePackagingColor() : staffScheduleLineColor(run.line), dept, line: run.line, kind: 'assignment', recordId: a.id });
+      setCell(a.employee_id, stepWorkDate(run, step), { time: staffScheduleFormatShift(a.start_time), rawTime: a.start_time, position: step.step_name, color: dept === 'Packaging' ? staffSchedulePackagingColor() : staffScheduleLineColor(run.line), dept, line: run.line, kind: 'assignment', recordId: a.id });
     });
     flourRows.forEach(s => {
       setCell(s.employee_id, s.staff_date, { time: staffScheduleFormatShift(s.start_time), rawTime: s.start_time, position: 'Flour Mixing Room', color: staffScheduleFlourColor(), dept: 'Flour Mixer Room', kind: 'flour', recordId: s.id });
@@ -8390,6 +8554,7 @@ function exitStaffScheduleKiosk(){
   ['pageTimer','refreshTimer','clockTimer'].forEach(k => { if(SS_KIOSK[k]){ clearTimeout(SS_KIOSK[k]); clearInterval(SS_KIOSK[k]); SS_KIOSK[k] = null; } });
   document.getElementById('ssKiosk').style.display = 'none';
   document.getElementById('ssKioskBody').innerHTML = '';
+  if(isDisplayAccount() && !DISPLAY.switching) displayRenderBar(); // the bar's button goes back to "Kiosk mode"
   // Put the Staff Schedule screen back on what it was showing before the kiosk took it over.
   if(SS_KIOSK.prev){
     document.getElementById('staffScheduleViewDate').value = SS_KIOSK.prev.date;
@@ -8595,6 +8760,7 @@ function exitKioskMode(){
   if(KIOSK_INTERVAL){ clearInterval(KIOSK_INTERVAL); KIOSK_INTERVAL = null; }
   if(KIOSK_PAGE_TIMER){ clearTimeout(KIOSK_PAGE_TIMER); KIOSK_PAGE_TIMER = null; }
   renderStaffingBoard();
+  if(isDisplayAccount() && !DISPLAY.switching) displayRenderBar(); // the bar's button goes back to "Kiosk mode"
 }
 async function refreshScheduleScreen(){
   if(!connected) return;
@@ -8965,15 +9131,24 @@ function onProdGoesToPackagingCenterChange(){
   if(!checked) document.getElementById('prodPackagingHeadcount').value = '';
 }
 let PRODUCT_STEPS_EDIT = [];
+let PRODUCT_STEPS_HAVE_PACKING_FLAG = false; // erp_product_steps.on_packing_day exists (fix67)
 function resetProductStepForm(){
   document.getElementById('stepEditId').value = '';
   document.getElementById('stepName').value = '';
   document.getElementById('stepSortOrder').value = '';
   document.getElementById('stepPositionCount').value = '1';
   document.getElementById('stepIsOptional').checked = false;
+  document.getElementById('stepOnPackingDay').checked = false;
 }
 async function loadProductSteps(productId){
-  PRODUCT_STEPS_EDIT = await sbGet(`erp_product_steps?select=id,product_id,step_name,sort_order,position_count,is_optional&product_id=eq.${productId}&order=sort_order.asc,id.asc&limit=200`);
+  const q = cols => `erp_product_steps?select=${cols}&product_id=eq.${productId}&order=sort_order.asc,id.asc&limit=200`;
+  try{
+    PRODUCT_STEPS_EDIT = await sbGet(q('id,product_id,step_name,sort_order,position_count,is_optional,on_packing_day'));
+    PRODUCT_STEPS_HAVE_PACKING_FLAG = true;
+  }catch(e){ // fix67 not run yet
+    PRODUCT_STEPS_HAVE_PACKING_FLAG = false;
+    PRODUCT_STEPS_EDIT = await sbGet(q('id,product_id,step_name,sort_order,position_count,is_optional'));
+  }
   renderProductStepsTable();
 }
 function editProductStep(id){
@@ -8991,6 +9166,7 @@ function editProductStep(id){
   document.getElementById('stepSortOrder').value = s.sort_order;
   document.getElementById('stepPositionCount').value = s.position_count;
   document.getElementById('stepIsOptional').checked = !!s.is_optional;
+  document.getElementById('stepOnPackingDay').checked = !!s.on_packing_day;
 }
 async function submitProductStep(){
   if(!canWrite()){ toast('You have read-only access'); return; }
@@ -9001,11 +9177,15 @@ async function submitProductStep(){
   const sortOrder = parseInt(document.getElementById('stepSortOrder').value, 10) || 0;
   const positionCount = Math.max(1, parseInt(document.getElementById('stepPositionCount').value, 10) || 1);
   const isOptional = document.getElementById('stepIsOptional').checked;
+  const onPackingDay = document.getElementById('stepOnPackingDay').checked;
   const editId = document.getElementById('stepEditId').value;
+  // on_packing_day exists only once fix67 has been run; saving without it still works (unticked)
+  const withPackingFlag = row => PRODUCT_STEPS_HAVE_PACKING_FLAG ? { ...row, on_packing_day: onPackingDay } : row;
+  if(onPackingDay && !PRODUCT_STEPS_HAVE_PACKING_FLAG){ toast('Run fix67-steps-on-packing-day.sql first to use "Done on the packing day"'); return; }
   try{
     if(editId){
       const old = PRODUCT_STEPS_EDIT.find(x => x.id === Number(editId));
-      await sbUpdate('erp_product_steps', editId, { step_name: stepName, sort_order: sortOrder, position_count: positionCount, is_optional: isOptional });
+      await sbUpdate('erp_product_steps', editId, withPackingFlag({ step_name: stepName, sort_order: sortOrder, position_count: positionCount, is_optional: isOptional }));
       // erp_run_steps (see ensureRunSteps) is a one-time snapshot copy of this template, taken
       // the first time each Run is opened on Staffing — renaming the template here wouldn't
       // otherwise reach any Run that already generated its steps. Cascade the rename to every
@@ -9033,7 +9213,7 @@ async function submitProductStep(){
       }
       toast('Step updated' + cascadeNote);
     } else {
-      await sbInsert('erp_product_steps', [{ product_id: Number(productId), step_name: stepName, sort_order: sortOrder, position_count: positionCount, is_optional: isOptional }]);
+      await sbInsert('erp_product_steps', [withPackingFlag({ product_id: Number(productId), step_name: stepName, sort_order: sortOrder, position_count: positionCount, is_optional: isOptional })]);
       toast('Step added');
     }
     resetProductStepForm();
@@ -9065,6 +9245,7 @@ function renderProductStepsTable(){
   document.getElementById('prodStepsTable').innerHTML = PRODUCT_STEPS_EDIT.map(s => `<tr>
     <td>${s.sort_order}</td><td>${s.step_name}</td><td>${s.position_count}</td>
     <td>${s.is_optional ? 'Optional' : ''}</td>
+    <td>${s.on_packing_day ? '📦 Packing day' : ''}</td>
     <td class="no-print" style="white-space:nowrap">
       <div style="display:flex;gap:6px;flex-wrap:nowrap">
         <button class="btn secondary" style="padding:6px 10px;font-size:12px" title="Move up" onclick="moveProductStepOrder(${s.id}, 'up')">▲</button>
@@ -16315,13 +16496,23 @@ async function cancelSauceTask(id){
 // After clicking an email confirmation link, Supabase redirects back with
 // the session tokens in the URL hash (#access_token=...&refresh_token=...).
 // Pick that up here so the user lands already signed in.
+// A password-reset link (type=recovery) lands the same way; AUTH_RECOVERY tells init to ask for the
+// new password first. A link that has expired or was already used comes back as #error=... instead.
+let AUTH_RECOVERY = false, AUTH_LINK_ERROR = '';
 async function consumeAuthRedirectHash(){
   if(!location.hash || location.hash.length < 2) return false;
   const params = new URLSearchParams(location.hash.slice(1));
   const accessToken = params.get('access_token');
   const refreshToken = params.get('refresh_token');
   const expiresIn = params.get('expires_in');
-  if(!accessToken) return false;
+  if(!accessToken){
+    if(params.get('error')){
+      AUTH_LINK_ERROR = params.get('error_description') || 'This link is no longer valid.';
+      history.replaceState(null, '', location.pathname + location.search);
+    }
+    return false;
+  }
+  AUTH_RECOVERY = params.get('type') === 'recovery';
   try{
     const res = await fetch(CFG.url.replace(/\/$/,'') + '/auth/v1/user', {
       headers: {'apikey': CFG.key, 'Authorization': 'Bearer ' + accessToken}
@@ -16340,7 +16531,7 @@ async function consumeAuthRedirectHash(){
 }
 // Set this to today's date every time inventory-app.html is edited — it's the only place it's
 // set, and it's how "Ver." in the header/sidebar tells you how fresh the deployed file is.
-const APP_VERSION = 'Ver. 2026-09-01';
+const APP_VERSION = 'Ver. 2026-10-23';
 document.getElementById('appVersion').textContent = APP_VERSION;
 (async function init(){
   try{
@@ -16362,7 +16553,14 @@ document.getElementById('appVersion').textContent = APP_VERSION;
   await loadConfig();
   if(!SESSION){
     const picked = await consumeAuthRedirectHash();
-    if(picked){ try{ await afterLogin(); toast('Email confirmed — signed in'); }catch(e){ showScreen('login'); } }
+    if(picked && AUTH_RECOVERY){
+      document.getElementById('recoveryEmail').textContent = SESSION.user.email || '';
+      showRecoveryModal();
+    } else if(picked){ try{ await afterLogin(); toast('Email confirmed — signed in'); }catch(e){ showScreen('login'); } }
+    else if(AUTH_LINK_ERROR){
+      setLoginMode('reset');
+      document.getElementById('loginStatus').innerHTML = '⚠ ' + escapeHtml(AUTH_LINK_ERROR) + '<br>Enter your email to get a new reset link.';
+    }
   }
 })();
 </script>
