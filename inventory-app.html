@@ -417,6 +417,8 @@
   /* ONE bottom strip: area name left, page count and dots right */
   #ssKioskFoot,body.kiosk-mode #staffingKioskDots{display:flex;align-items:center;gap:.8em;font-size:var(--kiosk-foot-px);min-height:2.1em;box-sizing:border-box;border-top:1px solid #ccc;padding:.3em 1em;background:#fff;color:#000;font-family:Calibri,Carlito,'Segoe UI',Arial,sans-serif}
   body.no-write .subnav-readonly-note{display:block}
+  body.viewer-edit .subnav-readonly-note{display:block;color:var(--accent);opacity:1}
+  .edit-mark .sidebar-item-label::after, #subNav button.edit-mark::after{content:' ✎';font-size:.9em;opacity:.75}
   body.no-admin .admin-only{display:none !important}
   .no-can-write{display:none}
   body.no-write .no-can-write{display:inline}
@@ -753,6 +755,7 @@
       <button data-screen="schedule-dashboard" data-module="schedule" class="active" onclick="showScreen('schedule-dashboard')"><span class="ic"><svg class="nav-icon"><use href="#i-grid"/></svg></span>Production Dashboard</button>
       <button data-screen="schedule-create" data-module="schedule" onclick="showScreen('schedule-create')"><span class="ic"><svg class="nav-icon"><use href="#i-plus-circle"/></svg></span>Create</button>
       <button data-screen="schedule-preview" data-module="schedule" onclick="showScreen('schedule-preview')"><span class="ic"><svg class="nav-icon"><use href="#i-eye"/></svg></span>Preview</button>
+      <button class="can-write" data-screen="schedule-planner" data-module="schedule" onclick="showScreen('schedule-planner')"><span class="ic"><svg class="nav-icon"><use href="#i-sliders"/></svg></span>Batch Planner</button>
       <button data-screen="schedule-confirm" data-module="schedule" onclick="showScreen('schedule-confirm')"><span class="ic"><svg class="nav-icon"><use href="#i-check-circle"/></svg></span>Confirm Completion</button>
       <button data-screen="schedule-history" data-module="schedule" onclick="showScreen('schedule-history')"><span class="ic"><svg class="nav-icon"><use href="#i-clock"/></svg></span>History</button>
       <span class="subnav-group-label" data-module="schedule">Setup</span>
@@ -1322,6 +1325,7 @@
         <div><label>Packing Date <span style="color:var(--muted);font-weight:400">(auto from the line, editable)</span></label><input type="date" id="runPackingDate" onchange="updateRunPackChoiceHighlight()"></div>
       </div>
       <div id="runHolidayNote"></div>
+      <div id="runPlannerDraft"></div>
       <label>Remark</label>
       <textarea id="runRemark" rows="2" placeholder="Notes for this run..."></textarea>
       <div class="btnrow"><button class="btn" onclick="submitProductionRun()">➕ Create</button></div>
@@ -1554,6 +1558,37 @@
       <div class="empty" id="holidaysEmpty" style="display:none">No holidays yet — add the BC statutory holidays for a year above, or a company day off below.</div>
       <p style="color:var(--muted);font-size:12px;margin:8px 0 0">New holidays start as "Everything closed". Choose "Some areas open" to tick the areas that still run. The dates of Good Friday, Family Day, Victoria Day, BC Day, Labour Day and Thanksgiving are worked out for the year. Adding the same year twice never duplicates a day.</p>
     </div>
+  </section>
+
+  <!-- BATCH PLANNER: batches per dough from pending orders, stock and Stock Level -->
+  <section class="screen" id="screen-schedule-planner">
+    <h2>Batch Planner</h2>
+    <p style="color:var(--muted);font-size:13px;margin-top:0">How many batches of each dough to make. Every item on the Line is counted under its dough: items with Pending orders shipping in the period (make = orders + Stock Level − stock) and items without orders that have dropped below their Stock Level (restock). Batches are rounded up to a whole batch.</p>
+    <div class="card">
+      <div class="row" style="align-items:flex-end">
+        <div style="max-width:200px"><label>Line</label><select id="plannerLine" onchange="plannerOnLineChange()"></select></div>
+        <div style="max-width:170px"><label>Ship date from</label><input type="date" id="plannerFrom" onchange="refreshPlannerScreen()"></div>
+        <div style="max-width:170px"><label>to</label><input type="date" id="plannerTo" onchange="refreshPlannerScreen()"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn secondary" style="padding:6px 12px;font-size:12px" onclick="plannerSetRange('seven')">Next 7 days</button><button class="btn secondary" style="padding:6px 12px;font-size:12px" onclick="plannerSetRange('week')">This week</button><button class="btn secondary" style="padding:6px 12px;font-size:12px" onclick="plannerSetRange('two')">Next 2 weeks</button></div>
+        <label style="display:flex;gap:6px;align-items:center;width:auto;margin:0 0 8px;font-weight:400;font-size:12px"><input type="checkbox" id="plannerOverdue" checked style="width:auto" onchange="refreshPlannerScreen()"> Include overdue Pending lines</label>
+        <div id="plannerOverdueDaysBox" style="display:flex;gap:6px;align-items:center;margin:0 0 8px;font-size:12px">up to <select id="plannerOverdueDays" style="width:auto;padding:4px 6px;font-size:12px" onchange="refreshPlannerScreen()"><option value="7">7</option><option value="14" selected>14</option><option value="30">30</option><option value="60">60</option><option value="">No limit</option></select> days before the start</div>
+      </div>
+      <div class="kpis kpis5" id="plannerKpis"></div>
+      <div id="plannerOverdueInfo"></div>
+      <div id="plannerWarn"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0">Fresh / Frozen customer rules</h3>
+      <p style="color:var(--muted);font-size:12px;margin-top:0">Only matters for an item stored in both Freezer and Cooler: its orders are Fresh or Frozen by the customer (an order line can still be switched by hand in the table below). Freezer-only items are always Frozen, Cooler-only always Fresh.</p>
+      <div id="plannerRulesNote" style="display:none;color:var(--danger);font-size:12px;margin-bottom:6px">The rules and the by-hand tag need fix73-batch-planner.sql to be run once.</div>
+      <div id="plannerRulesList" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"></div>
+      <div class="row can-write" style="align-items:flex-end">
+        <div style="max-width:260px"><label>Customer</label><input id="plannerRuleCustomer" list="plannerRuleCustomers" placeholder="e.g. Costco"><datalist id="plannerRuleCustomers"></datalist></div>
+        <div style="max-width:140px"><label>Buys</label><select id="plannerRuleType"><option value="frozen">Frozen</option><option value="fresh">Fresh</option></select></div>
+        <button class="btn secondary" style="margin-bottom:8px" onclick="plannerAddRule()">＋ Add rule</button>
+      </div>
+    </div>
+    <div id="plannerList"></div>
   </section>
 
   <!-- DAILY PRODUCTION SCHEDULE: CONFIRM COMPLETION -->
@@ -2912,6 +2947,19 @@
     <div class="btnrow"><button class="btn" onclick="closeHolidayDayEditor()">Done</button></div>
   </div>
 </div>
+<div id="plannerRunDialog" class="no-print" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px">
+  <div class="card" style="max-width:560px;width:100%;margin:0;max-height:92vh;overflow:auto">
+    <h3 style="margin-top:0" id="prdTitle">Create run</h3>
+    <div id="prdNeeded" style="background:var(--chip);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.7;margin:8px 0"></div>
+    <div id="prdEarliest" style="font-size:13px;margin:8px 0"></div>
+    <div class="row" style="align-items:flex-end">
+      <div style="max-width:190px"><label>Production date</label><input type="date" id="prdDate" onchange="plannerRunDateChanged()"></div>
+    </div>
+    <div id="prdWhy" style="margin:6px 0 10px"></div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">This opens Production Create with the dough, the batches, the date and every item's cases filled in. Nothing is saved until you press Create there.</div>
+    <div class="btnrow"><button class="btn" onclick="plannerSendToCreate()">Open in Production Create</button><button class="btn secondary" onclick="plannerCloseRun()">Cancel</button></div>
+  </div>
+</div>
 <div id="cancelRunDialog" class="no-print" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px">
   <div class="card" style="max-width:480px;width:100%;margin:0;max-height:92vh;overflow:auto">
     <h3 style="margin-top:0" id="crdTitle">Cancel this run?</h3>
@@ -3236,7 +3284,8 @@ async function doLogout(){
   document.getElementById('logoutBtn').style.display = 'none';
   document.getElementById('roleBadge').style.display = 'none';
   document.body.classList.add('logged-out');
-  document.body.classList.remove('no-write', 'no-admin');
+  document.body.classList.remove('no-write', 'no-admin', 'viewer-edit');
+  MY_EDIT_SCREENS = []; CURRENT_SCREEN = null;
   document.getElementById('connDot').classList.remove('on');
   document.getElementById('connText').textContent = 'Database not connected';
   connected = false;
@@ -3274,14 +3323,44 @@ async function fetchProfile(){
   badge.textContent = (CURRENT_USER.display_name || CURRENT_USER.email) + ' · ' + roleLabel(CURRENT_USER.role).toLowerCase();
   badge.classList.toggle('admin', CURRENT_USER.role === 'admin');
   badge.classList.toggle('editor', CURRENT_USER.role === 'editor');
-  document.body.classList.toggle('no-write', !canWrite());
+  await loadMyEditScreens();
+  applyWriteMode();
   document.body.classList.toggle('no-admin', !isAdmin());
   document.getElementById('acctEmail').value = CURRENT_USER.email || '';
   document.getElementById('acctRole').value = roleLabel(CURRENT_USER.role);
   document.getElementById('acctDisplayName').value = CURRENT_USER.display_name || '';
 }
 // editor + admin can add/edit/delete data; only admin can manage other users' roles
-function canWrite(){ return !!(CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'editor')); }
+// A Viewer can also be given edit rights on chosen screens (Manage Users → Customize menu → Edit, stored in
+// erp_app_settings as edit_screens:<userId>). Then canWrite() is true while THAT screen is open and false on every
+// other one. This is a working-rights control in the app, not database security: the database still lets any
+// signed-in user write. Admin-only screens can never be granted.
+const ADMIN_ONLY_SCREENS = ['users', 'settings', 'backup', 'adjust'];
+let CURRENT_SCREEN = null;
+let MY_EDIT_SCREENS = [];
+function roleCanWrite(){ return !!(CURRENT_USER && (CURRENT_USER.role === 'admin' || CURRENT_USER.role === 'editor')); }
+function viewerEditsScreen(screen){
+  return !!(CURRENT_USER && CURRENT_USER.role === 'viewer' && !CURRENT_USER.display_mode && screen
+    && !ADMIN_ONLY_SCREENS.includes(screen) && MY_EDIT_SCREENS.includes(screen) && isScreenAllowed(screen));
+}
+function canWrite(){ return roleCanWrite() || viewerEditsScreen(CURRENT_SCREEN); }
+const parseEditScreens = v => (v && Array.isArray(v.screens) ? v.screens : (Array.isArray(v) ? v : [])).filter(s => typeof s === 'string' && !ADMIN_ONLY_SCREENS.includes(s));
+async function loadMyEditScreens(){
+  MY_EDIT_SCREENS = [];
+  if(!CURRENT_USER || CURRENT_USER.role !== 'viewer') return;
+  try{
+    const rows = await sbGet(`erp_app_settings?select=value&key=eq.${encodeURIComponent('edit_screens:' + CURRENT_USER.id)}&limit=1`);
+    MY_EDIT_SCREENS = rows && rows[0] ? parseEditScreens(rows[0].value) : [];
+  }catch(e){ MY_EDIT_SCREENS = []; } // fix65 not run yet
+}
+// The page-wide "read only" look follows the screen that is open
+function applyWriteMode(){
+  const edit = !roleCanWrite() && canWrite();
+  document.body.classList.toggle('no-write', !canWrite());
+  document.body.classList.toggle('viewer-edit', edit);
+  const note = document.getElementById('subNavReadOnlyNote');
+  if(note) note.textContent = edit ? '✎ You can edit this screen' : 'Read Only — you have view-only access';
+}
 function isAdmin(){ return !!(CURRENT_USER && CURRENT_USER.role === 'admin'); }
 // Screen/line restrictions are one shared setting per role (erp_role_permissions, set in
 // Settings → Role Permissions) rather than per-user — see loadRolePermissions. Admins are never
@@ -3305,7 +3384,8 @@ async function afterLogin(){
     SESSION = null; CURRENT_USER = null; connected = false;
     try{ sessionStorage.removeItem('auth-session'); }catch(_){}
     document.body.classList.add('logged-out');
-    document.body.classList.remove('no-write', 'no-admin', 'display-mode');
+    document.body.classList.remove('no-write', 'no-admin', 'display-mode', 'viewer-edit');
+    MY_EDIT_SCREENS = [];
     document.getElementById('logoutBtn').style.display = 'none';
     document.getElementById('roleBadge').style.display = 'none';
     document.getElementById('connDot').classList.remove('on');
@@ -3451,7 +3531,8 @@ function applySubNavVisibility(mod){
   if(moduleHasSubNav(mod)){
     subNav.style.display = 'flex';
     subNav.querySelectorAll('button[data-module]').forEach(b => {
-      b.style.display = (b.dataset.module===mod && isScreenAllowed(b.dataset.screen)) ? '' : 'none';
+      b.style.display = (b.dataset.module===mod && navScreenVisible(b.dataset.screen)) ? '' : 'none';
+      b.classList.toggle('edit-mark', viewerEditsScreen(b.dataset.screen));
     });
     // group-label headers (e.g. "Operations"/"Setup") just track the active module —
     // they're not permission-gated since they're not a screen a user navigates to
@@ -3464,17 +3545,18 @@ function applySubNavVisibility(mod){
   // hide a whole module button if the user isn't allowed to see any screen in it
   document.querySelectorAll('.module-switcher button[data-module]').forEach(mb => {
     const screensInModule = [...document.querySelectorAll(`#subNav button[data-module="${mb.dataset.module}"]`)];
-    const anyAllowed = screensInModule.some(b => isScreenAllowed(b.dataset.screen));
+    const anyAllowed = screensInModule.some(b => navScreenVisible(b.dataset.screen));
     mb.style.display = anyAllowed ? '' : 'none';
   });
   // sidebar mirrors every module at once (not just the active one), so each item is
   // gated individually, and a whole section hides if none of its screens are allowed
   document.querySelectorAll('#sidebarNav .sidebar-item[data-screen]').forEach(b => {
-    b.style.display = isScreenAllowed(b.dataset.screen) ? '' : 'none';
+    b.style.display = navScreenVisible(b.dataset.screen) ? '' : 'none';
+    b.classList.toggle('edit-mark', viewerEditsScreen(b.dataset.screen));
   });
   document.querySelectorAll('#sidebarNav .sidebar-sec[data-module]').forEach(sec => {
     const items = [...sec.querySelectorAll('.sidebar-item[data-screen]')];
-    sec.style.display = items.some(b => isScreenAllowed(b.dataset.screen)) ? '' : 'none';
+    sec.style.display = items.some(b => navScreenVisible(b.dataset.screen)) ? '' : 'none';
   });
 }
 function switchModule(mod){
@@ -3505,6 +3587,8 @@ function showScreen(name){
   const el = document.getElementById('screen-'+name);
   if(!el) return;
   el.classList.add('active');
+  CURRENT_SCREEN = name;
+  applyWriteMode();
   if(name !== 'login'){ recordRecentScreen(name); renderRecentScreensSidebar(); }
   document.querySelectorAll('.topnav nav button, #sidebarNav .sidebar-item').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
   // keep the module switcher / subnav filtering in sync every time
@@ -3532,7 +3616,7 @@ const SCREEN_REFRESH_FN = {
   'schedule-dashboard': refreshProductionDashboard,
   'schedule-create': refreshScheduleScreen, 'schedule-preview': refreshScheduleScreen,
   'schedule-staffing': refreshStaffingScreen, 'schedule-staff-schedule': refreshStaffScheduleScreen,
-  'schedule-positions': refreshPositionsScreen, 'schedule-shifts': refreshShiftsScreen, 'schedule-holidays': refreshHolidaysScreen, import: refreshImportHistories,
+  'schedule-positions': refreshPositionsScreen, 'schedule-shifts': refreshShiftsScreen, 'schedule-planner': refreshPlannerScreen, 'schedule-holidays': refreshHolidaysScreen, import: refreshImportHistories,
   'schedule-confirm': refreshScheduleScreen, 'schedule-products': refreshScheduleScreen, 'schedule-lines': refreshScheduleScreen,
   'schedule-employees': refreshScheduleScreen, 'schedule-history': refreshProductionHistoryScreen,
   'flour-dashboard': refreshFlourScreen, 'flour-ingredients': refreshFlourScreen,
@@ -3577,6 +3661,18 @@ function pickItem(inputId, suggestId, hiddenNoId, hiddenNameId, itemNo, itemName
   if(onPickFn && typeof window[onPickFn] === 'function') window[onPickFn]();
 }
 document.querySelectorAll('#subNav button[data-screen]').forEach(b => { SCREEN_MODULE[b.dataset.screen] = b.dataset.module; });
+// Menu items marked can-write (Batch Planner, CSV Import…) are for people who can edit. Their visibility is decided in
+// applySubNavVisibility from the role and the screens a Viewer can edit, not by the page-wide read-only class (which
+// now changes with the screen that is open) — so the marker moves from a CSS class to data-write-only.
+const WRITE_ONLY_SCREENS = new Set();
+document.querySelectorAll('.topnav nav button.can-write[data-screen], #subNav button.can-write[data-screen]').forEach(b => {
+  WRITE_ONLY_SCREENS.add(b.dataset.screen); b.classList.remove('can-write'); b.dataset.writeOnly = '1';
+});
+function navScreenVisible(screen){
+  if(!isScreenAllowed(screen)) return false;
+  if(!WRITE_ONLY_SCREENS.has(screen)) return true;
+  return roleCanWrite() || viewerEditsScreen(screen);
+}
 // Builds the desktop sidebar from the exact same source as the mobile top-nav (module-switcher
 // + #subNav) so the two can never drift apart — every item's icon, label, data-screen/data-module
 // and classes (can-write, admin-only, etc.) are cloned straight from the real subNav/module-switcher
@@ -3615,7 +3711,7 @@ function renderRecentScreensSidebar(){
   // CURRENT Recent list get the module name appended, so the common case (no clash) stays plain.
   const entries = RECENT_SCREENS.map(screenName => {
     const btn = document.querySelector(`#subNav button[data-screen="${screenName}"]`);
-    if(!btn || !isScreenAllowed(screenName)) return null;
+    if(!btn || !navScreenVisible(screenName)) return null;
     return { screenName, label: labelOf(btn), module: btn.dataset.module, iconHtml: btn.querySelector('.ic')?.innerHTML || '' };
   }).filter(Boolean);
   const labelCounts = {};
@@ -6635,7 +6731,8 @@ function buildAssignmentParts(a, run, selectWidth){
     return `<option value="${e.id}" ${a.employee_id===e.id?'selected':''}>${e.name}${tag}</option>`;
   }).join('');
   const assignedEmployee = a.employee_id ? EMPLOYEES.find(e => e.id === a.employee_id) : null;
-  const assignedReason = employeeUnavailableReason(assignedEmployee, staffingBoardDate());
+  // The ⚠ Day Off / Leave note is for whoever edits the board; a Viewer (and a TV display account) only sees who is working
+  const assignedReason = canWrite() ? employeeUnavailableReason(assignedEmployee, staffingBoardDate()) : null;
   // The same person in two shifts of the same day is allowed, but flagged — it's a double shift
   const otherShiftAssign = (a.employee_id != null && a.shift_id != null)
     ? STAFFING_ASSIGNMENTS.find(x => x.id !== a.id && x.employee_id === a.employee_id && x.shift_id != null && x.shift_id !== a.shift_id) : null;
@@ -7532,7 +7629,7 @@ function packagingCenterPositionSelectHtml(p, date){
   const exclusionOpts = {excludePackagingPositionId: p.id, shiftId: p.shift_id};
   const takenElsewhere = staffingOccupiedElsewhere(exclusionOpts);
   const assignedEmployee = p.employee_id ? EMPLOYEES.find(e => e.id === p.employee_id) : null;
-  const assignedReason = employeeUnavailableReason(assignedEmployee, date);
+  const assignedReason = canWrite() ? employeeUnavailableReason(assignedEmployee, date) : null; // the ⚠ note is for editors only
   const warningHtml = assignedReason
     ? `<span style="color:var(--danger);font-weight:700;font-size:11px" title="${assignedReason.full}">⚠ ${assignedReason.short}</span>` : '';
   let controlHtml, timeHtml, dayOffHtml = '';
@@ -9978,6 +10075,399 @@ function renderStaffingHolidayBanner(){
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap"><span style="font-size:18px">🎌</span><span style="font-size:13px">${text}</span>
       ${canWrite() ? `<button class="btn secondary no-display" style="margin-left:auto;padding:5px 12px;font-size:12px" onclick="openHolidayDayEditor('${date}')">Change open areas for this day</button>` : ''}</div></div>`;
 }
+/* ============================================================
+   BATCH PLANNER (Production Schedule -> Batch Planner) — how many batches of each dough to make.
+   For a Line (Flour Noodle to start with) it takes EVERY item on that Line, grouped by its Dough (Manage Items):
+     make (cases) = Pending orders shipping in the period + Stock Level - stock now      (an item with orders)
+                  = Stock Level - stock now                                              (no orders: restock)
+   never below 0; a Make-to-Order item without orders is skipped, an item without a Stock Level only counts for its
+   orders. Cases -> dough kg with the item's dough weight per case; batches = kg / (weight per batch x yield), rounded
+   UP to a whole batch. An item stored in both Freezer and Cooler has ONE stock count that offsets its whole demand;
+   Fresh / Frozen only tells apart what to make close to the ship date from what can be made earlier (customer rule,
+   or a hand-set tag on the order line; fix73).
+   ============================================================ */
+const PLANNER_DEFAULT_LINE = 'Flour Noodle';
+let PLANNER = { line: '', from: '', to: '', overdue: true, orders: [], stock: {}, rules: {}, rulesOk: true, typeColOk: true, result: null, open: {} };
+let RUN_PLANNER_DRAFT = null; // { dough, batches, date, items: [{ item_no, item_name, cases, fresh, frozen }] } waiting for Production Create
+const plannerIsFreezer = s => /freez|frozen/i.test(String(s || ''));
+// 'fresh' | 'frozen' | 'both' by where the item is stored
+function plannerItemKind(item){
+  const frozen = plannerIsFreezer(item.storage), cold = storageIsCooler(item.storage);
+  if(frozen && cold) return 'both';
+  return frozen ? 'frozen' : 'fresh';
+}
+// Fresh or Frozen for ONE order line: pure items are always one kind; a Freezer/Cooler item goes by the hand-set tag on the
+// line, else its customer's rule, else Fresh (flagged as a guess)
+function plannerLineType(item, line, rules){
+  const kind = plannerItemKind(item);
+  if(kind !== 'both') return { type: kind, guess: false };
+  if(line.storage_type === 'fresh' || line.storage_type === 'frozen') return { type: line.storage_type, guess: false, manual: true };
+  const r = rules[String(line.customer || '').trim().toLowerCase()];
+  if(r === 'fresh' || r === 'frozen') return { type: r, guess: false, rule: true };
+  return { type: 'fresh', guess: true };
+}
+const plannerDow = d => new Date(d + 'T00:00:00').getDay();
+// Flour Noodle does not produce on weekends; a day the Line is closed for a holiday is not a production day either
+function plannerOpenDay(d, lineName){
+  const w = plannerDow(d);
+  if(w === 0 || w === 6) return false;
+  return !(typeof holidayOn === 'function' && holidayOn(d) && holidayAreaClosed(d, lineName));
+}
+function plannerPrevOpenDay(d, lineName){ let x = d; for(let i = 0; i < 21 && !plannerOpenDay(x, lineName); i++) x = addDaysToDateStr(x, -1); return x; }
+function plannerNextOpenDay(d, lineName){ let x = d; for(let i = 0; i < 21 && !plannerOpenDay(x, lineName); i++) x = addDaysToDateStr(x, 1); return x; }
+// The inputs are plain data so this can be checked without the screen.
+// inp: { items, stockByNo, orders, products, rules, lineName, from, to, overdue, overdueDays }
+// overdueDays: how many days before "from" a Pending line still counts (null / undefined = no limit)
+function plannerCompute(inp){
+  const { items, stockByNo, orders, products, rules, lineName, from, to, overdue } = inp;
+  const days = inp.overdueDays == null || inp.overdueDays === '' ? null : Number(inp.overdueDays);
+  const cutoff = overdue && days != null && days >= 0 ? addDaysToDateStr(from, -days) : null; // lines shipping before this are ignored
+  const ordersByNo = {};
+  const lineNos = new Set(items.filter(it => it.line === lineName && it.item_status !== 'Inactive').map(it => it.item_no));
+  const overdueInfo = { counted: { lines: 0, cases: 0, min: null, max: null }, ignored: { lines: 0, cases: 0, min: null, max: null, list: [] }, cutoff };
+  const bump = (g, o, q) => { g.lines++; g.cases += q; g.min = !g.min || o.ship_date < g.min ? o.ship_date : g.min; g.max = !g.max || o.ship_date > g.max ? o.ship_date : g.max; };
+  orders.forEach(o => {
+    if(o.status === 'Shipped' || !o.ship_date || o.ship_date > to) return;
+    if(o.ship_date < from){
+      if(!overdue) return;
+      const q = parseFloat(o.qty) || 0, mine = lineNos.has(o.item_no);
+      if(cutoff && o.ship_date < cutoff){
+        if(mine){ bump(overdueInfo.ignored, o, q); overdueInfo.ignored.list.push(o); }
+        return;
+      }
+      if(mine) bump(overdueInfo.counted, o, q);
+    }
+    (ordersByNo[o.item_no] = ordersByNo[o.item_no] || []).push(o);
+  });
+  const seenNo = new Set(), doughs = {}, unlinked = [];
+  items.filter(it => it.line === lineName && it.item_status !== 'Inactive').forEach(it => {
+    const lines = seenNo.has(it.item_no) ? [] : (ordersByNo[it.item_no] || []); // a shared item_no is counted once
+    seenNo.add(it.item_no);
+    const orderQty = lines.reduce((s, l) => s + (parseFloat(l.qty) || 0), 0);
+    const dough = String(it.product_dough || '').trim();
+    if(!dough){ if(orderQty > 0) unlinked.push({ item: it, qty: orderQty }); return; }
+    const kind = plannerItemKind(it);
+    const typed = lines.map(l => ({ line: l, ...plannerLineType(it, l, rules) }));
+    const freshOrders = typed.filter(t => t.type === 'fresh').reduce((s, t) => s + (parseFloat(t.line.qty) || 0), 0);
+    const frozenOrders = typed.filter(t => t.type === 'frozen').reduce((s, t) => s + (parseFloat(t.line.qty) || 0), 0);
+    const stockRow = stockByNo[it.item_no];
+    const stock = stockRow ? (Number(stockRow.act_inventory_qty) || 0) : 0;
+    const level = Number(it.stock_level) || 0;
+    const mto = !!it.make_to_order;
+    let why, make = 0, formula = '';
+    if(orderQty > 0){
+      why = 'orders';
+      make = Math.max(0, orderQty + (mto ? 0 : level) - stock);
+      formula = mto ? `${fmtNum(orderQty)} − ${fmtNum(stock)}` : `${fmtNum(orderQty)} + ${fmtNum(level)} − ${fmtNum(stock)}`;
+    } else if(mto){ why = 'mto'; }
+    else if(!(level > 0)){ why = 'nolevel'; }
+    else { make = Math.max(0, level - stock); why = make > 0 ? 'restock' : 'enough'; formula = `${fmtNum(level)} − ${fmtNum(stock)}`; }
+    // the single stock count offsets the whole demand; Fresh / Frozen only splits what is made
+    const makeFresh = kind === 'fresh' ? make : kind === 'frozen' ? 0 : Math.min(make, freshOrders);
+    const makeFrozen = make - makeFresh;
+    const caseKg = caseWeightKg(it);
+    const dates = ty => typed.filter(t => t.type === ty).map(t => t.line.ship_date).sort();
+    const row = {
+      item: it, item_no: it.item_no, item_name: it.item_name, kind, orders: typed, orderQty, freshOrders, frozenOrders, stock, level, mto, why, make, makeFresh, makeFrozen,
+      formula, caseKg, kg: make * caseKg, missingWeight: make > 0 && !(caseKg > 0),
+      earliestFresh: dates('fresh')[0] || null, earliestFrozen: dates('frozen')[0] || null,
+      guesses: typed.filter(t => t.guess).map(t => t.line.customer || '(no customer)')
+    };
+    (doughs[dough] = doughs[dough] || []).push(row);
+  });
+  const out = Object.keys(doughs).sort((a, b) => a.localeCompare(b)).map(name => {
+    const rows = doughs[name];
+    const p = products.find(x => x.name === name);
+    const batchKg = p ? (parseFloat(p.weight_per_mix_kg) || 0) * (p.yield_factor == null ? 1 : Number(p.yield_factor)) : 0;
+    const act = rows.filter(r => r.make > 0);
+    const totalKg = act.reduce((s, r) => s + r.kg, 0), totalCases = act.reduce((s, r) => s + r.make, 0);
+    const exact = batchKg > 0 ? totalKg / batchKg : null;
+    const batches = exact == null || totalKg <= 0 ? 0 : Math.ceil(exact - 1e-9);
+    const spareKg = batches > 0 ? batches * batchKg - totalKg : 0;
+    const perCase = totalCases > 0 ? totalKg / totalCases : 0;
+    const order = { orders: 0, restock: 1, enough: 2, nolevel: 3, mto: 4 };
+    rows.sort((a, b) => (b.make > 0) - (a.make > 0) || order[a.why] - order[b.why] || String(a.item_no).localeCompare(String(b.item_no)));
+    const minDate = arr => arr.filter(Boolean).sort()[0] || null;
+    return {
+      name, product: p || null, batchKg, rows, totalKg, totalCases, exact, batches, spareKg, spareCases: perCase > 0 ? Math.floor(spareKg / perCase) : 0,
+      freshCases: act.reduce((s, r) => s + r.makeFresh, 0), frozenCases: act.reduce((s, r) => s + r.makeFrozen, 0),
+      restockCases: rows.filter(r => r.why === 'restock').reduce((s, r) => s + r.make, 0),
+      earliestFresh: minDate(act.filter(r => r.makeFresh > 0).map(r => r.earliestFresh)),
+      earliestFrozen: minDate(act.filter(r => r.makeFrozen > 0).map(r => r.earliestFrozen)),
+      missingWeight: act.some(r => r.missingWeight), noBatchWeight: !(batchKg > 0) && act.length > 0,
+      counts: { orders: rows.filter(r => r.why === 'orders').length, restock: rows.filter(r => r.why === 'restock').length, nothing: rows.filter(r => ['enough', 'nolevel', 'mto'].includes(r.why)).length }
+    };
+  });
+  return {
+    doughs: out, unlinked, overdueInfo,
+    batches: out.reduce((s, d) => s + d.batches, 0), cases: out.reduce((s, d) => s + d.totalCases, 0),
+    fresh: out.reduce((s, d) => s + d.freshCases, 0), frozen: out.reduce((s, d) => s + d.frozenCases, 0),
+    restockItems: out.reduce((s, d) => s + d.counts.restock, 0), doughsToMake: out.filter(d => d.batches > 0).length
+  };
+}
+// The production date suggested for a run: the last open day before the earliest shipment (fresh first), never in the past
+function plannerSuggestDate(d, lineName, today, lines){
+  const ln = (lines || []).find(l => l.name === lineName);
+  const offset = ln ? (parseInt(ln.packing_offset_days, 10) || 0) : 0;
+  const before = ship => plannerPrevOpenDay(addDaysToDateStr(ship, -1 - offset), lineName); // packed before it ships
+  const cands = [];
+  if(d.earliestFresh) cands.push(before(d.earliestFresh));
+  if(d.earliestFrozen) cands.push(before(d.earliestFrozen));
+  const earliestShip = [d.earliestFresh, d.earliestFrozen].filter(Boolean).sort()[0] || null;
+  let date, late = false;
+  if(!cands.length) date = plannerNextOpenDay(today, lineName);
+  else { date = cands.sort()[0]; if(date < today){ date = plannerNextOpenDay(today, lineName); late = true; } }
+  const warns = [];
+  if(late) warns.push(`The earliest shipment is ${plannerDayLabel(earliestShip)}, which leaves no earlier day — ${plannerDayLabel(date)} is the first day you can produce.`);
+  const sw = plannerShelfWarn(d, date); if(sw) warns.push(sw);
+  return { date, late, earliestShip, warns, offset };
+}
+// A date more days before the earliest Fresh shipment than the shortest shelf life of the Fresh items would let them go old
+function plannerShelfWarn(d, date){
+  const rsl = d.rows.filter(r => r.makeFresh > 0).map(r => parseFloat(r.item.r_sl_day)).filter(n => n > 0);
+  if(!d.earliestFresh || !rsl.length) return '';
+  return (new Date(d.earliestFresh + 'T00:00:00') - new Date(date + 'T00:00:00')) / 86400000 > Math.min(...rsl)
+    ? `That is more than the shortest shelf life (${Math.min(...rsl)} days) before the Fresh shipment.` : '';
+}
+function plannerDayLabel(d){ return d ? new Date(d + 'T00:00:00').toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) : '–'; }
+/* ---- screen ---- */
+function plannerRange(kind){
+  const today = todayStr();
+  if(kind === 'week'){ const w = plannerDow(today); const mon = addDaysToDateStr(today, w === 0 ? -6 : 1 - w); return { from: mon, to: addDaysToDateStr(mon, 6) }; }
+  if(kind === 'two') return { from: today, to: addDaysToDateStr(today, 13) };
+  return { from: today, to: addDaysToDateStr(today, 6) };
+}
+function plannerSetRange(kind){
+  const r = plannerRange(kind);
+  document.getElementById('plannerFrom').value = r.from; document.getElementById('plannerTo').value = r.to;
+  refreshPlannerScreen();
+}
+async function refreshPlannerScreen(){
+  if(!connected) return;
+  const fromEl = document.getElementById('plannerFrom'), toEl = document.getElementById('plannerTo');
+  if(!fromEl.value || !toEl.value){ const r = plannerRange('seven'); fromEl.value = r.from; toEl.value = r.to; }
+  const from = fromEl.value, to = toEl.value;
+  document.getElementById('plannerList').innerHTML = '<div class="empty">Working it out…</div>';
+  try{
+    if(!ITEMS.length){ ITEMS = await sbGet('erp_items?select=*&order=item_no.asc&limit=2000'); ITEMS.forEach(i => { ITEMS_BY_NO[i.item_no] = i; }); }
+    if(!PRODUCTS.length) PRODUCTS = await sbGet('erp_products?select=id,name,line,yield_factor,weight_per_mix_kg,mixing_min_per_mix&order=name.asc&limit=1000');
+    LINES = await sbGet('erp_lines?select=id,name,packing_offset_days&order=name.asc&limit=500').catch(() => LINES);
+    await holidayEnsure();
+    const overdue = document.getElementById('plannerOverdue').checked;
+    const overdueDays = document.getElementById('plannerOverdueDays').value; // '' = No limit
+    document.getElementById('plannerOverdueDaysBox').style.opacity = overdue ? '1' : '.4';
+    let q = `erp_pending_order?select=id,ship_date,item_no,item_name,qty,customer,po_no,status,storage_type&or=(status.neq.Shipped,status.is.null)&ship_date=lte.${to}${overdue ? '' : '&ship_date=gte.' + from}&order=ship_date.asc`;
+    try{ PLANNER.orders = await sbGetAll(q); PLANNER.typeColOk = true; }
+    catch(e){ PLANNER.typeColOk = false; PLANNER.orders = await sbGetAll(q.replace(',storage_type', '')); } // fix73 not run yet
+    const stockRows = await sbGetAll('erp_inventory_summary?select=item_no,act_inventory_qty');
+    PLANNER.stock = {}; stockRows.forEach(r => { PLANNER.stock[r.item_no] = r; });
+    try{
+      const rr = await sbGet('erp_customer_storage_rules?select=customer,storage_type&order=customer.asc&limit=1000');
+      PLANNER.rules = {}; PLANNER.ruleList = rr; rr.forEach(r => { PLANNER.rules[String(r.customer).trim().toLowerCase()] = r.storage_type; }); PLANNER.rulesOk = true;
+    }catch(e){ PLANNER.rules = {}; PLANNER.ruleList = []; PLANNER.rulesOk = false; }
+    // the Line picker: every Line that items belong to, Flour Noodle first
+    const lineNames = [...new Set(ITEMS.map(i => i.line).filter(Boolean))].sort((a, b) => (b === PLANNER_DEFAULT_LINE) - (a === PLANNER_DEFAULT_LINE) || a.localeCompare(b));
+    const sel = document.getElementById('plannerLine');
+    if(!PLANNER.line || !lineNames.includes(PLANNER.line)) PLANNER.line = lineNames.includes(PLANNER_DEFAULT_LINE) ? PLANNER_DEFAULT_LINE : (lineNames[0] || '');
+    sel.innerHTML = lineNames.map(n => `<option ${n === PLANNER.line ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('');
+    PLANNER.from = from; PLANNER.to = to; PLANNER.overdue = overdue; PLANNER.overdueDays = overdueDays === '' ? null : Number(overdueDays);
+    PLANNER.result = plannerCompute({ items: ITEMS, stockByNo: PLANNER.stock, orders: PLANNER.orders, products: PRODUCTS, rules: PLANNER.rules, lineName: PLANNER.line, from, to, overdue, overdueDays: PLANNER.overdueDays });
+    renderPlanner();
+  }catch(e){ document.getElementById('plannerList').innerHTML = `<div class="empty">Couldn't load: ${escapeHtml(e.message)}</div>`; }
+}
+function plannerOnLineChange(){ PLANNER.line = document.getElementById('plannerLine').value; refreshPlannerScreen(); }
+const PL_TAG = { fresh: 'background:#dbeafe;color:#1e40af', frozen: 'background:#e0e7ff;color:#3730a3' };
+const plTag = (t, label) => `<span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;border-radius:99px;${PL_TAG[t]}">${label || (t === 'fresh' ? 'Fresh' : 'Frozen')}</span>`;
+const PL_WHY = {
+  orders: ['Orders + level', 'background:#fde68a;color:#78350f'], restock: ['Restock', 'background:#fecaca;color:#7f1d1d'],
+  enough: ['Stock is enough', 'background:var(--chip);color:var(--muted);border:1px solid var(--line)'], nolevel: ['No Stock Level set', 'background:var(--chip);color:var(--muted);border:1px solid var(--line)'],
+  mto: ['Made to order', 'background:var(--chip);color:var(--muted);border:1px solid var(--line)']
+};
+function plannerCustomerBreakdown(r){
+  const by = {};
+  r.orders.forEach(t => { const c = t.line.customer || '(no customer)'; by[c] = (by[c] || 0) + (parseFloat(t.line.qty) || 0); });
+  return Object.keys(by).map(c => `${escapeHtml(c)} ${fmtNum(by[c])}`).join(' · ');
+}
+function plannerItemRowHtml(r, dIdx, rIdx){
+  const [whyText, whyStyle] = PL_WHY[r.why];
+  const dim = r.make <= 0 && r.why !== 'orders';
+  const ordersCell = r.orders.length
+    ? `${r.freshOrders ? plTag('fresh') + ' ' + fmtNum(r.freshOrders) + ' &nbsp;' : ''}${r.frozenOrders ? plTag('frozen') + ' ' + fmtNum(r.frozenOrders) : ''}<div style="font-size:11px;color:var(--muted)">${plannerCustomerBreakdown(r)}</div>${r.guesses.length ? `<div style="font-size:11px;color:#92400e" title="No Fresh/Frozen rule for ${escapeHtml([...new Set(r.guesses)].join(', '))} — counted as Fresh">? no rule for ${escapeHtml([...new Set(r.guesses)].join(', '))}</div>` : ''}`
+    : '<span style="font-size:11px;color:var(--muted)">no orders in the period</span>';
+  const of = r.make <= 0 ? '–' : r.kind === 'both' && r.makeFresh > 0 && r.makeFrozen > 0
+    ? `${plTag('fresh', 'fresh')} ${fmtNum(r.makeFresh)} (near ship date)<br>${plTag('frozen', 'frozen')} ${fmtNum(r.makeFrozen)} (can be earlier)`
+    : `<span style="font-size:11px;color:var(--muted)">all ${r.makeFresh >= r.makeFrozen ? 'fresh' : 'frozen'}</span>`;
+  const stockStyle = r.why === 'restock' ? 'color:var(--danger)' : '';
+  const kg = r.make > 0 ? (r.missingWeight ? '<span style="color:var(--danger)" title="No dough weight per case in Manage Items">no weight</span>' : fmtNum(Math.round(r.kg * 10) / 10)) : '–';
+  const toggle = (r.kind === 'both' && r.orders.length) ? ` <a href="#" style="font-size:11px;color:var(--accent)" onclick="plannerToggleLines(${dIdx},${rIdx});return false">${PLANNER.open[dIdx + '_' + rIdx] ? '▾' : '▸'} order lines</a>` : '';
+  let html = `<tr${dim ? ' style="opacity:.6"' : ''}>
+    <td><b>${escapeHtml(r.item_no)}</b> ${escapeHtml(r.item_name || '')}<div style="font-size:11px;color:var(--muted)">${r.kind === 'both' ? 'Freezer / Cooler: one stock number' : r.kind === 'frozen' ? 'Freezer' : 'Cooler'}${toggle}</div></td>
+    <td>${ordersCell}</td><td style="text-align:right;${stockStyle}">${fmtNum(r.stock)}</td><td style="text-align:right">${r.level ? fmtNum(r.level) : '<span style="font-size:11px;color:var(--muted)">not set</span>'}</td>
+    <td><span style="display:inline-block;font-size:10px;font-weight:600;padding:1px 7px;border-radius:99px;white-space:nowrap;${whyStyle}">${whyText}</span></td>
+    <td style="text-align:right"><b>${fmtNum(r.make)}</b>${r.make > 0 && r.formula ? `<div style="font-size:11px;color:var(--muted)">${r.formula}</div>` : ''}</td>
+    <td>${of}</td><td style="text-align:right">${kg}</td></tr>`;
+  if(r.kind === 'both' && r.orders.length && PLANNER.open[dIdx + '_' + rIdx]){
+    html += `<tr><td colspan="8" style="background:var(--chip);padding:8px 12px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Order lines — click Fresh / Frozen to set this line by hand${PLANNER.typeColOk ? '' : ' (run fix73-batch-planner.sql first)'}</div>
+      ${r.orders.map(t => `<div style="display:flex;gap:10px;align-items:center;font-size:12px;padding:2px 0"><span style="min-width:90px">${t.line.ship_date}</span><span style="min-width:120px">${escapeHtml(t.line.customer || '')}</span><span style="min-width:90px;color:var(--muted)">${escapeHtml(t.line.po_no || '')}</span><span style="min-width:50px;text-align:right">${fmtNum(t.line.qty)}</span>
+        <button style="border:none;background:none;cursor:pointer;padding:0" onclick="plannerSetLineType(${t.line.id}, '${t.type === 'fresh' ? 'frozen' : 'fresh'}')" title="Switch to ${t.type === 'fresh' ? 'Frozen' : 'Fresh'}">${plTag(t.type)}</button>${t.manual ? ' <span style="font-size:10px;color:var(--muted)">set by hand <a href="#" onclick="plannerSetLineType(' + t.line.id + ', null);return false" style="color:var(--accent)">reset</a></span>' : t.rule ? ' <span style="font-size:10px;color:var(--muted)">customer rule</span>' : ''}</div>`).join('')}</td></tr>`;
+  }
+  return html;
+}
+function plannerToggleLines(d, r){ const k = d + '_' + r; PLANNER.open[k] = !PLANNER.open[k]; renderPlanner(); }
+async function plannerSetLineType(id, type){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  try{ await sbUpdate('erp_pending_order', id, { storage_type: type }); }
+  catch(e){ toast('Could not save: ' + e.message + ' (has fix73-batch-planner.sql been run?)'); return; }
+  const o = PLANNER.orders.find(x => x.id === id); if(o) o.storage_type = type;
+  PLANNER.result = plannerCompute({ items: ITEMS, stockByNo: PLANNER.stock, orders: PLANNER.orders, products: PRODUCTS, rules: PLANNER.rules, lineName: PLANNER.line, from: PLANNER.from, to: PLANNER.to, overdue: PLANNER.overdue, overdueDays: PLANNER.overdueDays });
+  renderPlanner();
+}
+function plannerToggleUnlinked(){ PLANNER.unlinkedOpen = !PLANNER.unlinkedOpen; renderPlanner(); }
+function plannerToggleIgnored(){ PLANNER.ignoredOpen = !PLANNER.ignoredOpen; renderPlanner(); }
+function renderPlanner(){
+  const res = PLANNER.result; if(!res) return;
+  const kpi = (n, l) => `<div class="kpi"><div class="n">${n}</div><div class="l">${l}</div></div>`;
+  document.getElementById('plannerKpis').innerHTML = kpi(res.doughsToMake, 'Doughs to make') + kpi(fmtNum(res.batches), 'Batches (rounded up to whole batches)') + kpi(fmtNum(res.cases), 'Cases to make') + kpi(`${fmtNum(res.fresh)} / ${fmtNum(res.frozen)}`, 'Fresh / Frozen cases') + kpi(res.restockItems, 'Items added only to restock');
+  const un = res.unlinked, unN = un.length;
+  document.getElementById('plannerWarn').innerHTML = unN
+    ? `<div style="background:#fef3c7;border:1px solid #f5d98b;color:#78350f;border-radius:8px;padding:8px 12px;font-size:12px;margin:8px 0">
+        <div>⚠ ${unN} item${unN === 1 ? '' : 's'} with Pending orders ${unN === 1 ? 'is' : 'are'} not linked to any dough and ${unN === 1 ? 'is' : 'are'} left out. <a href="#" style="color:#78350f;font-weight:600" onclick="plannerToggleUnlinked();return false">${PLANNER.unlinkedOpen ? 'Hide the list ▴' : 'Show the list ▾'}</a></div>
+        ${PLANNER.unlinkedOpen ? `<div style="margin-top:6px;max-height:220px;overflow:auto;background:rgba(255,255,255,.55);border-radius:6px;padding:4px 8px">${un.map(u => `<div style="display:flex;gap:10px;padding:2px 0"><b style="min-width:60px">${escapeHtml(u.item.item_no)}</b><span style="flex:1">${escapeHtml(u.item.item_name || '')}</span><span style="min-width:90px;text-align:right">${fmtNum(u.qty)} cases</span></div>`).join('')}</div>
+          <div style="margin-top:6px">Items not made from these doughs (wrappers, kits) can stay as they are. For the rest, set Dough in Manage Items. <a href="#" style="color:#78350f;font-weight:600" onclick="showScreen('items');return false">Open Manage Items</a></div>` : ''}
+      </div>` : '';
+  const oi = res.overdueInfo, dayLbl = d => d ? plannerDayLabel(d) : '';
+  document.getElementById('plannerOverdueInfo').innerHTML = PLANNER.overdue && (oi.counted.lines || oi.ignored.lines)
+    ? `<div style="background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12px;margin:8px 0;line-height:1.7">
+        <div>Overdue lines counted: ${oi.counted.lines ? `<b>${oi.counted.lines} line${oi.counted.lines === 1 ? '' : 's'}</b> (${fmtNum(oi.counted.cases)} cases) shipping ${dayLbl(oi.counted.min)}${oi.counted.max !== oi.counted.min ? ' – ' + dayLbl(oi.counted.max) : ''}` : 'none'}${oi.cutoff ? ` · the limit starts ${dayLbl(oi.cutoff)}` : ' · no limit'}</div>
+        ${oi.ignored.lines ? `<div style="color:#92400e">Ignored (older than ${PLANNER.overdueDays} days): <b>${oi.ignored.lines} line${oi.ignored.lines === 1 ? '' : 's'}</b> (${fmtNum(oi.ignored.cases)} cases) shipping before ${dayLbl(oi.cutoff)} — probably old orders never marked Shipped. <a href="#" style="color:var(--accent)" onclick="plannerToggleIgnored();return false">${PLANNER.ignoredOpen ? 'Hide them ▴' : 'Show them ▾'}</a> · fix them under Orders.</div>
+          ${PLANNER.ignoredOpen ? `<div style="max-height:200px;overflow:auto;background:var(--panel);border-radius:6px;padding:4px 8px;margin-top:4px">${oi.ignored.list.slice().sort((a, b) => a.ship_date.localeCompare(b.ship_date)).map(o => `<div style="display:flex;gap:10px;padding:1px 0"><span style="min-width:90px">${escapeHtml(o.ship_date)}</span><b style="min-width:60px">${escapeHtml(o.item_no)}</b><span style="min-width:110px">${escapeHtml(o.customer || '')}</span><span style="min-width:80px;color:var(--muted)">${escapeHtml(o.po_no || '')}</span><span style="min-width:60px;text-align:right">${fmtNum(o.qty)}</span></div>`).join('')}</div>` : ''}` : ''}
+      </div>` : '';
+  document.getElementById('plannerRulesNote').style.display = PLANNER.rulesOk ? 'none' : 'block';
+  renderPlannerRules();
+  if(!res.doughs.length){ document.getElementById('plannerList').innerHTML = `<div class="empty">No items with a Dough on the ${escapeHtml(PLANNER.line)} line.</div>`; return; }
+  document.getElementById('plannerList').innerHTML = res.doughs.map((d, di) => {
+    const showAll = document.getElementById('plannerShowAll_' + di);
+    const showNothing = showAll ? showAll.checked : true;
+    const rows = d.rows.filter(r => showNothing || r.make > 0 || r.why === 'orders');
+    const nothingCount = d.rows.length - d.rows.filter(r => r.make > 0 || r.why === 'orders').length;
+    const head = d.noBatchWeight
+      ? `<span style="color:var(--danger);font-size:12px">${d.product ? 'This dough has no weight per batch in Products' : 'No product named "' + escapeHtml(d.name) + '" in Products'} — batches can't be worked out</span>`
+      : `<span style="font-size:12px">Need <b>${fmtNum(Math.round(d.totalKg * 10) / 10)} kg</b></span><span style="font-size:12px">= ${d.exact == null ? '–' : (Math.round(d.exact * 100) / 100).toFixed(2)} batches</span><span style="font-size:18px;font-weight:700">${d.batches} batch${d.batches === 1 ? '' : 'es'}</span>${canWrite() && d.batches > 0 ? `<button class="btn secondary" style="padding:4px 12px;font-size:12px" onclick="plannerOpenRun(${di})">Create run…</button>` : ''}`;
+    return `<div style="border:1px solid var(--line);border-radius:10px;margin-top:12px;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--chip);flex-wrap:wrap">
+        <b style="font-size:14px">${escapeHtml(d.name)}</b>
+        <span style="font-size:11px;color:var(--muted)">${d.batchKg > 0 ? `${fmtNum(Math.round(d.batchKg * 10) / 10)} kg per batch (${fmtNum(d.product.weight_per_mix_kg)} kg × ${d.product.yield_factor == null ? 1 : fmtNum(d.product.yield_factor)}) · ` : ''}${d.rows.length} item${d.rows.length === 1 ? '' : 's'} on the line: ${d.counts.orders} with orders · ${d.counts.restock} restock only · ${d.counts.nothing} need nothing</span>
+        <div style="margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap">${head}</div></div>
+      <div style="padding:6px 12px 10px"><div class="tablewrap"><table style="font-size:12px"><thead><tr><th>Item</th><th>Orders in period</th><th style="text-align:right">In stock</th><th style="text-align:right">Stock Level</th><th>Why</th><th style="text-align:right">Make (cases)</th><th>Of which</th><th style="text-align:right">Dough kg</th></tr></thead><tbody>${rows.map((r, ri) => plannerItemRowHtml(r, di, d.rows.indexOf(r))).join('')}</tbody></table></div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding-top:8px;font-size:12px">
+          ${nothingCount ? `<label style="display:flex;gap:6px;align-items:center;width:auto;margin:0;font-weight:400"><input type="checkbox" id="plannerShowAll_${di}" ${showNothing ? 'checked' : ''} style="width:auto" onchange="renderPlanner()"> Show the ${nothingCount} item${nothingCount === 1 ? '' : 's'} that need nothing</label>` : ''}
+          ${d.batches > 0 ? `<span>${d.batches} batches make ${fmtNum(Math.round(d.batches * d.batchKg * 10) / 10)} kg: <b>${fmtNum(Math.round(d.spareKg * 10) / 10)} kg spare</b> after rounding up${d.spareCases ? ` (about ${d.spareCases} more cases)` : ''}</span>` : ''}
+          ${d.earliestFresh || d.earliestFrozen ? `<span style="color:var(--muted)">${d.earliestFresh ? plTag('fresh') + ' earliest ships ' + plannerDayLabel(d.earliestFresh) : ''} ${d.earliestFrozen ? plTag('frozen') + ' earliest ships ' + plannerDayLabel(d.earliestFrozen) : ''}</span>` : ''}
+          ${d.missingWeight ? '<span style="color:var(--danger)">⚠ some items have no dough weight per case — their kg is not counted</span>' : ''}</div></div></div>`;
+  }).join('');
+}
+/* customer rules */
+function renderPlannerRules(){
+  const el = document.getElementById('plannerRulesList');
+  const list = PLANNER.ruleList || [];
+  el.innerHTML = list.length ? list.map(r => `<span class="chip" style="display:inline-flex;align-items:center;gap:6px">${escapeHtml(r.customer)} = ${plTag(r.storage_type)}${canWrite() ? `<button onclick="plannerDeleteRule('${escapeHtml(r.customer).replace(/'/g, "\\'")}')" title="Remove" style="border:none;background:none;color:var(--danger);cursor:pointer;padding:0;font-size:12px;font-family:inherit">✕</button>` : ''}</span>`).join(' ') : '<span style="color:var(--muted);font-size:12px">No rules yet: a Freezer / Cooler item is counted as Fresh unless a customer rule or an order line says Frozen.</span>';
+  const customers = [...new Set([...(PLANNER.orders || []).map(o => o.customer), ...ITEMS.map(i => i.customer)].filter(Boolean))].sort();
+  document.getElementById('plannerRuleCustomers').innerHTML = customers.map(c => `<option value="${escapeHtml(c)}">`).join('');
+}
+async function plannerAddRule(){
+  if(!canWrite()){ toast('You have read-only access'); return; }
+  const customer = document.getElementById('plannerRuleCustomer').value.trim(), type = document.getElementById('plannerRuleType').value;
+  if(!customer){ toast('Pick or type a customer'); return; }
+  try{
+    await sb('erp_customer_storage_rules', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([{ customer, storage_type: type, updated_at: new Date().toISOString() }]) });
+    document.getElementById('plannerRuleCustomer').value = '';
+    await refreshPlannerScreen();
+  }catch(e){ toast('Could not save: ' + e.message + ' (has fix73-batch-planner.sql been run?)'); }
+}
+async function plannerDeleteRule(customer){
+  if(!canWrite()) return;
+  try{ await sb(`erp_customer_storage_rules?customer=eq.${encodeURIComponent(customer)}`, { method: 'DELETE' }); await refreshPlannerScreen(); }
+  catch(e){ toast('Could not remove: ' + e.message); }
+}
+/* ---- Create run… ---- */
+let PLANNER_RUN = null; // the dough the dialog is about
+function plannerOpenRun(di){
+  const d = PLANNER.result.doughs[di];
+  if(!d) return;
+  const s = plannerSuggestDate(d, PLANNER.line, todayStr(), LINES);
+  PLANNER_RUN = { di, d, suggestion: s };
+  document.getElementById('prdTitle').textContent = `Create run — ${d.name} · ${d.batches} batch${d.batches === 1 ? '' : 'es'}`;
+  const parts = [];
+  if(d.freshCases) parts.push(`${plTag('fresh')} ${fmtNum(d.freshCases)} cases${d.earliestFresh ? `, earliest ships <b>${plannerDayLabel(d.earliestFresh)}</b>` : ''}`);
+  if(d.frozenCases) parts.push(`${plTag('frozen')} ${fmtNum(d.frozenCases)} cases${d.earliestFrozen ? `, earliest ships <b>${plannerDayLabel(d.earliestFrozen)}</b>` : ''}`);
+  if(d.restockCases) parts.push(`Restock ${fmtNum(d.restockCases)} cases (no date)`);
+  document.getElementById('prdNeeded').innerHTML = `<b>Needed for</b> (${escapeHtml(PLANNER.line)}, orders shipping ${PLANNER.from} to ${PLANNER.to}${PLANNER.overdue ? ' and overdue' : ''}):<br>${parts.join(' &nbsp;·&nbsp; ')}`;
+  document.getElementById('prdEarliest').innerHTML = s.earliestShip ? `📅 <b>Earliest shipment: ${plannerDayLabel(s.earliestShip)}</b>` : 'No shipment dates in this run (restock only)';
+  document.getElementById('prdDate').value = s.date;
+  plannerRunDateChanged();
+  document.getElementById('plannerRunDialog').style.display = 'flex';
+}
+function plannerRunDateChanged(){
+  const r = PLANNER_RUN; if(!r) return;
+  const date = document.getElementById('prdDate').value;
+  const why = [];
+  if(!date) { document.getElementById('prdWhy').innerHTML = ''; return; }
+  if(date === r.suggestion.date){
+    why.push(r.suggestion.earliestShip ? `Suggested: made the last open day before the earliest shipment (${plannerDayLabel(r.suggestion.earliestShip)}), skipping weekends${r.suggestion.offset ? ` and the Line's ${r.suggestion.offset}-day packing offset` : ''}.` : 'Suggested: the next open day (nothing here has a ship date).');
+  } else why.push(`You changed the date (suggested ${plannerDayLabel(r.suggestion.date)}).`);
+  const warns = [];
+  if(!plannerOpenDay(date, PLANNER.line)) warns.push(`${plannerDayLabel(date)} is not a production day for ${PLANNER.line} (weekend or closed).`);
+  if(r.suggestion.earliestShip && date >= r.suggestion.earliestShip) warns.push(`The earliest shipment is ${plannerDayLabel(r.suggestion.earliestShip)} — this date is not before it.`);
+  if(date === r.suggestion.date) r.suggestion.warns.forEach(w => warns.push(w));
+  else { const sw = plannerShelfWarn(r.d, date); if(sw) warns.push(sw); }
+  document.getElementById('prdWhy').innerHTML = `<div style="font-size:12px;color:var(--muted)">${escapeHtml(why.join(' '))}</div>${warns.map(w => `<div style="font-size:12px;color:var(--danger);margin-top:4px">⚠ ${escapeHtml(w)}</div>`).join('')}`;
+}
+function plannerCloseRun(){ document.getElementById('plannerRunDialog').style.display = 'none'; PLANNER_RUN = null; }
+// Hands the run over to Production Create: the dough, batches and date are filled in there, and its items follow when Create is pressed
+async function plannerSendToCreate(){
+  const r = PLANNER_RUN; if(!r) return;
+  const date = document.getElementById('prdDate').value;
+  if(!date){ toast('Pick the production date'); return; }
+  const d = r.d;
+  RUN_PLANNER_DRAFT = { dough: d.name, batches: d.batches, date, items: d.rows.filter(x => x.make > 0).map(x => ({ item_no: x.item_no, item_name: x.item_name, cases: x.make, fresh: x.makeFresh, frozen: x.makeFrozen })) };
+  plannerCloseRun();
+  showScreen('schedule-create');
+  await refreshScheduleScreen();
+  document.getElementById('runPackagingOnly').checked = false; onRunPackagingOnlyChange();
+  document.getElementById('runDate').value = date;
+  document.getElementById('runProduct').value = d.name;
+  onRunProductChange(); // fills the Line and the packing date
+  document.getElementById('runMixes').value = d.batches;
+  renderRunPlannerDraft();
+  toast('Run filled in from the Batch Planner — check it and press Create');
+}
+function renderRunPlannerDraft(){
+  const el = document.getElementById('runPlannerDraft'); if(!el) return;
+  const dr = RUN_PLANNER_DRAFT;
+  if(!dr){ el.innerHTML = ''; return; }
+  el.innerHTML = `<div style="background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:8px 12px;font-size:12px;margin:8px 0">📋 <b>From the Batch Planner:</b> ${escapeHtml(dr.dough)} · ${dr.batches} batches · ${escapeHtml(dr.date)}. These ${dr.items.length} item${dr.items.length === 1 ? '' : 's'} will be added to the run when you press Create:
+    <div style="margin-top:4px;color:var(--muted)">${dr.items.map(i => `${escapeHtml(i.item_no)} ${escapeHtml(i.item_name || '')} — <b style="color:var(--text)">${fmtNum(i.cases)}</b> cases`).join('<br>')}</div>
+    <button class="btn secondary" style="padding:3px 10px;font-size:11px;margin-top:6px" onclick="RUN_PLANNER_DRAFT=null;renderRunPlannerDraft()">✕ Don't add these items</button></div>`;
+}
+// After the run is created: the planned items, dated like Items to Pack dates them
+async function plannerAddDraftItems(runId, packingDate){
+  const dr = RUN_PLANNER_DRAFT; if(!dr) return 0;
+  const rows = dr.items.map(i => {
+    const item = resolveItemByNoAndName(i.item_no, i.item_name) || ITEMS_BY_NO[i.item_no];
+    const storage = (item?.storage || '').toLowerCase();
+    const compound = storage.includes('freezer') && storage.includes('cooler');
+    const wantsExpiry = compound ? i.fresh > 0 : storage.includes('cooler'); // a split item is dated as Cooler when part of it is Fresh
+    const machines = parseFloat(item?.machines_running) || null, cycles = parseFloat(item?.cycle) || null, bpc = parseFloat(item?.bags_per_cycle) || null;
+    return {
+      run_id: runId, item_no: i.item_no, item_name: i.item_name, planned_cases: Math.round(i.cases),
+      machines, cycles, bags_per_cycle: bpc, packing_hrs: computePackingHrs(i.cases, item, machines, cycles, bpc),
+      production_date: packingDate, expired_date: wantsExpiry ? addDaysToDateStr(packingDate, parseFloat(item?.r_sl_day) || 0) : null,
+      remark: item?.remark || null, date_display_mode: 'full'
+    };
+  });
+  if(rows.length) await sbInsert('erp_production_run_items', rows);
+  return rows.length;
+}
 let DISPLAY = { current: null, kioskWanted: false, rotateTimer: null, switching: false, dates: [], days: {}, dateTimer: null };
 /* The days a display account sees are the system's, never the viewer's own pick. Each screen has its own
    setting: Staff Schedule follows its Kiosk Settings (it can show several days); Production Preview and
@@ -11397,6 +11887,13 @@ async function submitProductionRun(){
       resetRunPkgAddBox();
       renderRunPkgDraft();
     }
+    if(!packagingOnly && RUN_PLANNER_DRAFT && RUN_PLANNER_DRAFT.dough === productName){
+      try{
+        const n = await plannerAddDraftItems(insertedRuns[0].id, packingDate);
+        toast(`Production run started — ${n} item${n === 1 ? '' : 's'} added from the Batch Planner`);
+      }catch(e){ toast('Run created, but adding the planner items failed: ' + e.message + ' — add them under Items to Pack'); }
+      RUN_PLANNER_DRAFT = null; renderRunPlannerDraft();
+    } else
     toast(packagingOnly ? 'Packaging Line only run added' : 'Production run started');
     document.getElementById('runPkgHeadcount').value = '';
     document.getElementById('runProduct').value = '';
@@ -14537,6 +15034,7 @@ async function refreshUsersScreen(){
   if(!connected || !isAdmin()) return;
   try{
     await loadUserDisplayScreens();
+    await loadUserEditScreens();
     USERS_DATA = await sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens,blocked_screens,display_mode,display_first,display_kiosk,display_rotate_secs&order=created_at.asc&limit=500')
       .catch(() => sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens,blocked_screens&order=created_at.asc&limit=500')) // fix66 not run yet
       .catch(() => sbGet('erp_profiles?select=id,email,role,display_name,created_at,allowed_screens&order=created_at.asc&limit=500')); // fix60 not run yet
@@ -14603,6 +15101,16 @@ async function loadUserDisplayScreens(){
   }catch(e){ USER_DISPLAY_SCREENS = {}; USER_DISPLAY_SPLIT = {}; } // fix65 not run yet
 }
 const userDisplayScreens = u => USER_DISPLAY_SCREENS[String(u.id)] || DISPLAY_TABS_ALL.map(t => t.screen);
+// userId -> the screens a Viewer may edit (erp_app_settings edit_screens:<id>)
+let USER_EDIT_SCREENS = {};
+async function loadUserEditScreens(){
+  try{
+    const rows = await sbGet('erp_app_settings?select=key,value&key=like.edit_screens:*&limit=500');
+    USER_EDIT_SCREENS = {};
+    rows.forEach(r => { const list = parseEditScreens(r.value); if(list.length) USER_EDIT_SCREENS[String(r.key).slice('edit_screens:'.length)] = list; });
+  }catch(e){ USER_EDIT_SCREENS = {}; } // fix65 not run yet
+}
+const userEditScreens = u => u.role === 'viewer' ? (USER_EDIT_SCREENS[String(u.id)] || []) : [];
 function userMenuAccessSummaryHtml(u){
   if(u.role === 'admin') return '<span class="chip">Admin: every screen</span>';
   if(u.display_mode && u.role === 'viewer'){
@@ -14615,9 +15123,11 @@ function userMenuAccessSummaryHtml(u){
   }
   const grants = Array.isArray(u.allowed_screens) ? u.allowed_screens.length : 0;
   const blocks = Array.isArray(u.blocked_screens) ? u.blocked_screens.length : 0;
-  if(!grants && !blocks) return '<span class="chip">Role default</span>';
+  const edits = userEditScreens(u).length;
+  if(!grants && !blocks && !edits) return '<span class="chip">Role default</span>';
   const pill = (text, bg, fg) => `<span class="chip" style="background:${bg};color:${fg};border:1px solid rgba(0,0,0,.12)">${text}</span>`;
-  return (grants ? pill(`+${grants} granted`, '#eaf3de', '#27500a') : '') + ' ' + (blocks ? pill(`${blocks} blocked`, '#fcebeb', '#791f1f') : '');
+  return (grants ? pill(`+${grants} granted`, '#eaf3de', '#27500a') : '') + ' ' + (blocks ? pill(`${blocks} blocked`, '#fcebeb', '#791f1f') : '')
+    + (edits ? ' ' + pill(`✎ Viewer + edit on ${edits} screen${edits === 1 ? '' : 's'}`, '#e6f1fb', '#0c447c') : '');
 }
 function renderUsersTable(){
   const tbody = document.getElementById('usersTable');
@@ -14661,18 +15171,33 @@ function openUserMenuPanel(userId, keepChoices){
   const screens = customizableScreens();
   const byModule = {};
   screens.forEach(s => { (byModule[s.module] = byModule[s.module] || []).push(s); });
+  const isViewer = u.role === 'viewer';
+  const savedEdits = userEditScreens(u);
+  const prevEdit = {};
+  if(keepChoices) document.querySelectorAll('#userMenuPanel input[type=radio][name^="umEdit_"]:checked').forEach(r => { prevEdit[r.name.replace('umEdit_', '')] = r.value; });
   const seg = (s, roleOk) => {
     const saved = blocks.includes(s.screen) ? 'block' : grants.includes(s.screen) ? 'grant' : 'default';
     let cur = (keepChoices && prev[s.screen]) || saved;
     // Grant only means something where the role can't see the screen, Block only where it can.
     if(cur === 'grant' && roleOk) cur = 'default';
     if(cur === 'block' && !roleOk) cur = 'default';
-    const opt = (val, label, disabled, color) => `<label style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--line);border-radius:6px;font-size:11px;${disabled ? 'opacity:.35;' : 'cursor:pointer;'}${cur===val && val!=='default' ? `background:${color};font-weight:700;` : (cur===val ? 'background:var(--chip);font-weight:700;' : '')}">
-      <input type="radio" name="umScreen_${s.screen}" value="${val}" ${cur===val?'checked':''} ${disabled?'disabled':''} style="width:auto;flex:0 0 auto" onchange="updateUserMenuSummary()">${label}</label>`;
-    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line)">
-      <span style="flex:1;font-size:13px">${escapeHtml(s.label)}</span>
+    const opt = (val, label, disabled, color) => `<label style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--line);border-radius:6px;font-size:11px;white-space:nowrap;${disabled ? 'opacity:.35;' : 'cursor:pointer;'}${cur===val && val!=='default' ? `background:${color};font-weight:700;` : (cur===val ? 'background:var(--chip);font-weight:700;' : '')}">
+      <input type="radio" name="umScreen_${s.screen}" value="${val}" ${cur===val?'checked':''} ${disabled?'disabled':''} style="width:auto;flex:0 0 auto" onchange="umAccessChanged('${s.screen}')">${label}</label>`;
+    let editCell = '';
+    if(isViewer){
+      if(ADMIN_ONLY_SCREENS.includes(s.screen)) editCell = '<span style="width:150px;font-size:11px;color:var(--muted)" title="Admin-only screens cannot be given to a Viewer">Admin only</span>';
+      else {
+        const curE = (keepChoices && prevEdit[s.screen]) || (savedEdits.includes(s.screen) ? 'edit' : 'ro');
+        const eopt = (val, label) => `<label style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid var(--line);border-radius:6px;font-size:11px;white-space:nowrap;cursor:pointer;${curE===val ? (val==='edit' ? 'background:#b5d4f4;' : 'background:var(--chip);') + 'font-weight:700;' : ''}">
+          <input type="radio" name="umEdit_${s.screen}" value="${val}" data-roleok="${roleOk ? 1 : 0}" ${curE===val?'checked':''} style="width:auto;flex:0 0 auto" onchange="umEditChanged('${s.screen}')">${label}</label>`;
+        editCell = `<span style="display:inline-flex;gap:4px;min-width:170px">${eopt('ro', 'Read only')}${eopt('edit', 'Can edit')}</span>`;
+      }
+    }
+    return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--line);flex-wrap:wrap">
+      <span style="flex:1;min-width:140px;font-size:13px">${escapeHtml(s.label)}</span>
       <span style="width:104px;font-size:11px;color:var(--muted)">Role: ${roleOk ? 'allowed' : 'no access'}</span>
       <span style="display:inline-flex;gap:4px">${opt('default', 'Default', false, '')}${opt('grant', 'Grant', roleOk, '#c0dd97')}${opt('block', 'Block', !roleOk, '#f7c1c1')}</span>
+      ${editCell}
     </div>`;
   };
   const who = u.display_name || u.email || '';
@@ -14703,7 +15228,8 @@ function openUserMenuPanel(userId, keepChoices){
     </div>`;
   panel.innerHTML = `<h3 style="margin-top:0">Customize menu: ${escapeHtml(who)} (${roleLabel(u.role)})</h3>${displayBlock}
     <div id="userMenuSummary" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:12px"></div>
-    <p style="color:var(--muted);font-size:12px;margin:0 0 8px">Default follows the ${roleLabel(u.role)} role. Grant adds a screen for this person only; Block hides one the role would show. Admins are never restricted.</p>
+    <p style="color:var(--muted);font-size:12px;margin:0 0 8px">Default follows the ${roleLabel(u.role)} role. Grant adds a screen for this person only; Block hides one the role would show. Admins are never restricted.${isViewer ? ' <b>Edit</b>: "Can edit" lets this Viewer add, change and delete on that one screen only (a screen they cannot see is granted too); everything else stays read only. Admin-only screens cannot be given. This is a working-rights setting in the app, not database security.' : ''}</p>
+    ${isViewer ? '<div style="display:flex;gap:8px;padding:2px 0;font-size:11px;color:var(--muted)"><span style="flex:1;min-width:140px"></span><span style="width:104px"></span><span style="min-width:190px">Menu</span><span style="width:150px">Edit</span></div>' : ''}
     ${Object.keys(byModule).map(m => `<div style="font-weight:700;font-size:12px;margin:10px 0 2px;text-transform:capitalize">${escapeHtml(m)}</div>${byModule[m].map(s => seg(s, roleAllowsScreen(u.role, s.screen))).join('')}`).join('')}
     <div class="btnrow" style="margin-top:12px">
       <button class="btn" onclick="saveUserMenuPanel()">💾 Save</button>
@@ -14760,29 +15286,48 @@ function udScreensChanged(box){
   }
 }
 function userMenuChoices(){
-  const grants = [], blocks = [];
+  const grants = [], blocks = [], edits = [];
   document.querySelectorAll('#userMenuPanel input[type=radio]:checked').forEach(r => {
+    if(r.name.startsWith('umEdit_')){ if(r.value === 'edit') edits.push(r.name.replace('umEdit_', '')); return; }
     const screen = r.name.replace('umScreen_', '');
     if(r.value === 'grant') grants.push(screen);
     else if(r.value === 'block') blocks.push(screen);
   });
-  return { grants, blocks };
+  return { grants, blocks, edits };
+}
+const umRadio = (prefix, screen, value) => document.querySelector(`#userMenuPanel input[type=radio][name="${prefix}_${screen}"][value="${value}"]`);
+// "Can edit" on a screen the Viewer cannot see grants the menu too; Block and Can edit exclude each other
+function umEditChanged(screen){
+  const e = umRadio('umEdit', screen, 'edit');
+  if(e && e.checked){
+    const roleOk = e.dataset.roleok === '1';
+    const blk = umRadio('umScreen', screen, 'block'), gr = umRadio('umScreen', screen, 'grant'), df = umRadio('umScreen', screen, 'default');
+    if(roleOk){ if(blk && blk.checked && df) df.checked = true; }
+    else if(gr && !gr.disabled) gr.checked = true;
+  }
+  updateUserMenuSummary();
+}
+function umAccessChanged(screen){
+  const blk = umRadio('umScreen', screen, 'block');
+  if(blk && blk.checked){ const ro = umRadio('umEdit', screen, 'ro'); if(ro) ro.checked = true; }
+  updateUserMenuSummary();
 }
 function updateUserMenuSummary(){
   const u = USERS_DATA.find(x => String(x.id) === String(USER_MENU_EDIT_ID));
   const el = document.getElementById('userMenuSummary');
   if(!u || !el) return;
-  const { grants, blocks } = userMenuChoices();
+  const { grants, blocks, edits } = userMenuChoices();
   const screens = customizableScreens();
   const roleSees = screens.filter(s => roleAllowsScreen(u.role, s.screen)).length;
   const pill = (text, bg, fg) => `<span class="chip" style="background:${bg};color:${fg};border:1px solid rgba(0,0,0,.12)">${text}</span>`;
   el.innerHTML = `<span class="chip">${roleLabel(u.role)} role sees ${roleSees} of ${screens.length} screens</span>`
     + (grants.length ? pill(`+${grants.length} granted`, '#eaf3de', '#27500a') : '')
-    + (blocks.length ? pill(`${blocks.length} blocked`, '#fcebeb', '#791f1f') : '');
+    + (blocks.length ? pill(`${blocks.length} blocked`, '#fcebeb', '#791f1f') : '')
+    + (edits.length ? pill(`✎ edit on ${edits.length}`, '#e6f1fb', '#0c447c') : '');
   // Re-highlight the chosen option in each row (label background follows the checked radio).
   document.querySelectorAll('#userMenuPanel label:has(input[type=radio])').forEach(l => {
     const r = l.querySelector('input'); const val = r.value;
-    l.style.background = !r.checked ? '' : val === 'grant' ? '#c0dd97' : val === 'block' ? '#f7c1c1' : 'var(--chip)';
+    l.style.background = !r.checked ? '' : val === 'grant' ? '#c0dd97' : val === 'block' ? '#f7c1c1' : val === 'edit' ? '#b5d4f4' : 'var(--chip)';
     l.style.fontWeight = r.checked ? '700' : '';
   });
 }
@@ -14792,14 +15337,17 @@ function closeUserMenuPanel(){
   if(panel){ panel.style.display = 'none'; panel.innerHTML = ''; }
 }
 function resetUserMenuPanel(){
-  document.querySelectorAll('#userMenuPanel input[type=radio][value=default]').forEach(r => { r.checked = true; });
+  document.querySelectorAll('#userMenuPanel input[type=radio][value=default], #userMenuPanel input[type=radio][value=ro]').forEach(r => { r.checked = true; });
   updateUserMenuSummary();
 }
 async function saveUserMenuPanel(){
   if(!isAdmin()){ toast('Admins only'); return; }
   const u = USERS_DATA.find(x => String(x.id) === String(USER_MENU_EDIT_ID));
   if(!u) return;
-  const { grants, blocks } = userMenuChoices();
+  const { grants, blocks, edits: ticked } = userMenuChoices();
+  // edit rights: Viewers only, never admin-only screens, never on a blocked screen; a screen the role can't see is granted
+  const edits = u.role === 'viewer' ? ticked.filter(s => !ADMIN_ONLY_SCREENS.includes(s) && !blocks.includes(s)) : [];
+  edits.forEach(s => { if(!roleAllowsScreen(u.role, s) && !grants.includes(s)) grants.push(s); });
   const patch = { allowed_screens: grants.length ? grants : null, blocked_screens: blocks.length ? blocks : null };
   // Display account settings (a Viewer only). The columns (fix66) are sent only if they exist or the
   // account is being turned on, so saving the menu still works on a database without them.
@@ -14829,6 +15377,16 @@ async function saveUserMenuPanel(){
         USER_DISPLAY_SCREENS[String(u.id)] = ticked;
         if(splitOn) USER_DISPLAY_SPLIT[String(u.id)] = { left: value.left, right: value.right }; else delete USER_DISPLAY_SPLIT[String(u.id)];
       }catch(e){ screensNote = ' — but the screen choice could not be saved (has fix65-app-settings.sql been run?)'; }
+    }
+    // the screens a Viewer may edit (its own settings row, no column needed)
+    if(u.role === 'viewer'){
+      const before = userEditScreens(u);
+      if(before.length || edits.length){
+        try{
+          await sb('erp_app_settings', { method: 'POST', headers: { Prefer: 'resolution=merge-duplicates,return=minimal' }, body: JSON.stringify([{ key: 'edit_screens:' + u.id, value: { screens: edits }, updated_at: new Date().toISOString() }]) });
+          if(edits.length) USER_EDIT_SCREENS[String(u.id)] = edits; else delete USER_EDIT_SCREENS[String(u.id)];
+        }catch(e){ screensNote += ' — but the edit rights could not be saved (has fix65-app-settings.sql been run?)'; }
+      }
     }
     toast('Menu access saved' + screensNote);
     closeUserMenuPanel();
@@ -15920,7 +16478,7 @@ async function undoSalesSync(batchId){
 // Every base table in the app (the 3 read-only inventory-summary VIEWs are excluded — they're
 // computed live from these tables, so backing up their derived output doesn't help a restore).
 const BACKUP_TABLES = [
-  'erp_profiles','erp_role_requests','erp_role_permissions','erp_import_log','erp_sales_sync_batches','erp_sales_sync_changes','erp_order_sync_batches','erp_order_sync_changes',
+  'erp_profiles','erp_role_requests','erp_role_permissions','erp_import_log','erp_sales_sync_batches','erp_sales_sync_changes','erp_order_sync_batches','erp_order_sync_changes','erp_customer_storage_rules',
   'erp_items','erp_opening_balance','erp_inout','erp_pending_order','erp_duplicated_items',
   'erp_sachets','erp_item_sachet_recipe','erp_sachet_inventory','erp_components_inout',
   'erp_lines','erp_products','erp_production_runs','erp_production_run_items',
@@ -15945,7 +16503,7 @@ async function performBackup(){
       try{ data[t] = await sbGet(`${t}?select=*&limit=200000`); }
       catch(e){
         // a table from a SQL file that hasn't been run yet isn't a reason to lose the whole backup
-        if(!/sales_sync|order_sync/.test(t) || !/404|PGRST205|does not exist|schema cache/i.test(String(e.message))) throw e;
+        if(!/sales_sync|order_sync|customer_storage/.test(t) || !/404|PGRST205|does not exist|schema cache/i.test(String(e.message))) throw e;
         data[t] = [];
       }
     }
