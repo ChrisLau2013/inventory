@@ -1972,7 +1972,7 @@
       <input type="hidden" id="sauceTaskEditId">
       <div class="row">
         <div><label>Location</label><select id="sauceTaskLocation" onchange="onSauceTaskLocationChange()"><option value="">Select location...</option></select></div>
-        <div><label>Mixes</label><input type="number" step="any" id="sauceTaskMixes" oninput="recalcSauceTaskPackingHrs(); recalcSauceTaskUsageNote(); checkSauceIngredientAvailability(); updateSauceComponentEstimate(); onSauceTaskItemsChanged(); onSauceTaskTotalMixes()"></div>
+        <div><label id="sauceTaskMixesLabel">Mixes</label><input type="number" step="any" id="sauceTaskMixes" oninput="onSauceTaskMixesInput()"><input type="number" step="any" min="0" id="sauceTaskKg" style="display:none" oninput="onSauceTaskKgInput()"></div>
         <div><label>Sauce</label>
           <div class="search">
             <input id="sauceTaskSauceSearch" placeholder="Search sauce name..." oninput="searchSauceTaskSauce()" autocomplete="off">
@@ -1981,6 +1981,8 @@
           <input type="hidden" id="sauceTaskSauceId">
         </div>
       </div>
+      <div id="sauceTaskKgInfo"></div>
+      <div id="sauceTaskNoKettleHint" style="display:none;font-size:12px;margin:6px 0;padding:8px 10px;border-radius:8px;background:#fef3c7;color:#78350f"></div>
       <div id="sauceTaskKettleWarn" style="display:none;font-size:12px;margin:6px 0"></div>
       <div id="sauceTaskMachineWrap" style="display:none;margin:8px 0">
         <div id="sauceTaskSuggest" style="margin-bottom:8px"></div>
@@ -2154,6 +2156,10 @@
         <div><label>Cooking time (min per mix)</label><input type="number" step="any" min="0" id="sauceCookMin" placeholder="45"></div>
         <div><label>Clean-up after this sauce (min)</label><input type="number" step="any" min="0" id="sauceCleanMin" placeholder="kettle's"></div>
       </div>
+      <label>The batch of a task is entered in</label>
+      <div style="display:flex;gap:18px;flex-wrap:wrap"><label style="display:flex;align-items:center;gap:6px;width:auto;margin:0;font-weight:400"><input type="radio" name="sauceBatchUnit" value="mix" checked style="width:auto"> Mixes</label><label style="display:flex;align-items:center;gap:6px;width:auto;margin:0;font-weight:400"><input type="radio" name="sauceBatchUnit" value="kg" style="width:auto"> Kg (type the total to make)</label></div>
+      <p style="color:var(--muted);font-size:12px;margin:4px 0 8px">Kg: the task is typed as the total kg to make (e.g. 2250). The recipe is for one batch: a line's quantity is the material that is weighed. The lines not "added after cooking" are cooked (the cooked sauce can have a yield, below); a line added after cooking goes into the finished sauce as quantity × its yield (set in Recipes). 1 mix is one batch of the recipe, and every line is scaled by the total ÷ the finished weight of the batch.</p>
+      <div class="row"><div style="max-width:280px"><label>Yield of the cooked sauce (%)</label><input type="number" step="any" min="0" id="sauceCookYield" placeholder="100"></div><div style="font-size:12px;color:var(--muted);align-self:flex-end;margin-bottom:8px">Of what is cooked in the kettle, this part is used (e.g. 95 when 5% stays behind). Empty = 100.</div></div>
       <div id="saucePrefWrap" style="display:none">
         <label>Kettles this sauce can be cooked in</label>
         <div class="row" id="saucePrefKettles" style="flex-wrap:wrap;gap:10px"></div>
@@ -18017,7 +18023,9 @@ async function refreshSauceScreen(){
     renderAllergensTable();
 
     const SAUCE_COLS = 'id,name,item_code,component_sachet_name,package_spec,shelf_life_days,remark,erp_sauce_allergens(allergen_id)';
-    SAUCES = await sbGetAll(`erp_sauces?select=${SAUCE_COLS},cook_min_per_mix,clean_min_after&order=name.asc`)
+    SAUCES = await sbGetAll(`erp_sauces?select=${SAUCE_COLS},cook_min_per_mix,clean_min_after,batch_unit,cook_yield&order=name.asc`)
+      .catch(() => sbGetAll(`erp_sauces?select=${SAUCE_COLS},cook_min_per_mix,clean_min_after,batch_unit&order=name.asc`)) // cook_yield comes with fix79
+      .catch(() => sbGetAll(`erp_sauces?select=${SAUCE_COLS},cook_min_per_mix,clean_min_after&order=name.asc`)) // batch_unit comes with fix78
       .catch(() => sbGetAll(`erp_sauces?select=${SAUCE_COLS},cook_min_per_mix&order=name.asc`))
       .catch(() => sbGetAll(`erp_sauces?select=${SAUCE_COLS}&order=name.asc`)); // the two columns come with fix75
     await loadSauceKettles();
@@ -18026,7 +18034,7 @@ async function refreshSauceScreen(){
 
     SAUCE_INGREDIENTS = await sbGetAll('erp_sauce_ingredient_inventory?select=id,name,pcs,weight,package_size,unit,kg_per_unit,produced_by_sauce_id,inventory_qty&order=name.asc');
 
-    SAUCE_RECIPE = await sbGetAll('erp_sauce_recipe?select=id,sauce_id,ingredient_id,qty_per_batch,qty_unit&order=id.asc');
+    SAUCE_RECIPE = await sauceRecipeFetch();
 
     ALL_SAUCE_TASK_LOCATIONS = (await sbGetAll('erp_sauce_schedule_tasks?select=location&order=id.asc')).map(t=>t.location).filter(Boolean);
 
@@ -18327,19 +18335,56 @@ function renderAllergensTable(){
    separate field to maintain — it's summed straight from the recipe (kg rows count as-is;
    'unit' rows count as-is only when the ingredient's own stock unit is already kg, else via
    kg_per_unit if set) so it can never drift out of sync with the recipe. */
+/* ---- Sauces whose batch is entered in kg of sauce to cook (fix78) ----
+   The recipe is for one batch. Its lines can be "added after cooking" (with a yield: kg that go into the sauce per 1 kg of material).
+   A line's quantity is the material that is weighed. A line added after cooking goes into the finished sauce as quantity x yield; the cooked
+   sauce has its own yield (Manage Sauces). The finished weight of one batch is 1 "mix": a task of 2250 kg is 2250 ÷ that = mixes, and every
+   line of the recipe is scaled by it. ---- */
+let SAUCE_RECIPE_COLS_OK = true;
+const SAUCE_RECIPE_COLS = 'id,sauce_id,ingredient_id,qty_per_batch,qty_unit';
+async function sauceRecipeFetch(){
+  if(SAUCE_RECIPE_COLS_OK){
+    try{ return await sbGetAll(`erp_sauce_recipe?select=${SAUCE_RECIPE_COLS},after_cooking,yield_factor&order=id.asc`); }
+    catch(e){ if(!/after_cooking|yield_factor/.test(String(e.message))) throw e; SAUCE_RECIPE_COLS_OK = false; } // fix78 not run yet
+  }
+  return sbGetAll(`erp_sauce_recipe?select=${SAUCE_RECIPE_COLS}&order=id.asc`);
+}
+const sauceIsKg = s => !!s && s.batch_unit === 'kg';
+// kg that go into the sauce from 1 kg of material, only for a line added after cooking (1 = nothing lost or gained)
+const sauceYieldOf = r => { const y = parseFloat(r && r.yield_factor); return (r && r.after_cooking && y > 0) ? y : 1; };
+// kg of one recipe line (the material that is weighed); null when the ingredient has no kg per unit
+function sauceRecipeLineKg(r){
+  const qty = parseFloat(r.qty_per_batch) || 0;
+  if(r.qty_unit === 'kg') return qty;
+  const ing = SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id);
+  if(!ing) return null;
+  if((ing.unit || '').toLowerCase() === 'kg') return qty;
+  if(ing.kg_per_unit) return qty * ing.kg_per_unit;
+  return null;
+}
+// what is taken from the stock for one batch of this line: its quantity (the material that is weighed)
+const sauceRecipeMaterialQty = r => parseFloat(r.qty_per_batch) || 0;
+// the yield of the cooked sauce (cook_yield, in percent; empty = 100): the part of what is cooked that goes on to the finished sauce
+const sauceCookYield = s => { const y = parseFloat(s && s.cook_yield); return y > 0 ? y / 100 : 1; };
+// One batch of the recipe: the cooked lines weigh cookedKg (x the cook yield = usableKg of sauce), the lines added after cooking weigh addedMatKg
+// as material and addedKg once their yield is in (quantity x yield); the finished sauce is usableKg + addedKg.
+function sauceRecipeParts(sauceId){
+  const rows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId)), sauce = SAUCES.find(x => String(x.id) === String(sauceId)), cy = sauceCookYield(sauce);
+  let cookedKg = 0, addedMatKg = 0, addedKg = 0, hasUnknown = false;
+  rows.forEach(r => { const kg = sauceRecipeLineKg(r); if(kg == null){ hasUnknown = true; return; } if(r.after_cooking){ addedMatKg += kg; addedKg += kg * sauceYieldOf(r); } else cookedKg += kg; });
+  const usableKg = cookedKg * cy;
+  return { cookedKg, usableKg, cookYield: cy, addedMatKg, addedKg, totalKg: usableKg + addedKg, hasUnknown, hasRows: rows.length > 0 };
+}
+// a kg sauce: 1 mix is the whole recipe, so the TOTAL kg typed ÷ the finished weight of the recipe = mixes (0 when the sauce is entered in mixes)
+function sauceKgFactor(sauce){ if(!sauceIsKg(sauce)) return 0; const p = sauceRecipeParts(sauce.id); return p.totalKg > 0 ? p.totalKg : 0; }
+// the kg of that 1 mix that are cooked in the kettles (the lines not added after cooking): the kettles share these kg (0 when none)
+function sauceCookKgFactor(sauce){ if(!sauceIsKg(sauce)) return 0; const p = sauceRecipeParts(sauce.id); return p.cookedKg > 0 ? p.cookedKg : 0; }
+// "250 kg" of sauce cooked in a kettle (its share of the mixes), else the mixes
+function sauceCookText(t, sauce){ const m = parseFloat(t.mixes) || 0, C = sauceCookKgFactor(sauce); return C > 0 ? `${fmtNum(Math.round(m * C * 100) / 100)} kg` : fmtNum(m); }
+// the weight of one mix of the finished sauce (what gets packed)
 function sauceRecipeWeightKg(sauceId){
-  const rows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId));
-  let totalKg = 0, hasUnknown = false;
-  rows.forEach(r => {
-    const qty = parseFloat(r.qty_per_batch) || 0;
-    if(r.qty_unit === 'kg'){ totalKg += qty; return; }
-    const ing = SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id);
-    if(!ing){ hasUnknown = true; return; }
-    if((ing.unit||'').toLowerCase() === 'kg'){ totalKg += qty; }
-    else if(ing.kg_per_unit){ totalKg += qty * ing.kg_per_unit; }
-    else { hasUnknown = true; }
-  });
-  return { totalKg, hasUnknown, hasRows: rows.length > 0 };
+  const p = sauceRecipeParts(sauceId);
+  return { totalKg: p.totalKg, hasUnknown: p.hasUnknown, hasRows: p.hasRows };
 }
 function sauceTaskWeightKg(task){
   if(!task || !task.sauce_id) return null;
@@ -18396,7 +18441,7 @@ async function deductSauceIngredientsForSauce(sauceId, entryDate, mixes){
   }
   const inserts = rows.map(r => {
     const ing = SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id);
-    const perBatch = r.qty_per_batch || 0;
+    const perBatch = sauceRecipeMaterialQty(r); // the material, not what goes into the sauce (a yield may lie between)
     let unitsNeeded, note;
     if(r.qty_unit === 'unit'){
       // this recipe row is already written in the ingredient's own stock unit — no kg conversion
@@ -18420,7 +18465,7 @@ async function correctSauceIngredientsForSauceDelta(sauceId, entryDate, deltaMix
   if(!rows.length) return;
   const inserts = rows.map(r => {
     const ing = SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id);
-    const perBatch = r.qty_per_batch || 0;
+    const perBatch = sauceRecipeMaterialQty(r);
     let unitsDelta;
     if(r.qty_unit === 'unit'){
       unitsDelta = deltaMixes * perBatch;
@@ -18447,15 +18492,16 @@ async function promptCorrectConfirmedSauceMixes(taskId){
     if(!t || t.status !== 'Confirmed'){ toast('Task not found or not confirmed'); return; }
     const sauce = SAUCES.find(s => s.id === t.sauce_id);
     const oldMixes = parseFloat(t.confirmed_mixes) || 0;
-    const input = prompt(`Correct confirmed mixes for ${sauce?sauce.name:'this sauce'}\nCurrently recorded as confirmed: ${fmtNum(oldMixes)} mixes\n\nEnter the TRUE actual mixes made:`, oldMixes);
+    const Fk = sauceKgFactor(sauce), unitTxt = Fk > 0 ? 'kg of sauce cooked' : 'mixes', shown = Fk > 0 ? sauceKgR(oldMixes * Fk) : oldMixes;
+    const input = prompt(`Correct confirmed ${Fk > 0 ? 'kg' : 'mixes'} for ${sauce?sauce.name:'this sauce'}\nCurrently recorded as confirmed: ${fmtNum(shown)} ${unitTxt}\n\nEnter the TRUE actual ${unitTxt}:`, shown);
     if(input === null) return;
-    const newMixes = parseFloat(input);
+    const newMixes = Fk > 0 ? parseFloat(input) / Fk : parseFloat(input);
     if(!Number.isFinite(newMixes) || newMixes < 0){ toast('Enter a valid number of mixes'); return; }
     const delta = newMixes - oldMixes;
     if(delta === 0){ toast('No change'); return; }
     if(!confirm(`Change ${sauce?sauce.name:'this sauce'} from ${fmtNum(oldMixes)} to ${fmtNum(newMixes)} mixes (${delta>0?'+':''}${fmtNum(delta)})?\n\nThis corrects the ingredient deduction accordingly. Cannot be undone.`)) return;
     const entryDate = t.erp_sauce_schedule_days?.schedule_date || todayStr();
-    SAUCE_RECIPE = await sbGetAll('erp_sauce_recipe?select=id,sauce_id,ingredient_id,qty_per_batch,qty_unit&order=id.asc');
+    SAUCE_RECIPE = await sauceRecipeFetch();
     SAUCE_INGREDIENTS = await sbGetAll('erp_sauce_ingredient_inventory?select=id,name,pcs,weight,package_size,unit,kg_per_unit,produced_by_sauce_id,inventory_qty&order=name.asc');
     await correctSauceIngredientsForSauceDelta(t.sauce_id, entryDate, delta);
     await sbUpdate('erp_sauce_schedule_tasks', taskId, { confirmed_mixes: newMixes });
@@ -18533,7 +18579,7 @@ async function renderSauceMaterialPlan(){
     const mixes = t.status === 'Confirmed' ? (parseFloat(t.confirmed_mixes)||0) : (parseFloat(t.mixes)||0);
     if(mixes <= 0) return;
     SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(t.sauce_id)).forEach(r => {
-      const need = mixes * (parseFloat(r.qty_per_batch)||0);
+      const need = mixes * sauceRecipeMaterialQty(r);
       const bucket = demandById[r.ingredient_id] = demandById[r.ingredient_id] || { kgQty: 0, unitQty: 0 };
       if(r.qty_unit === 'unit') bucket.unitQty += need; else bucket.kgQty += need;
     });
@@ -18569,7 +18615,7 @@ function printSauceMaterialPlan(){
       const sauceName = sauceRecipeSauceName(t.sauceId);
       const ingRows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(t.sauceId)).map(r => {
         const ing = SAUCE_INGREDIENTS.find(i => i.id === r.ingredient_id);
-        const need = (parseFloat(t.mixes)||0) * (parseFloat(r.qty_per_batch)||0);
+        const need = (parseFloat(t.mixes)||0) * sauceRecipeMaterialQty(r);
         const unit = r.qty_unit === 'unit' ? (ing?.unit || 'units') : 'kg';
         return `<tr><td>${ing?ing.name:'(unknown)'}</td><td>${fmtNum(need)}</td><td>${unit}</td></tr>`;
       }).join('');
@@ -18883,7 +18929,7 @@ async function exportSauceMaterialPlanExcel(){
       .filter(x => x.ing)
       .sort((a,b) => a.ing.name.localeCompare(b.ing.name));
     recipeRows.forEach(({r, ing}) => {
-      const qty = t.mixes * (parseFloat(r.qty_per_batch) || 0);
+      const qty = t.mixes * sauceRecipeMaterialQty(r);
       detailRows.push(ingRow(ing, qty));
 
       let bucket = locBucket.data.get(ing.id);
@@ -19302,6 +19348,8 @@ function resetSauceForm(){
   document.getElementById('sauceShelfLifeDays').value = '';
   document.getElementById('sauceCookMin').value = '';
   document.getElementById('sauceCleanMin').value = '';
+  { const r0 = document.querySelector('input[name=sauceBatchUnit][value=mix]'); if(r0) r0.checked = true; }
+  document.getElementById('sauceCookYield').value = '';
   document.getElementById('sauceRemark').value = '';
   renderSauceAllergenChecks([]);
   renderSauceItemMatchInfo('', 'sauceItemMatchInfo');
@@ -19320,6 +19368,8 @@ function editSauce(id){
   document.getElementById('sauceShelfLifeDays').value = s.shelf_life_days ?? '';
   document.getElementById('sauceCookMin').value = s.cook_min_per_mix ?? '';
   document.getElementById('sauceCleanMin').value = s.clean_min_after ?? '';
+  { const rr = document.querySelector('input[name=sauceBatchUnit][value=' + (s.batch_unit === 'kg' ? 'kg' : 'mix') + ']'); if(rr) rr.checked = true; }
+  document.getElementById('sauceCookYield').value = s.cook_yield ?? '';
   document.getElementById('sauceRemark').value = s.remark || '';
   renderSauceAllergenChecks((s.erp_sauce_allergens||[]).map(x=>x.allergen_id));
   renderSauceItemMatchInfo(s.item_code || '', 'sauceItemMatchInfo');
@@ -19342,6 +19392,10 @@ async function submitSauce(){
   if(cookMin != null || SAUCES.some(x => 'cook_min_per_mix' in x)) patch.cook_min_per_mix = cookMin; // the column comes with fix75
   const cleanMin = document.getElementById('sauceCleanMin').value ? parseFloat(document.getElementById('sauceCleanMin').value) : null;
   if(cleanMin != null || SAUCES.some(x => 'clean_min_after' in x)) patch.clean_min_after = cleanMin; // fix75 too
+  const batchKg = (document.querySelector('input[name=sauceBatchUnit]:checked') || {}).value === 'kg';
+  if(batchKg || SAUCES.some(x => 'batch_unit' in x)) patch.batch_unit = batchKg ? 'kg' : 'mix'; // the column comes with fix78
+  const cookYield = document.getElementById('sauceCookYield').value ? parseFloat(document.getElementById('sauceCookYield').value) : null;
+  if(cookYield != null || SAUCES.some(x => 'cook_yield' in x)) patch.cook_yield = cookYield; // the column comes with fix79
   const editId = document.getElementById('sauceEditId').value;
   const allergenIds = getCheckedSauceAllergenIds();
   try{
@@ -19363,6 +19417,7 @@ async function submitSauce(){
     resetSauceForm();
     await refreshSauceScreen();
     if(SAUCE_COOK_WARN){ SAUCE_COOK_WARN = false; toast('Saved, but the cooking time and clean-up time need fix75-sauce-timing.sql to be run in Supabase'); }
+    if(SAUCE_BATCH_WARN){ SAUCE_BATCH_WARN = false; toast('Saved, but entering the batch in kg and the yield of the cooked sauce need fix78-sauce-kg-batch.sql and fix79-sauce-cook-yield.sql to be run in Supabase'); }
   }catch(e){ toast('Save failed: ' + e.message); }
 }
 async function deleteSauce(id){
@@ -19664,12 +19719,13 @@ function renderSauceRecipeBrowse(){
   if(keep){ try{ keep.start = active.selectionStart; keep.end = active.selectionEnd; }catch(e){} }
   const rows = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sauceId));
   const { totalKg, hasUnknown, hasRows } = sauceRecipeWeightKg(sauceId);
+  const parts = sauceRecipeParts(sauceId), sauceRow = SAUCES.find(x => String(x.id) === String(sauceId));
   const weightInfo = hasRows
-    ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">⚖ Total weight per batch: <strong>${fmtNum(totalKg)} kg</strong>${hasUnknown?' (some ingredients have no Kg/Unit set — total may be incomplete)':''}</div>`
+    ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px">⚖ ${(parts.addedKg > 0 || parts.cookYield !== 1) ? `Per batch: cooked <strong>${fmtNum(Math.round(parts.cookedKg * 100) / 100)} kg</strong>${parts.cookYield !== 1 ? ` × ${fmtNum(Math.round(parts.cookYield * 10000) / 100)}% = <strong>${fmtNum(Math.round(parts.usableKg * 100) / 100)} kg</strong> of sauce` : ''}${parts.addedKg > 0 ? ` + added after cooking <strong>${fmtNum(Math.round(parts.addedKg * 100) / 100)} kg</strong> (${fmtNum(Math.round(parts.addedMatKg * 100) / 100)} kg of material)` : ''} = finished <strong>${fmtNum(Math.round(totalKg * 100) / 100)} kg</strong>` : `Total weight per batch: <strong>${fmtNum(totalKg)} kg</strong>`}${hasUnknown?' (some ingredients have no Kg/Unit set — total may be incomplete)':''}${sauceIsKg(sauceRow) ? ' · entered in kg: a task is typed as the total kg to make, and 1 mix is one finished batch of this recipe' : ''}</div>`
     : '';
   tableEl.innerHTML = `
     ${weightInfo}
-    <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Qty/Batch</th><th>Unit</th><th class="can-write"></th></tr></thead>
+    <div class="tablewrap"><table><thead><tr><th>Ingredient</th><th>Qty/Batch</th><th>Unit</th><th>Material (kg)</th><th>Added after cooking</th><th>Yield (kg made from 1 kg of material)</th><th>Goes into the finished sauce</th><th class="can-write"></th></tr></thead>
     <tbody>${rows.map(r => `<tr>
       <td>${sauceIngredientName(r.ingredient_id)}</td>
       <td>${canWrite() ? `<input type="number" step="any" value="${r.qty_per_batch}" style="width:100px" id="sauceRecQtyInput_${r.id}" onblur="updateSauceRecipeQtyInline(${r.id}, this.value)">` : fmtNum(r.qty_per_batch)}</td>
@@ -19677,10 +19733,14 @@ function renderSauceRecipeBrowse(){
              <option value="unit" ${(r.qty_unit||'unit')==='unit'?'selected':''}>Already in ${sauceIngredientUnit(r.ingredient_id)}</option>
              <option value="kg" ${r.qty_unit==='kg'?'selected':''}>kg (needs Kg/Unit to convert)</option>
            </select>` : ((r.qty_unit==='unit') ? sauceIngredientUnit(r.ingredient_id) : 'kg')}</td>
+      <td>${(() => { const kg = sauceRecipeLineKg(r); return kg == null ? '<span style="color:var(--muted)">–</span>' : fmtNum(Math.round(kg * 100) / 100); })()}</td>
+      <td>${canWrite() ? `<input type="checkbox" style="width:auto" ${r.after_cooking ? 'checked' : ''} ${SAUCE_RECIPE_COLS_OK ? '' : 'title="needs fix78-sauce-kg-batch.sql"'} onchange="updateSauceRecipeAfterInline(${r.id}, this.checked)">` : (r.after_cooking ? 'yes' : '')}</td>
+      <td>${r.after_cooking ? (canWrite() ? `<input type="number" step="any" min="0" placeholder="1" value="${r.yield_factor ?? ''}" style="width:80px" onchange="updateSauceRecipeYieldInline(${r.id}, this.value)">` : fmtNum(sauceYieldOf(r))) : '<span style="color:var(--muted)">–</span>'}</td>
+      <td>${r.after_cooking ? (() => { const kg = sauceRecipeLineKg(r), y = sauceYieldOf(r); return kg == null ? '–' : `<b>${fmtNum(Math.round(kg * y * 100) / 100)}</b> kg${y !== 1 ? ` <span style="color:var(--muted)">(${fmtNum(Math.round(kg * 100) / 100)} × ${fmtNum(y)})</span>` : ''}`; })() : '<span style="color:var(--muted)">in the sauce</span>'}</td>
       <td class="can-write" style="white-space:nowrap">
         <button class="btn secondary" style="padding:6px 10px;font-size:12px" onclick="deleteSauceRecipe(${r.id})">🗑 Delete</button>
       </td>
-    </tr>`).join('') || `<tr><td colspan="4" style="color:var(--muted)">No ingredients in this recipe yet.</td></tr>`}</tbody></table></div>
+    </tr>`).join('') || `<tr><td colspan="8" style="color:var(--muted)">No ingredients in this recipe yet.</td></tr>`}</tbody></table></div>
     ${rows.length ? `<div class="btnrow can-write" style="margin-top:10px">
       <button class="btn secondary" onclick="closeSauceRecipeBrowse()">✕ Cancel</button>
     </div>` : ''}`;
@@ -19751,6 +19811,30 @@ async function updateSauceRecipeQtyInline(id, value){
   try{
     await sbUpdate('erp_sauce_recipe', id, { qty_per_batch: qty });
     r.qty_per_batch = qty;
+    renderSauceRecipeBrowse();
+  }catch(e){ toast('Update failed: ' + e.message); renderSauceRecipeBrowse(); }
+}
+// the lines of a recipe: whether a line is added after cooking, and its yield
+async function updateSauceRecipeAfterInline(id, on){
+  if(!canWrite()) return;
+  const r = SAUCE_RECIPE.find(x => x.id === id);
+  if(!r) return;
+  if(!SAUCE_RECIPE_COLS_OK){ toast('"Added after cooking" needs fix78-sauce-kg-batch.sql to be run in Supabase'); renderSauceRecipeBrowse(); return; }
+  try{
+    await sbUpdate('erp_sauce_recipe', id, { after_cooking: !!on });
+    r.after_cooking = !!on;
+    renderSauceRecipeBrowse();
+  }catch(e){ toast('Update failed: ' + e.message); renderSauceRecipeBrowse(); }
+}
+async function updateSauceRecipeYieldInline(id, value){
+  if(!canWrite()) return;
+  const r = SAUCE_RECIPE.find(x => x.id === id);
+  if(!r) return;
+  const y = parseFloat(value) > 0 ? parseFloat(value) : null; // empty = 1
+  if((y == null ? null : y) === (r.yield_factor == null ? null : Number(r.yield_factor))) return;
+  try{
+    await sbUpdate('erp_sauce_recipe', id, { yield_factor: y });
+    r.yield_factor = y;
     renderSauceRecipeBrowse();
   }catch(e){ toast('Update failed: ' + e.message); renderSauceRecipeBrowse(); }
 }
@@ -19857,6 +19941,7 @@ function pickSauceTaskSauce(id){
   document.getElementById('sauceTaskFormToggleIcon').textContent = '▾ Click to collapse';
   autofillSauceTaskPackingFromItem(s);
   applySaucePrefsToTaskForm(s);
+  applySauceTaskBatchMode();
   document.getElementById('sauceTaskUsageNote').value = '';
   recalcSauceTaskPackingHrs();
   recalcSauceTaskUsageNote();
@@ -20368,7 +20453,7 @@ function checkSauceIngredientAvailability(){
     // Only ingredients linked to a producer sauce get flagged here for now — a bare "you're
     // low on this raw ingredient" isn't the ask yet, just "you need to go produce that sauce".
     if(!ing || !ing.produced_by_sauce_id) return;
-    const perBatch = parseFloat(r.qty_per_batch) || 0;
+    const perBatch = sauceRecipeMaterialQty(r);
     const needed = r.qty_unit === 'unit'
       ? mixes * perBatch
       : (ing.kg_per_unit ? (mixes * perBatch) / ing.kg_per_unit : mixes * perBatch);
@@ -20392,6 +20477,57 @@ function checkSauceIngredientAvailability(){
   });
   noteEl.innerHTML = problems.join('');
 }
+/* ---- Add / Edit task of a sauce entered in kg: the kg to cook is typed; sauceTaskMixes keeps the mixes (kg ÷ the cooked weight of the
+   recipe) so everything else (ingredients, timing, kettles) goes on working with mixes ---- */
+function sauceTaskKgF(){ // kg cooked in the kettles per mix: the kettle shares are typed in kg of sauce to cook
+  const sid = document.getElementById('sauceTaskSauceId').value;
+  return sid ? sauceCookKgFactor(SAUCES.find(x => String(x.id) === String(sid))) : 0;
+}
+function sauceTaskTotalF(){ // kg of the whole recipe per mix: the number typed in the task is the total kg to make
+  const sid = document.getElementById('sauceTaskSauceId').value;
+  return sid ? sauceKgFactor(SAUCES.find(x => String(x.id) === String(sid))) : 0;
+}
+const sauceKgR = x => Math.round(x * 100) / 100;
+function onSauceTaskMixesInput(){
+  recalcSauceTaskPackingHrs(); recalcSauceTaskUsageNote(); checkSauceIngredientAvailability(); updateSauceComponentEstimate(); onSauceTaskItemsChanged(); onSauceTaskTotalMixes(); sauceTaskKgInfo();
+}
+function onSauceTaskKgInput(){
+  const F = sauceTaskTotalF(), kg = parseFloat(document.getElementById('sauceTaskKg').value);
+  document.getElementById('sauceTaskMixes').value = (F > 0 && kg > 0) ? String(Math.round(kg / F * 1e6) / 1e6) : '';
+  onSauceTaskMixesInput();
+}
+// the Mixes box becomes "Sauce to cook (kg)" for a sauce entered in kg
+function applySauceTaskBatchMode(){
+  const F = sauceTaskTotalF(), on = F > 0, kgEl = document.getElementById('sauceTaskKg'), mixEl = document.getElementById('sauceTaskMixes'), lab = document.getElementById('sauceTaskMixesLabel');
+  if(!kgEl || !mixEl || !lab) return;
+  lab.innerHTML = on ? 'Total to make (kg) <span class="tmtag batch">kg sauce</span>' : 'Mixes';
+  mixEl.style.display = on ? 'none' : ''; kgEl.style.display = on ? '' : 'none';
+  if(on){ const m = parseFloat(mixEl.value); kgEl.value = m > 0 ? String(sauceKgR(m * F)) : ''; } else kgEl.value = '';
+  sauceTaskKgInfo();
+  if(document.getElementById('sauceTaskMachineWrap').style.display !== 'none') renderSauceTaskKettleRows();
+}
+function sauceTaskKgInfo(){
+  const el = document.getElementById('sauceTaskKgInfo'); if(!el) return;
+  const F = sauceTaskTotalF(); if(!(F > 0)){ el.innerHTML = ''; return; }
+  const sid = document.getElementById('sauceTaskSauceId').value, p = sauceRecipeParts(sid), m = parseFloat(document.getElementById('sauceTaskMixes').value) || 0;
+  const unk = SAUCE_RECIPE.filter(r => String(r.sauce_id) === String(sid) && sauceRecipeLineKg(r) == null);
+  if(!(m > 0)){ el.innerHTML = `<span style="color:var(--muted)">Type the total kg to make: the app works out how much sauce to cook and how much is added after cooking from the recipe (${fmtNum(sauceKgR(p.totalKg))} kg of finished sauce per batch of the recipe).</span>`; return; }
+  const k = x => fmtNum(sauceKgR(x * m));
+  el.innerHTML = `<div style="background:var(--chip);border-radius:8px;padding:7px 10px;font-size:12px;margin:6px 0">Total <b>${k(p.totalKg)} kg</b> = sauce <b>${k(p.usableKg)} kg</b>${p.cookYield !== 1 ? ` (cook <b>${k(p.cookedKg)} kg</b>)` : ''}${p.addedKg > 0 ? ` + added after cooking <b>${k(p.addedKg)} kg</b>${Math.abs(p.addedMatKg - p.addedKg) > 1e-9 ? ` (${k(p.addedMatKg)} kg of material)` : ''}` : ''} <span style="color:var(--muted)">(the recipe ${m < 0.01 ? m.toExponential(2) : m.toFixed(2)} times)</span>${unk.length ? `<div style="color:#92400e;margin-top:4px">⚠ ${unk.length} recipe line${unk.length === 1 ? ' has' : 's have'} no kg, so ${unk.length === 1 ? 'it is' : 'they are'} not counted in this split: ${unk.map(r => escapeHtml(sauceIngredientName(r.ingredient_id)) + (r.after_cooking ? ' (added after cooking)' : '')).join(', ')}. Set Kg/Unit of ${unk.length === 1 ? 'this ingredient' : 'these ingredients'} in Ingredients, or write the recipe line in kg.</div>` : ''}</div>`;
+}
+// "500 kg" for a sauce entered in kg, the mixes otherwise; a field name picks confirmed_mixes
+function sauceBatchText(t, sauce, field){
+  const m = parseFloat(t[field || 'mixes']) || 0, F = sauceKgFactor(sauce);
+  return F > 0 ? `${fmtNum(sauceKgR(m * F))} kg` : fmtNum(m);
+}
+// the batch cell of a task list: the kg, and under it the mixes and the finished kg
+function sauceBatchHtml(t, sauce){
+  const F = sauceKgFactor(sauce);
+  if(!(F > 0)) return fmtNum(t.mixes);
+  const m = parseFloat(t.mixes) || 0, p = sauceRecipeParts(sauce.id), k = x => fmtNum(sauceKgR(x * m));
+  return `<b>${k(p.totalKg)} kg</b><div style="font-size:11px;color:var(--muted)">sauce ${k(p.usableKg)} kg${p.cookYield !== 1 ? ` (cook ${k(p.cookedKg)})` : ''}${p.addedKg > 0 ? ` + added ${k(p.addedKg)} kg` : ''}</div>`;
+}
+const sauceConfirmedText = (t, s, word) => sauceKgFactor(s) > 0 ? `${sauceBatchText(t, s, 'confirmed_mixes')}/${sauceBatchText(t, s)}` : `${fmtNum(t.confirmed_mixes)}/${fmtNum(t.mixes)} ${word}${(parseFloat(t.mixes) || 0) === 1 ? '' : 'es'}`;
 // Suggests "Approximately N cases, it's M weeks stock" from this task's recipe-derived
 // total weight (mixes × weight/mix) ÷ the linked item's case weight, and that item's recent
 // average daily Out (from erp_inventory_summary) for the weeks-of-stock estimate. Just a
@@ -20508,8 +20644,10 @@ function resetSauceTaskForm(){
   document.getElementById('sauceTaskSubmitBtn').textContent = '➕ Add Task';
   document.getElementById('sauceTaskLocation').value = '';
   document.getElementById('sauceTaskMixes').value = '';
+  document.getElementById('sauceTaskKg').value = '';
   document.getElementById('sauceTaskSauceSearch').value = '';
   document.getElementById('sauceTaskSauceId').value = '';
+  applySauceTaskBatchMode();
   document.getElementById('sauceTaskOperatorNotes').value = '';
   document.getElementById('sauceTaskCleanMin').value = '';
   document.getElementById('sauceTaskCleanMachineMin').value = '';
@@ -20554,6 +20692,7 @@ async function editSauceTask(id){
   document.getElementById('sauceTaskSauceSearch').value = s ? s.name : '';
   document.getElementById('sauceTaskSauceId').value = t.sauce_id;
   renderSauceTaskEquipment({ rows: sauceTaskKettleRowsOf(t), packers: sauceTaskPackersOf(t) });
+  applySauceTaskBatchMode();
   renderSauceTaskKettleWarn();
   document.getElementById('sauceTaskOperatorNotes').value = sauceExtraNotes(t); // older Machine / Operator notes become extra notes
   document.getElementById('sauceTaskCleanMin').value = t.clean_min ?? '';
@@ -20617,7 +20756,9 @@ async function submitSauceTask(){
       if(new Set(kettleRows.map(r => r.kettle)).size !== kettleRows.length){ toast('A kettle is listed twice in this task'); return; }
       if(kettleRows.some(r => !(r.mixes > 0))){ toast('Enter the mixes for every kettle of this task'); return; }
       const sumMixes = kettleRows.reduce((sum, r) => sum + r.mixes, 0);
-      if(Math.abs(sumMixes - (mixes || 0)) > 1e-9){ toast(`The kettles add up to ${fmtNum(sumMixes)} mixes, but the task has ${fmtNum(mixes || 0)}`); return; }
+      const Fk = sauceTaskKgF();
+      if(Fk > 0 ? Math.abs(sumMixes - (mixes || 0)) * Fk >= 0.02 : Math.abs(sumMixes - (mixes || 0)) > 1e-6){ const cv = x => Fk > 0 ? sauceKgR(x * Fk) : x, u = Fk > 0 ? ' kg' : ' mixes'; toast(`The kettles add up to ${fmtNum(cv(sumMixes))}${u}, but the task has ${fmtNum(cv(mixes || 0))}${u}`); return; }
+      if(Fk > 0) kettleRows[kettleRows.length - 1].mixes += (mixes || 0) - sumMixes; // the rounding of the kg boxes goes to the last kettle
     }
   }
   const startC = readSauceTaskStart();
@@ -20751,7 +20892,7 @@ async function renderSauceTasksTable(){
     const changed = !!(ta && pv && (Math.abs((pv.cs ?? 0) - (ta.cs ?? 0)) > 0.5 || Math.abs((pv.pe ?? 0) - (ta.pe ?? 0)) > 0.5));
     if(changed) anyChanged = true;
     const kRows = sauceTaskKettleRowsOf(t);
-    const kParts = kRows.map(p => { const k = sauceKettleById(p.kettle); return k ? (kRows.length > 1 ? `${escapeHtml(k.name)} ×${fmtNum(p.mixes)}` : escapeHtml(k.name)) : ''; }).filter(Boolean);
+    const kParts = kRows.map(p => { const k = sauceKettleById(p.kettle); return k ? (kRows.length > 1 ? `${escapeHtml(k.name)} ×${sauceCookText({ mixes: p.mixes }, s)}` : escapeHtml(k.name)) : ''; }).filter(Boolean);
     const mNames = sauceTaskMachinesOf(t, sauceKettleById(t.kettle)).machines.map(m => escapeHtml(m.name));
     const kettleCell = kParts.length ? `${kParts.join(', ')}<div style="font-size:11px;color:var(--muted)">${mNames.length ? mNames.join(' + ') : 'packs on the kettle itself'}</div>` : '<span style="color:var(--muted)">–</span>';
     const timeCell = ta && ta.cs != null ? `${sauceMinToTime(ta.cs)} → ${sauceMinToTime(ta.pe)}${changed ? `<div style="font-size:11px;color:var(--muted)">was ${sauceMinToTime(pv.cs)} → ${sauceMinToTime(pv.pe)}</div>` : ''}` : '<span style="color:var(--muted)">–</span>';
@@ -20793,7 +20934,7 @@ async function renderSauceTasksTable(){
          </div>`
       : `<div style="white-space:normal">${dateLine}</div>`;
     return `<tr${changed ? ' style="background:#fef3c7"' : ''}>
-      <td>${t.location||''}</td><td>${fmtNum(t.mixes)}</td><td>${s?s.name:'(sauce deleted)'}${holidayOn(prodDate) && holidayAreaClosed(prodDate, 'Line 4') ? holidayClosedTagHtml('Line 4', 'closed — holiday') : ''}${sauceBatchTagHtml(t, SAUCE_TASKS_CREATE)}${notesLines}</td>
+      <td>${t.location||''}</td><td>${sauceBatchHtml(t, s)}</td><td>${s?s.name:'(sauce deleted)'}${holidayOn(prodDate) && holidayAreaClosed(prodDate, 'Line 4') ? holidayClosedTagHtml('Line 4', 'closed — holiday') : ''}${sauceBatchTagHtml(t, SAUCE_TASKS_CREATE)}${notesLines}</td>
       <td>${kettleCell}</td><td>${timeCell}</td>
       <td>${dateCell}</td>
       <td>${t.status}</td>
@@ -20896,14 +21037,15 @@ async function loadSauceKettles(){
     SAUCE_KETTLES_OK = true;
   }catch(e){ SAUCE_EQUIP = {}; SAUCE_KETTLES_OK = false; }
 }
+let SAUCE_BATCH_WARN = false; // the batch unit could not be saved (fix78 not run)
 let SAUCE_COOK_WARN = false; // the cooking time could not be saved (fix75 not run)
 async function sauceWriteRetry(fn, patch){
   for(let n = 0; n < 3; n++){
     try{ return await fn(); }
     catch(e){
-      const col = ['cook_min_per_mix', 'clean_min_after'].find(c => c in patch && (e.message || '').indexOf(c) >= 0);
+      const col = ['cook_min_per_mix', 'clean_min_after', 'batch_unit', 'cook_yield'].find(c => c in patch && (e.message || '').indexOf(c) >= 0);
       if(!col) throw e;
-      delete patch[col]; SAUCE_COOK_WARN = true;
+      delete patch[col]; if(col === 'batch_unit' || col === 'cook_yield') SAUCE_BATCH_WARN = true; else SAUCE_COOK_WARN = true;
     }
   }
   return await fn();
@@ -20993,7 +21135,7 @@ async function sauceTaskPlanNow(){
   if(!pool.length) pool = eq.kettles;
   const freeOf = k => { const kk = T0 ? T0.kettles.find(x => x.key === String(k.id)) : null; return kk && kk.freeAt != null ? (kk.cleanedAt ?? kk.freeAt) : dayStart; };
   const machOpts = eq.machines.length ? eq.machines.map(m => [m.id]) : [[]];
-  const nMax = Math.max(1, Math.min(pool.length, Math.floor(evalMixes)));
+  const kgMode = sauceTaskKgF() > 0, nMax = Math.max(1, Math.min(pool.length, kgMode ? pool.length : Math.floor(evalMixes)));
   const byN = {};
   for(let n = 1; n <= nMax; n++){
     const combos = pool.length <= 6 ? sauceCombos(pool, n) : [pool.slice().sort((a, b) => freeOf(a) - freeOf(b)).slice(0, n)];
@@ -21001,7 +21143,7 @@ async function sauceTaskPlanNow(){
     for(const combo of combos){
       const ks = combo.slice().sort((a, b) => freeOf(a) - freeOf(b) || a.id - b.id); // the kettle that is free first cooks the extra mix
       const base = Math.floor(evalMixes / n), rem = Math.round(evalMixes - base * n);
-      const arr = ks.map((k, i) => base + (i < rem ? 1 : 0));
+      const arr = kgMode ? ks.map(() => evalMixes / n) : ks.map((k, i) => base + (i < rem ? 1 : 0));
       if(arr.some(x => !(x > 0))) continue;
       for(const mo of machOpts){
         const r = await evalPlan(ks.map(k => k.id), mo, arr);
@@ -21023,10 +21165,10 @@ async function sauceTaskPlanNow(){
   const mname = ids => ids.length ? ids.map(id => escapeHtml((eq.machines.find(x => x.id === id) || {}).name || '')).join(' + ') : 'the kettle itself';
   if(!sug) sugEl.innerHTML = muted('The suggestion needs the cooking and packing times (check the sauce, the packing machine and the mixes).');
   else {
-    const rowsHtml = ns.map(n => { const b = byN[n], top = n === sug.n; return `<tr><td>${n} kettle${n === 1 ? '' : 's'}${top ? ' <span class="tmtag free">most efficient</span>' : ''}</td><td>${b.mixes.join(' + ')}</td><td>${top ? '<b>' : ''}${sauceMinToTime(b.end)}${top ? '</b>' : ''}${(n > sug.n && b.end >= byN[sug.n].end - 0.5) ? ' <span style="color:var(--muted)">no gain</span>' : ''}</td></tr>`; }).join('');
+    const rowsHtml = ns.map(n => { const b = byN[n], top = n === sug.n; return `<tr><td>${n} kettle${n === 1 ? '' : 's'}${top ? ' <span class="tmtag free">most efficient</span>' : ''}</td><td>${b.mixes.map(x => kgMode ? fmtNum(sauceKgR(x * sauceTaskKgF())) : x).join(' + ')}${kgMode ? ' kg' : ''}</td><td>${top ? '<b>' : ''}${sauceMinToTime(b.end)}${top ? '</b>' : ''}${(n > sug.n && b.end >= byN[sug.n].end - 0.5) ? ' <span style="color:var(--muted)">no gain</span>' : ''}</td></tr>`; }).join('');
     const noGain = ns.some(n => n > sug.n && byN[n].end >= byN[sug.n].end - 0.5);
     sugEl.innerHTML = `<div style="background:var(--chip);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:12px"><b>Most efficient: use ${sug.n} kettle${sug.n === 1 ? '' : 's'}</b> (${sug.ids.map(kname).join(' + ')}, packed on ${mname(sug.machineIds)}). All packed by <b>${sauceMinToTime(sug.end)}</b>.${noGain ? ' More kettles do not finish sooner: the packing machine or the kettles that are free limit it.' : ''}${mixesGiven ? '' : ' <span style="color:var(--muted)">(worked out for 1 mix until the mixes are entered)</span>'}
-      <table class="tmtable" style="margin-top:6px"><thead><tr><th>Kettles</th><th>Mixes</th><th>All packed by (best kettles and machine for that number)</th></tr></thead><tbody>${rowsHtml}</tbody></table>
+      <table class="tmtable" style="margin-top:6px"><thead><tr><th>Kettles</th><th>${kgMode ? 'Kg cooked' : 'Mixes'}</th><th>All packed by (best kettles and machine for that number)</th></tr></thead><tbody>${rowsHtml}</tbody></table>
       <div style="margin-top:6px"><button type="button" class="btn secondary" style="padding:3px 10px;font-size:12px" onclick="sauceTaskUseSuggestion()">Use this suggestion</button> <span style="color:var(--muted)">ticks these kettles and this packing machine; you can still change them</span></div></div>`;
   }
   // ---- what the ticked kettles and machines give
@@ -21040,7 +21182,7 @@ async function sauceTaskPlanNow(){
   eq.kettles.forEach(k => { // the state of every kettle today, and when the ticked ones start cooking
     const kk = T0 ? T0.kettles.find(x => x.key === String(k.id)) : null;
     const td = document.getElementById('sauceTaskKettleToday_' + k.id), st = document.getElementById('sauceTaskKettleStart_' + k.id);
-    if(td) td.innerHTML = kk ? `${escapeHtml(kk.tasks.map(t => `${t.task.sauce ? t.task.sauce.name : '?'} ×${fmtNum(t.task.mixes)}`).join(', '))} until ${timeOf(kk.freeAt)} <span class="tmtag">free ${timeOf(kk.cleanedAt ?? kk.freeAt)}</span>` : 'nothing yet today <span class="tmtag free">free</span>';
+    if(td) td.innerHTML = kk ? `${escapeHtml(kk.tasks.map(t => `${t.task.sauce ? t.task.sauce.name : '?'} ×${sauceCookText({ mixes: t.task.mixes }, t.task.sauce)}`).join(', '))} until ${timeOf(kk.freeAt)} <span class="tmtag">free ${timeOf(kk.cleanedAt ?? kk.freeAt)}</span>` : 'nothing yet today <span class="tmtag free">free</span>';
     if(st){ const ms = userRes ? userRes.a.mixes.filter(r => r.kettleName === (sauceKettleById(k.id) || {}).label) : []; st.textContent = ms.length ? timeOf(Math.min.apply(null, ms.map(r => r.cs))) : ''; }
   });
   eq.machines.forEach(m => { // the state of every packing machine today
@@ -21069,7 +21211,7 @@ async function sauceTaskPlanNow(){
     const freeMs = eq.machines.filter(m => !pk.ids.map(String).includes(String(m.id))).filter(m => { const st = T0 && T0.mstate ? T0.mstate['m:' + m.id] : null; return !st || st.end + st.clean <= a.cs + 60; }).map(m => escapeHtml(m.name));
     warn = `<div style="background:#fef3c7;color:#78350f;border-radius:8px;padding:8px 10px;margin-top:6px;font-size:12px"><b>All packed by ${timeOf(userRes.end)}, ${sauceDurText(diff)} later than the best (${timeOf(sug.bestEnd)}).</b> ${ticked.length} kettle${ticked.length === 1 ? ' is' : 's are'} ticked, ${sug.n} ${sug.n === 1 ? 'is' : 'are'} the most efficient.${freeKs.length ? ` ${freeKs.join(' and ')} ${freeKs.length === 1 ? 'is' : 'are'} free when this task starts.` : ''}${freeMs.length ? ` ${freeMs.join(' and ')} ${freeMs.length === 1 ? 'is' : 'are'} free to pack.` : ''} Nothing is changed for you.</div>`;
   }
-  planEl.innerHTML = `<div style="background:var(--chip);border-radius:8px;padding:8px 10px;font-size:12px"><b>Your plan:</b> ${ticked.map(r => kname(Number(r.kettle))).join(' + ')}${ticked.length > 1 ? ' (' + mixesFor.join(' + ') + ' mixes)' : ''}, packed on ${packedOn}. All packed by <b>${timeOf(a.pe)}</b> ${tag}<div style="color:var(--muted);margin-top:4px;line-height:1.6">${stepsTxt}</div></div>${warn}`;
+  planEl.innerHTML = `<div style="background:var(--chip);border-radius:8px;padding:8px 10px;font-size:12px"><b>Your plan:</b> ${ticked.map(r => kname(Number(r.kettle))).join(' + ')}${ticked.length > 1 ? ' (' + mixesFor.map(x => kgMode ? fmtNum(sauceKgR(x * sauceTaskKgF())) : x).join(' + ') + (kgMode ? ' kg)' : ' mixes)') : ''}, packed on ${packedOn}. All packed by <b>${timeOf(a.pe)}</b> ${tag}<div style="color:var(--muted);margin-top:4px;line-height:1.6">${stepsTxt}</div></div>${warn}`;
 }
 // "Use this suggestion": ticks the suggested kettles and packing machine (only when it is pressed)
 function sauceTaskUseSuggestion(){
@@ -21153,7 +21295,7 @@ function sauceTimingCompute(kettles, opts){
   const q = kettles.map(k => {
     const list = [];
     k.tasks.forEach((t, ti) => {
-      const m = parseFloat(t.mixes) || 0, cnt = m > 0 ? Math.max(1, Math.round(m)) : 0;
+      const m = parseFloat(t.mixes) || 0, cnt = t.cooks != null ? t.cooks : (m > 0 ? Math.max(1, Math.round(m)) : 0); // t.cooks: a kg sauce cooks whole loads
       for(let i = 1; i <= cnt; i++) list.push({ t, ti, i, cnt });
     });
     return list;
@@ -21307,12 +21449,14 @@ async function sauceTimingForTasks(dateStr, tasks, itemsMap, setOverride){
         const s = SAUCES.find(x => x.id === t.sauce_id);
         const total = parseFloat(t.mixes) || 0, mixes = parseFloat(part.mixes) || 0;
         const mm = sauceTaskMachinesOf(t, k);
-        const minOf = machine => { const h = total > 0 ? sauceTimingPackHrs(t, itemsMap[t.id], machine) : null; return h == null ? null : h * 60 / total; }; // minutes per mix
+        const kgSauce = sauceKgFactor(s) > 0, shareCooks = () => 1; // a kg sauce: one cook of each kettle's share (its mixes are only the scale of the recipe)
+        const perDiv = kgSauce ? parts.reduce((sum, p) => sum + shareCooks(p.mixes), 0) : total; // the packing time is shared over the cooks
+        const minOf = machine => { const h = total > 0 ? sauceTimingPackHrs(t, itemsMap[t.id], machine) : null; return h == null ? null : h * 60 / perDiv; }; // minutes per mix
         const packers = mm.machines.length ? mm.machines.map(m => ({ key: 'm:' + m.id, name: m.name, min: minOf(m), clean: m.clean ?? null })) : [{ key: 'k:' + k.id, name: k.label, min: minOf(null) }];
         const multi = packers.length > 1, together = multi && mm.mode !== 'split';
         const comb = packers.every(p => p.min > 0) ? (together ? 1 / packers.reduce((sum, p) => sum + 1 / p.min, 0) : packers[0].min) : null;
         const packText = packers.every(p => p.min > 0) ? (multi && !together ? packers.map(p => p.name + ' ' + sauceDurText(p.min)).join(' / ') + ' per mix' : sauceDurText(comb) + ' per mix' + (together && multi ? ' together' : '')) : '';
-        return { id: t.id + '_' + k.id, taskId: t.id, ord: ordOf[t.id], cleanMachine: numOrNull(t.clean_machine_min), sauceCleanAfter: numOrNull(s && s.clean_min_after), row: t, sauce: s, sauceId: t.sauce_id, mixes, totalMixes: total, split: parts.length > 1, cookMin: sauceCookMin(s), packMin: comb, packText, batch_key: t.batch_key || null, sauceKey: t.sauce_id, startMode: (sauceTaskStartOf(t) || {}).mode || null, startAt: (sauceTaskStartOf(t) && sauceTaskStartOf(t).mode === 'time') ? sauceTimeToMin(sauceTaskStartOf(t).at) : null, startWith: (sauceTaskStartOf(t) && sauceTaskStartOf(t).mode === 'same') ? sauceTaskStartOf(t).with : null, cleanAfter: sauceCleanFor(t, s, k).v, cleanSrc: sauceCleanFor(t, s, k).src, machine: mm.machines[0] || null, machines: mm.machines, mode: mm.mode, packers, packer: packers[0].key, packerName: packers[0].name };
+        return { id: t.id + '_' + k.id, taskId: t.id, ord: ordOf[t.id], cleanMachine: numOrNull(t.clean_machine_min), sauceCleanAfter: numOrNull(s && s.clean_min_after), row: t, sauce: s, sauceId: t.sauce_id, mixes, cooks: (kgSauce && mixes > 0) ? shareCooks(mixes) : null, totalMixes: total, split: parts.length > 1, cookMin: sauceCookMin(s), packMin: comb, packText, batch_key: t.batch_key || null, sauceKey: t.sauce_id, startMode: (sauceTaskStartOf(t) || {}).mode || null, startAt: (sauceTaskStartOf(t) && sauceTaskStartOf(t).mode === 'time') ? sauceTimeToMin(sauceTaskStartOf(t).at) : null, startWith: (sauceTaskStartOf(t) && sauceTaskStartOf(t).mode === 'same') ? sauceTaskStartOf(t).with : null, cleanAfter: sauceCleanFor(t, s, k).v, cleanSrc: sauceCleanFor(t, s, k).src, machine: mm.machines[0] || null, machines: mm.machines, mode: mm.mode, packers, packer: packers[0].key, packerName: packers[0].name };
       })
   })).filter(k => k.tasks.length);
   if(!ks.length) return null;
@@ -21400,7 +21544,7 @@ function sauceBatchTagHtml(t, tasks, noKettle){
   let html = '';
   const parts = sauceTaskKettleRowsOf(t);
   if(parts.length && !noKettle){
-    const txt = parts.map(p => { const k = sauceKettleById(p.kettle); return k ? (parts.length > 1 ? `${escapeHtml(k.name)} × ${fmtNum(p.mixes)}` : escapeHtml(k.name)) : ''; }).filter(Boolean).join(' · ');
+    const txt = parts.map(p => { const k = sauceKettleById(p.kettle); return k ? (parts.length > 1 ? `${escapeHtml(k.name)} × ${sauceCookText({ mixes: p.mixes }, SAUCES.find(x => x.id === t.sauce_id))}` : escapeHtml(k.name)) : ''; }).filter(Boolean).join(' · ');
     if(txt) html += `<div style="font-size:11px;color:var(--muted);margin-top:2px">🍲 ${txt}</div>`;
   }
   if(t.batch_key){
@@ -21435,7 +21579,7 @@ function sauceAutoNotes(t, T){
   const short = name => escapeHtml(String(name || '').replace((t.location || '') + ' · ', ''));
   // Machine / Process
   const lines = [];
-  if(parts.length) lines.push(`${escapeHtml(t.location || '')} · ${parts.map(p => `<b>${escapeHtml(p.k.name)}</b>${parts.length > 1 ? ' × ' + fmtNum(p.mixes) : ''}`).join(' + ')}`);
+  if(parts.length) lines.push(`${escapeHtml(t.location || '')} · ${parts.map(p => `<b>${escapeHtml(p.k.name)}</b>${parts.length > 1 ? ' × ' + sauceCookText({ mixes: p.mixes }, s) : ''}`).join(' + ')}`);
   else if(t.location) lines.push(escapeHtml(t.location));
   const cyc = mm.machines.length ? ((multiM && mm.mode === 'together') ? mm.machines.reduce((sum, m) => sum + (m.cycle || 0), 0) : machine.cycle) : (parseFloat(t.cycles) || 0), bpc = parseFloat(t.bags_per_cycle) || 0, mc = mm.machines.length || parseFloat(t.machines) || 0;
   const det = [];
@@ -21446,7 +21590,7 @@ function sauceAutoNotes(t, T){
     if(bl.some(b => b > 0)) det.push((bl.every(b => b === bl[0]) ? fmtNum(bl[0]) : mm.machines.map((m, i) => `${escapeHtml(m.name)} ${fmtNum(bl[i])}`).join(', ')) + ' bags/cycle');
   } else if(bpc) det.push(`${fmtNum(bpc)} bags/cycle`);
   if(mc) det.push(`${fmtNum(mc)} machine${mc === 1 ? '' : 's'}`);
-  if(parts.length) lines.push(`Cook ${fmtNum(sauceCookMin(s))} min per mix, then ${machine ? `pack on ${mm.machines.map(m => `<b>${escapeHtml(m.name)}</b>`).join(' + ')}${multiM ? (mm.mode === 'split' ? ' (one mix per machine)' : ' (together)') : ''}` : 'pack'}${det.length ? ` (${det.join(', ')})` : ''}`);
+  if(parts.length) lines.push(`Cook ${fmtNum(sauceCookMin(s))} min per ${sauceKgFactor(s) > 0 ? 'cook' : 'mix'}, then ${machine ? `pack on ${mm.machines.map(m => `<b>${escapeHtml(m.name)}</b>`).join(' + ')}${multiM ? (mm.mode === 'split' ? ' (one mix per machine)' : ' (together)') : ''}` : 'pack'}${det.length ? ` (${det.join(', ')})` : ''}`);
   else if(det.length) lines.push(`Packing: ${det.join(', ')}`);
   const pw = parseFloat(t.pack_weight) || 0, packKg = pw ? toKg(pw, t.pack_weight_unit) : 0;
   const w = s ? sauceRecipeWeightKg(s.id) : null;
@@ -21614,7 +21758,7 @@ async function renderSauceTimingCard(){
       const t = tk.task, open = !!SAUCE_TIMING_OPEN[t.id], last = ti === k.tasks.length - 1;
       rows += `<tr class="tmtk" onclick="toggleSauceTimingRow('${t.id}')"><td>${ti === 0 ? escapeHtml(k.name) : ''}</td>
         <td style="white-space:normal">${open ? '▾' : '▸'} <span class="tmdot" style="background:${sauceTimingColor(t.sauceId)}"></span>${escapeHtml(t.sauce ? t.sauce.name : '(sauce deleted)')}${sauceBatchTagHtml(t.row, ctx.tasks, true)}${tk.wait > 0 ? `<div><span class="tmtag wait">waits ${sauceDurText(tk.wait)} in the kettle</span></div>` : ''}${tk.noPack ? '<div><span class="tmtag late">no pack time</span></div>' : ''}</td>
-        <td>${fmtNum(t.mixes)}${t.split ? `<div style="font-size:11px;color:var(--muted)">of ${fmtNum(t.totalMixes)}</div>` : ''}</td>
+        <td>${sauceCookText(t, t.sauce)}${t.split ? `<div style="font-size:11px;color:var(--muted)">of ${sauceCookText({ mixes: t.totalMixes }, t.sauce)}</div>` : ''}</td>
         <td onclick="event.stopPropagation()" style="min-width:130px">${sauceTimingMachineCellHtml(t, k, dis)}</td>
         <td>${tk.cs == null ? '' : sauceMinToTime(tk.cs)}${t.startMode === 'time' ? '<div><span class="tmtag batch">set by you</span></div>' : (t.startMode === 'same' ? `<div><span class="tmtag batch">same time as ${escapeHtml(t.startWithName || 'another task')}</span></div>` : '')}${tk.startShift ? `<div><span class="tmtag late">kettle busy until ${sauceMinToTime(tk.startShift.at)}: starts then instead of ${sauceMinToTime(tk.startShift.wanted)}</span></div>` : ''}${tk.lateBy > 0.5 ? `<div style="font-size:11px;color:var(--muted)">kettle idle ${sauceDurText(tk.lateBy)} before this</div>` : ''}${tk.idle > 0 ? `<div style="font-size:11px;color:var(--muted)">starts ${sauceDurText(tk.idle)} later so it is done when the packer is free</div>` : ''}</td>
         <td>${tk.pe == null ? '' : sauceMinToTime(tk.pe)}</td>
@@ -21788,7 +21932,13 @@ function sauceTaskKettleRowsOf(t){
 function captureSauceTaskKettles(){
   const boxes = document.querySelectorAll('#sauceTaskKettleRows .sauceTaskKettleChk');
   if(!boxes.length) return;
-  SAUCE_TASK_KETTLES = [...boxes].filter(c => c.checked).map(c => ({ kettle: c.value, mixes: document.getElementById('sauceTaskKettleMixes_' + c.value).value }));
+  const F = sauceTaskKgF(); // a sauce entered in kg: the boxes hold kg, the shares are kept in mixes
+  const prevBy = {}; SAUCE_TASK_KETTLES.forEach(r => { prevBy[String(r.kettle)] = r; });
+  SAUCE_TASK_KETTLES = [...boxes].filter(c => c.checked).map(c => {
+    const v = document.getElementById('sauceTaskKettleMixes_' + c.value).value, pv = prevBy[c.value];
+    if(F > 0 && pv && v !== '' && parseFloat(v) === sauceKgR(parseFloat(pv.mixes) * F)) return { kettle: c.value, mixes: pv.mixes }; // not typed over
+    return { kettle: c.value, mixes: (F > 0 && v !== '' && parseFloat(v) >= 0) ? String(parseFloat(v) / F) : v };
+  });
 }
 // every kettle of the location with a tick box: the ticked ones are used by the task
 function renderSauceTaskKettleRows(){
@@ -21798,9 +21948,9 @@ function renderSauceTaskKettleRows(){
   const total = document.getElementById('sauceTaskMixes').value;
   const rows = SAUCE_TASK_KETTLES, one = rows.length === 1;
   const sp = saucePrefOf(document.getElementById('sauceTaskSauceId').value), allowed = sp && sp.allowed.length ? sp.allowed : null;
-  el.innerHTML = `<div class="tablewrap"><table class="tmtable"><thead><tr><th></th><th>Kettle</th><th>Today</th><th>Mixes</th><th>Cooking starts</th></tr></thead><tbody>${eq.kettles.map(k => {
-    const r = rows.find(x => String(x.kettle) === String(k.id)), on = !!r;
-    return `<tr${on ? ' style="background:var(--chip)"' : ''}><td><input type="checkbox" class="sauceTaskKettleChk" value="${k.id}" ${on ? 'checked' : ''} style="width:auto" onchange="onSauceTaskKettleTick()"></td><td><b>${escapeHtml(k.name)}</b>${allowed && !allowed.includes(k.id) ? '<div><span class="tmtag late">not usual</span></div>' : ''}</td><td style="white-space:normal;font-size:12px" id="sauceTaskKettleToday_${k.id}"></td><td><input type="number" step="any" min="0" id="sauceTaskKettleMixes_${k.id}" value="${on ? (one ? total : (r.mixes ?? '')) : ''}" ${on && !one ? '' : 'disabled'} style="width:80px" oninput="onSauceTaskKettleMixesInput()"></td><td id="sauceTaskKettleStart_${k.id}"></td></tr>`;
+  el.innerHTML = `<div class="tablewrap"><table class="tmtable"><thead><tr><th></th><th>Kettle</th><th>Today</th><th>${sauceTaskKgF() > 0 ? 'Kg cooked' : 'Mixes'}</th><th>Cooking starts</th></tr></thead><tbody>${eq.kettles.map(k => {
+    const r = rows.find(x => String(x.kettle) === String(k.id)), on = !!r, F = sauceTaskKgF(), showV = v => (F > 0 && v !== '' && v != null && parseFloat(v) >= 0) ? String(sauceKgR(parseFloat(v) * F)) : v;
+    return `<tr${on ? ' style="background:var(--chip)"' : ''}><td><input type="checkbox" class="sauceTaskKettleChk" value="${k.id}" ${on ? 'checked' : ''} style="width:auto" onchange="onSauceTaskKettleTick()"></td><td><b>${escapeHtml(k.name)}</b>${allowed && !allowed.includes(k.id) ? '<div><span class="tmtag late">not usual</span></div>' : ''}</td><td style="white-space:normal;font-size:12px" id="sauceTaskKettleToday_${k.id}"></td><td><input type="number" step="any" min="0" id="sauceTaskKettleMixes_${k.id}" value="${on ? showV(one ? total : (r.mixes ?? '')) : ''}" ${on && !one ? '' : 'disabled'} style="width:80px" oninput="onSauceTaskKettleMixesInput()"></td><td id="sauceTaskKettleStart_${k.id}"></td></tr>`;
   }).join('')}</tbody></table></div>`;
   renderSauceTaskKettleSum();
   recalcSauceTaskPackingHrs();
@@ -21813,14 +21963,15 @@ function renderSauceTaskKettleSum(){
   if(rows.length < 2){ el.innerHTML = ''; return; }
   const total = parseFloat(document.getElementById('sauceTaskMixes').value) || 0;
   const sum = rows.reduce((s, r) => s + (parseFloat(r.mixes) || 0), 0);
-  el.innerHTML = Math.abs(sum - total) < 1e-9 ? `<span class="tmtag free">${rows.map(r => fmtNum(parseFloat(r.mixes) || 0)).join(' + ')} = ${fmtNum(sum)} mixes</span>`
-    : `<span class="tmtag wait">The kettles add up to ${fmtNum(sum)} mixes, but the task has ${fmtNum(total)}</span>`;
+  const F = sauceTaskKgF(), u = F > 0 ? ' kg' : ' mixes', cv = x => F > 0 ? sauceKgR(x * F) : x;
+  el.innerHTML = (F > 0 ? Math.abs(sum - total) * F < 0.02 : Math.abs(sum - total) < 1e-6) ? `<span class="tmtag free">${rows.map(r => fmtNum(cv(parseFloat(r.mixes) || 0))).join(' + ')} = ${fmtNum(cv(sum))}${u}</span>`
+    : `<span class="tmtag wait">The kettles add up to ${fmtNum(cv(sum))}${u}, but the task has ${fmtNum(cv(total))}${u}</span>`;
 }
 // the total changed: one kettle takes it all, several kettles share it evenly again
 function onSauceTaskTotalMixes(){
   captureSauceTaskKettles();
   if(SAUCE_TASK_KETTLES.length > 1) splitSauceTaskKettlesEvenly(true);
-  else { const r = SAUCE_TASK_KETTLES[0], e = r ? document.getElementById('sauceTaskKettleMixes_' + r.kettle) : null; if(e) e.value = document.getElementById('sauceTaskMixes').value; renderSauceTaskKettleSum(); }
+  else { const r = SAUCE_TASK_KETTLES[0], e = r ? document.getElementById('sauceTaskKettleMixes_' + r.kettle) : null, F = sauceTaskKgF(), mv = document.getElementById('sauceTaskMixes').value; if(e) e.value = (F > 0 && parseFloat(mv) >= 0) ? String(sauceKgR(parseFloat(mv) * F)) : mv; renderSauceTaskKettleSum(); }
   renderSauceTaskAutoNotes();
   renderSauceTaskKettleBoard();
 }
@@ -21830,8 +21981,9 @@ function onSauceTaskKettleTick(){
   captureSauceTaskKettles();
   const total = parseFloat(document.getElementById('sauceTaskMixes').value) || 0, n = SAUCE_TASK_KETTLES.length;
   if(total > 0 && n){
-    const base = Math.floor(total / n), rem = Math.round((total - base * n) * 1000) / 1000;
-    SAUCE_TASK_KETTLES.forEach((r, i) => { r.mixes = String(base + (i < rem ? 1 : 0)); });
+    if(sauceTaskKgF() > 0) SAUCE_TASK_KETTLES.forEach(r => { r.mixes = String(total / n); });
+    else { const base = Math.floor(total / n), rem = Math.round((total - base * n) * 1000) / 1000;
+      SAUCE_TASK_KETTLES.forEach((r, i) => { r.mixes = String(base + (i < rem ? 1 : 0)); }); }
   }
   if(n && !SAUCE_TASK_MACHINE_TOUCHED) renderSauceTaskEquipment({ rows: SAUCE_TASK_KETTLES }); else renderSauceTaskKettleRows();
   renderSauceTaskKettleWarn();
@@ -21841,8 +21993,9 @@ function splitSauceTaskKettlesEvenly(keepRows){
   if(keepRows !== true) captureSauceTaskKettles();
   const total = parseFloat(document.getElementById('sauceTaskMixes').value) || 0, n = SAUCE_TASK_KETTLES.length;
   if(total > 0 && n){
-    const base = Math.floor(total / n), rem = Math.round((total - base * n) * 1000) / 1000;
-    SAUCE_TASK_KETTLES.forEach((r, i) => { r.mixes = String(base + (i < rem ? 1 : 0)); });
+    if(sauceTaskKgF() > 0) SAUCE_TASK_KETTLES.forEach(r => { r.mixes = String(total / n); });
+    else { const base = Math.floor(total / n), rem = Math.round((total - base * n) * 1000) / 1000;
+      SAUCE_TASK_KETTLES.forEach((r, i) => { r.mixes = String(base + (i < rem ? 1 : 0)); }); }
   } else if(keepRows !== true) toast(n ? 'Enter the total number of mixes first' : 'Tick at least one kettle first');
   renderSauceTaskKettleRows();
   renderSauceTaskKettleWarn();
@@ -21884,6 +22037,13 @@ function renderSauceTaskEquipment(opts){
   if(!wrap) return;
   const locName = document.getElementById('sauceTaskLocation').value;
   const eq = sauceEquipOfName(locName), loc = SAUCE_LOCATIONS.find(x => x.name === locName);
+  const hint = document.getElementById('sauceTaskNoKettleHint'); // says why the kettles and packing machines are not shown
+  if(hint){
+    if(!locName) hint.style.display = 'none';
+    else if(!SAUCE_KETTLES_OK){ hint.style.display = 'block'; hint.textContent = 'The kettles and packing machines could not be read. Run fix65-app-settings.sql in Supabase, reload the page (Ctrl+F5) and set them up in Locations > Equipment of a location.'; }
+    else if(!eq.kettles.length){ hint.style.display = 'block'; hint.textContent = 'This location has no kettles yet, so the kettle and packing machine choices are not shown. Add the kettles and packing machines of ' + locName + ' in Sauce Production > Locations > Equipment of a location.'; }
+    else hint.style.display = 'none';
+  }
   if(!eq.kettles.length){
     wrap.style.display = 'none'; SAUCE_TASK_KETTLES = []; document.getElementById('sauceTaskPackerBox').innerHTML = '';
     document.getElementById('sauceTaskKettleRows').innerHTML = ''; document.getElementById('sauceTaskKettleSum').innerHTML = '';
@@ -21994,11 +22154,11 @@ async function renderSaucePreview(){
         const singleItemMatch = (!isMultiItem && s) ? lookupSauceMatchedItems(s.item_code)[0] : null;
         const taskStorageBadge = singleItemMatch ? storageKeepBadgeHtml(singleItemMatch.storage, t.storage_choice) : '';
         const tStatus = t.status === 'Confirmed'
-          ? `<span class="chip ok">Confirmed (${fmtNum(t.confirmed_mixes)}/${fmtNum(t.mixes)} mix${(parseFloat(t.mixes)||0)===1?'':'es'})</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedSauceMixes(${t.id})">✎ Correct</button>`
+          ? `<span class="chip ok">Confirmed (${sauceConfirmedText(t, s, 'mix')})</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedSauceMixes(${t.id})">✎ Correct</button>`
           : t.status === 'Cancelled' ? `<span class="chip cancel">Cancelled</span>`
           : `<span class="chip">Planned</span>`;
         return `<tr>
-          <td>${fmtNum(t.mixes)}</td><td>${s?s.name:'(sauce deleted)'}${sauceBatchTagHtml(t, SAUCE_PREVIEW_TASKS)}</td>
+          <td>${sauceBatchHtml(t, s)}</td><td>${s?s.name:'(sauce deleted)'}${sauceBatchTagHtml(t, SAUCE_PREVIEW_TASKS)}</td>
           ${sauceNotesCellsHtml(t, sauceTimingT)}
           <td>${isMultiItem ? '<span style="color:var(--muted)">see items below</span>' : (t.pack_size_notes||'')}</td>
           <td>${isMultiItem ? `Prod: ${prodDate} (Julian: ${julian})` : `Prod: ${prodDate} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}${s ? `<div style="margin-top:3px">${sauceSlChipHtml(sauceTaskSlInfo(s, t.storage_choice))}</div>` : ''}`}</td>
@@ -22256,10 +22416,10 @@ function sauceProductionDayHtml(dateStr, tasks, taskItemsMap, dailyOutMap, taskC
         const singleItemMatch = (!isMultiItem && s) ? lookupSauceMatchedItems(s.item_code)[0] : null;
         const taskStorageBadge = singleItemMatch ? storageKeepBadgeHtml(singleItemMatch.storage, t.storage_choice) : '';
         const statusCellHtml = t.status === 'Confirmed'
-          ? `<span class="chip ok">Confirmed (${fmtNum(t.confirmed_mixes)}/${fmtNum(t.mixes)} Mix${(parseFloat(t.mixes)||0)===1?'':'es'})</span>`
+          ? `<span class="chip ok">Confirmed (${sauceConfirmedText(t, s, 'Mix')})</span>`
           : t.status === 'Cancelled' ? `<span class="chip cancel">Cancelled</span>`
           : `<span class="chip">Planned</span>`;
-        return `<tr><td>${fmtNum(t.mixes)}</td><td>${s?s.name:''}${sauceBatchTagHtml(t, tasks)}</td>
+        return `<tr><td>${sauceBatchHtml(t, s)}</td><td>${s?s.name:''}${sauceBatchTagHtml(t, tasks)}</td>
           <td>${isMultiItem ? 'see items below' : (t.pack_size_notes||'')}</td>
           <td>${isMultiItem ? `Prod: ${dateStr} (Julian: ${julian})` : `Prod: ${dateStr} (Julian: ${julian})${bb?`<br>Best Before: ${bb}`:''}${s ? `<br><span style="font-size:11px">${escapeHtml(sauceSlPrintText(sauceTaskSlInfo(s, t.storage_choice)))}</span>` : ''}`}</td>
           <td>${statusCellHtml}</td></tr>` +
@@ -22383,7 +22543,7 @@ async function renderSauceConfirmTab(){
     ${SAUCE_CONFIRM_TASKS.map(t => {
       const s = SAUCES.find(x => x.id === t.sauce_id);
       const statusChip = t.status === 'Confirmed'
-        ? `<span class="chip ok">Confirmed (${fmtNum(t.confirmed_mixes)}/${fmtNum(t.mixes)} mix${(parseFloat(t.mixes)||0)===1?'':'es'})</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedSauceMixes(${t.id})">✎ Correct</button>`
+        ? `<span class="chip ok">Confirmed (${sauceConfirmedText(t, s, 'mix')})</span> <button class="btn secondary admin-only" style="padding:2px 8px;font-size:10px" onclick="promptCorrectConfirmedSauceMixes(${t.id})">✎ Correct</button>`
         : t.status === 'Cancelled' ? `<span class="chip cancel">Cancelled</span>`
         : `<span class="chip">Planned</span>`;
       const editable = canWrite() && t.status === 'Planned';
@@ -22456,7 +22616,7 @@ async function renderSauceConfirmTab(){
         : (() => { const it = s ? lookupSauceMatchedItems(s.item_code)[0] : null; return it ? storageKeepBadgeHtml(it.storage, t.storage_choice) : ''; })();
       return `<tr${t.status==='Cancelled'?' style="opacity:.6"':''}>
         <td>${t.location||''}</td><td>${s?s.name:'(sauce deleted)'}</td>
-        <td>${editable ? `<input type="number" step="any" value="${t.mixes??''}" style="width:90px" onchange="updateSauceTaskMixes(${t.id}, this.value)">` : fmtNum(t.mixes)}</td>
+        <td>${(() => { const F = sauceKgFactor(s), v = F > 0 ? sauceKgR((parseFloat(t.mixes) || 0) * F) : (t.mixes ?? ''); return editable ? `<input type="number" step="any" value="${v}" style="width:90px" onchange="updateSauceTaskMixes(${t.id}, this.value)">${F > 0 ? ' kg' : ''}` : sauceBatchText(t, s); })()}</td>
         <td>${qtyCellHtml}</td>
         <td>${dateCellHtml}</td>
         <td>${statusChip}</td>
@@ -22473,7 +22633,8 @@ async function renderSauceConfirmTab(){
 async function updateSauceTaskMixes(id, value){
   if(!canWrite()){ toast('You have read-only access'); return; }
   try{
-    await sbUpdate('erp_sauce_schedule_tasks', id, { mixes: parseFloat(value) || 0 });
+    const t0 = (SAUCE_CONFIRM_TASKS || []).find(x => x.id === id), F = t0 ? sauceKgFactor(SAUCES.find(x => x.id === t0.sauce_id)) : 0, v = parseFloat(value) || 0; // a kg sauce: the box holds kg
+    await sbUpdate('erp_sauce_schedule_tasks', id, { mixes: F > 0 ? v / F : v });
     await renderSauceConfirmTab();
   }catch(e){ toast('Update failed: ' + e.message); }
 }
@@ -22528,7 +22689,7 @@ async function confirmSauceTask(id){
     // confirmProductionRun fix: deductSauceIngredientsForSauce needs SAUCE_INGREDIENTS (for
     // kg_per_unit conversion), and relying on refreshSauceScreen() having already loaded it
     // is a coincidence of every sauce screen sharing one refresh function, not a guarantee.
-    SAUCE_RECIPE = await sbGetAll('erp_sauce_recipe?select=id,sauce_id,ingredient_id,qty_per_batch,qty_unit&order=id.asc');
+    SAUCE_RECIPE = await sauceRecipeFetch();
     SAUCE_INGREDIENTS = await sbGetAll('erp_sauce_ingredient_inventory?select=id,name,pcs,weight,package_size,unit,kg_per_unit,produced_by_sauce_id,inventory_qty&order=name.asc');
     if(mixes > 0) await deductSauceIngredientsForSauce(t.sauce_id, SAUCE_CONFIRM_DAY.schedule_date, mixes);
     const sauce = SAUCES.find(s => s.id === t.sauce_id);
